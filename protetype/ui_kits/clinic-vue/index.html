@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Klinik Al-Huda · Vue UI Kit</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://unpkg.com/vue@3.5.13/dist/vue.global.prod.js"></script>
+</head>
+<body>
+<div id="app">
+  <sidebar :active="route" @nav="route = $event"></sidebar>
+  <div class="main" :data-screen-label="route">
+    <top-bar :title="title" :subtitle="subtitle"></top-bar>
+    <component :is="screen" @consult="route = 'emr'" :name="title"></component>
+  </div>
+</div>
+<script src="components.js"></script>
+<script src="screens.js"></script>
+<script>
+const { createApp } = Vue;
+const titles = {
+  dashboard: ['Dashboard', 'Tuesday, 14 May 2026 · Dr. Aiman Rashid'],
+  queue: ['Patient Queue', '12 waiting · 2 urgent · avg wait 14 min'],
+  register: ['Register New Patient', 'MyKad-driven smart intake'],
+  emr: ['Consultation · Aminah binti Hassan', 'Session #2026-00482 · Started 10:42 AM'],
+  patients: ['Registered Patients', '1,247 active patients'],
+  appointments: ['Appointments', 'Week of 12–17 May 2026'],
+  pharmacy: ['Pharmacy', '4 pending prescriptions · AI drug check active'],
+  inventory: ['Drug Inventory', '284 SKUs · 12 low-stock · 4 expiring within 90d'],
+  billing: ['Billing & Invoice', 'Invoice INV-2026-001847'],
+  reports: ['Reports & Analytics', 'Executive dashboard · May 2026'],
+  settings: ['Settings & Security', 'RBAC · MFA · Audit · Backup'],
+};
+const screenMap = {
+  dashboard: 'DashboardScreen',
+  queue: 'QueueScreen',
+  emr: 'EMRScreen',
+  register: 'RegisterScreen',
+  patients: 'PatientListScreen',
+  appointments: 'AppointmentsScreen',
+  pharmacy: 'PharmacyScreen',
+  inventory: 'InventoryScreen',
+  billing: 'BillingScreen',
+  reports: 'ReportsScreen',
+  settings: 'SettingsScreen',
+};
+const App = {
+  data: () => ({ route: 'dashboard' }),
+  computed: {
+    title() { return titles[this.route]?.[0] || ''; },
+    subtitle() { return titles[this.route]?.[1] || ''; },
+    screen() {
+      const k = screenMap[this.route];
+      return k ? window.KlinikScreens[k] : window.KlinikScreens.StubScreen;
+    }
+  }
+};
+const app = createApp(App);
+app.component('Sidebar', window.KlinikComponents.Sidebar);
+app.component('TopBar', window.KlinikComponents.TopBar);
+Object.entries(window.KlinikScreens).forEach(([k, c]) => app.component(k, c));
+app.mount('#app');
+</script>
+</body>
+</html>
