@@ -2,11 +2,13 @@
 
 namespace Database\Seeders;
 
+use App\Models\Appointment;
 use App\Models\InventoryItem;
 use App\Models\Patient;
 use App\Models\Prescription;
 use App\Models\SecurityPolicy;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -206,6 +208,66 @@ class DatabaseSeeder extends Seeder
                 foreach ($d['items'] as $item) {
                     $rx->items()->create($item);
                 }
+            }
+        }
+
+        // Sample appointments for current week
+        if (Appointment::count() === 0) {
+            $docName = 'Dr. Aiman Rashid';
+            $mon  = Carbon::now()->startOfWeek(Carbon::MONDAY)->format('Y-m-d');
+            $tue  = Carbon::now()->startOfWeek(Carbon::MONDAY)->addDay()->format('Y-m-d');
+            $wed  = Carbon::now()->startOfWeek(Carbon::MONDAY)->addDays(2)->format('Y-m-d');
+            $thu  = Carbon::now()->startOfWeek(Carbon::MONDAY)->addDays(3)->format('Y-m-d');
+            $fri  = Carbon::now()->startOfWeek(Carbon::MONDAY)->addDays(4)->format('Y-m-d');
+            $sat  = Carbon::now()->startOfWeek(Carbon::MONDAY)->addDays(5)->format('Y-m-d');
+
+            $pt = [];
+            foreach (['780229-08-5234','650412-14-8821','920815-10-7733','850101-14-5678','010322-08-1145','950707-03-9988','750314-08-1122','880905-10-4477'] as $ic) {
+                $pt[] = Patient::where('ic_number', $ic)->first();
+            }
+
+            $appts = [
+                // Monday
+                ['date'=>$mon,'time'=>'08:00','patient'=>$pt[0],'type'=>'follow_up',      'status'=>'done',      'reason'=>'Kawalan tekanan darah',        'duration'=>30],
+                ['date'=>$mon,'time'=>'08:30','patient'=>$pt[1],'type'=>'follow_up',      'status'=>'done',      'reason'=>'Kawalan kolesterol',            'duration'=>30],
+                ['date'=>$mon,'time'=>'09:00','patient'=>$pt[2],'type'=>'new',            'status'=>'done',      'reason'=>'Sesak nafas berulang',          'duration'=>30],
+                ['date'=>$mon,'time'=>'09:30','patient'=>$pt[3],'type'=>'annual_checkup', 'status'=>'cancelled', 'reason'=>'Pemeriksaan tahunan',           'duration'=>30],
+                ['date'=>$mon,'time'=>'10:00','patient'=>$pt[4],'type'=>'new',            'status'=>'done',      'reason'=>'Demam dan sakit tekak',         'duration'=>15],
+                // Tuesday
+                ['date'=>$tue,'time'=>'08:00','patient'=>$pt[5],'type'=>'antenatal',      'status'=>'confirmed', 'reason'=>'Antenatal minggu ke-24',        'duration'=>30],
+                ['date'=>$tue,'time'=>'08:30','patient'=>$pt[6],'type'=>'follow_up',      'status'=>'waiting',   'reason'=>'Kawalan hipertensi',            'duration'=>30],
+                ['date'=>$tue,'time'=>'09:00','patient'=>$pt[7],'type'=>'follow_up',      'status'=>'confirmed', 'reason'=>'Tiroid susulan',                'duration'=>30],
+                ['date'=>$tue,'time'=>'10:00','patient'=>$pt[0],'type'=>'procedure',      'status'=>'confirmed', 'reason'=>'Ambil darah HbA1c',             'duration'=>15],
+                // Wednesday
+                ['date'=>$wed,'time'=>'08:00','patient'=>$pt[2],'type'=>'follow_up',      'status'=>'confirmed', 'reason'=>'Semakan ubat asma',             'duration'=>30],
+                ['date'=>$wed,'time'=>'09:00','patient'=>$pt[3],'type'=>'new',            'status'=>'confirmed', 'reason'=>'Sakit kepala kronik',           'duration'=>30],
+                ['date'=>$wed,'time'=>'10:00','patient'=>$pt[1],'type'=>'teleconsult',    'status'=>'confirmed', 'reason'=>'Teleperubatan bulanan',         'duration'=>30],
+                ['date'=>$wed,'time'=>'11:00','patient'=>$pt[4],'type'=>'follow_up',      'status'=>'waiting',   'reason'=>'Susulan selepas rawatan',       'duration'=>15],
+                // Thursday
+                ['date'=>$thu,'time'=>'08:30','patient'=>$pt[5],'type'=>'antenatal',      'status'=>'confirmed', 'reason'=>'Antenatal — scan 20 minggu',   'duration'=>45],
+                ['date'=>$thu,'time'=>'09:30','patient'=>$pt[6],'type'=>'annual_checkup', 'status'=>'confirmed', 'reason'=>'Pemeriksaan tahunan',           'duration'=>30],
+                ['date'=>$thu,'time'=>'10:30','patient'=>$pt[7],'type'=>'follow_up',      'status'=>'confirmed', 'reason'=>'Kawalan tiroid',                'duration'=>30],
+                // Friday
+                ['date'=>$fri,'time'=>'08:00','patient'=>$pt[0],'type'=>'follow_up',      'status'=>'confirmed', 'reason'=>'Semakan ubat DM + HTN',         'duration'=>30],
+                ['date'=>$fri,'time'=>'09:00','patient'=>$pt[2],'type'=>'procedure',      'status'=>'confirmed', 'reason'=>'Ujian fungsi paru-paru',        'duration'=>30],
+                ['date'=>$fri,'time'=>'10:00','patient'=>$pt[3],'type'=>'new',            'status'=>'no_show',   'reason'=>'Ruam kulit berulang',           'duration'=>30],
+                // Saturday
+                ['date'=>$sat,'time'=>'08:00','patient'=>$pt[1],'type'=>'follow_up',      'status'=>'confirmed', 'reason'=>'Tekanan darah tinggi',          'duration'=>30],
+                ['date'=>$sat,'time'=>'08:30','patient'=>$pt[4],'type'=>'new',            'status'=>'confirmed', 'reason'=>'Batuk berlarutan',              'duration'=>30],
+            ];
+
+            foreach ($appts as $a) {
+                if (! $a['patient']) continue;
+                Appointment::create([
+                    'patient_id'       => $a['patient']->id,
+                    'doctor_name'      => $docName,
+                    'appointment_date' => $a['date'],
+                    'appointment_time' => $a['time'],
+                    'duration_minutes' => $a['duration'],
+                    'type'             => $a['type'],
+                    'reason'           => $a['reason'],
+                    'status'           => $a['status'],
+                ]);
             }
         }
 

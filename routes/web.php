@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\PharmacyController;
@@ -21,7 +22,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/patients',           [PatientController::class, 'store'])->name('patients.store');
     Route::put('/patients/{patient}',  [PatientController::class, 'update'])->name('patients.update');
     Route::delete('/patients/{patient}',[PatientController::class, 'destroy'])->name('patients.destroy');
-    Route::get('/appointments', fn () => Inertia::render('Appointments', ['currentRoute' => 'appointments']))->name('appointments');
+    // Appointments — CRUD
+    Route::get('/appointments',                        [AppointmentController::class, 'index'])->name('appointments');
+    Route::post('/appointments',                       [AppointmentController::class, 'store'])->name('appointments.store');
+    Route::put('/appointments/{appointment}',          [AppointmentController::class, 'update'])->name('appointments.update');
+    Route::patch('/appointments/{appointment}/status', [AppointmentController::class, 'updateStatus'])->name('appointments.status');
+    Route::delete('/appointments/{appointment}',       [AppointmentController::class, 'destroy'])->name('appointments.destroy');
     Route::get('/emr',          fn () => Inertia::render('EMR',          ['currentRoute' => 'emr']))->name('emr');
     // Pharmacy — CRUD
     Route::get('/pharmacy',                                    [PharmacyController::class, 'index'])->name('pharmacy');
