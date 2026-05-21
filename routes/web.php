@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\BillingController;
+use App\Http\Controllers\EMRController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\PharmacyController;
@@ -28,7 +30,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/appointments/{appointment}',          [AppointmentController::class, 'update'])->name('appointments.update');
     Route::patch('/appointments/{appointment}/status', [AppointmentController::class, 'updateStatus'])->name('appointments.status');
     Route::delete('/appointments/{appointment}',       [AppointmentController::class, 'destroy'])->name('appointments.destroy');
-    Route::get('/emr',          fn () => Inertia::render('EMR',          ['currentRoute' => 'emr']))->name('emr');
+    // EMR — CRUD
+    Route::get('/emr',                                         [EMRController::class, 'index'])->name('emr');
+    Route::post('/emr',                                        [EMRController::class, 'store'])->name('emr.store');
+    Route::patch('/emr/{visit}/soap',                          [EMRController::class, 'updateSoap'])->name('emr.soap');
+    Route::post('/emr/{visit}/vitals',                         [EMRController::class, 'storeVitals'])->name('emr.vitals');
+    Route::post('/emr/{visit}/diagnoses',                      [EMRController::class, 'storeDiagnosis'])->name('emr.diagnoses.store');
+    Route::delete('/emr/{visit}/diagnoses/{diagnosis}',        [EMRController::class, 'destroyDiagnosis'])->name('emr.diagnoses.destroy');
+    Route::patch('/emr/{visit}/close',                         [EMRController::class, 'close'])->name('emr.close');
+    Route::delete('/emr/{visit}',                              [EMRController::class, 'destroy'])->name('emr.destroy');
     // Pharmacy — CRUD
     Route::get('/pharmacy',                                    [PharmacyController::class, 'index'])->name('pharmacy');
     Route::post('/pharmacy/prescriptions',                     [PharmacyController::class, 'store'])->name('pharmacy.store');
@@ -41,7 +51,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/inventory/{inventoryItem}',                      [InventoryController::class, 'update'])->name('inventory.update');
     Route::patch('/inventory/{inventoryItem}/stock',              [InventoryController::class, 'adjustStock'])->name('inventory.stock');
     Route::delete('/inventory/{inventoryItem}',                   [InventoryController::class, 'destroy'])->name('inventory.destroy');
-    Route::get('/billing',      fn () => Inertia::render('Billing',      ['currentRoute' => 'billing']))->name('billing');
+    // Billing — CRUD
+    Route::get('/billing',                                [BillingController::class, 'index'])->name('billing');
+    Route::post('/billing',                               [BillingController::class, 'store'])->name('billing.store');
+    Route::post('/billing/{invoice}/items',               [BillingController::class, 'storeItem'])->name('billing.items.store');
+    Route::delete('/billing/{invoice}/items/{item}',      [BillingController::class, 'destroyItem'])->name('billing.items.destroy');
+    Route::patch('/billing/{invoice}/discount',           [BillingController::class, 'updateDiscount'])->name('billing.discount');
+    Route::patch('/billing/{invoice}/finalize',           [BillingController::class, 'finalize'])->name('billing.finalize');
+    Route::patch('/billing/{invoice}/pay',                [BillingController::class, 'pay'])->name('billing.pay');
+    Route::patch('/billing/{invoice}/cancel',             [BillingController::class, 'cancel'])->name('billing.cancel');
+    Route::delete('/billing/{invoice}',                   [BillingController::class, 'destroy'])->name('billing.destroy');
     Route::get('/reports',      fn () => Inertia::render('Reports',      ['currentRoute' => 'reports']))->name('reports');
 
     // Settings — CRUD
