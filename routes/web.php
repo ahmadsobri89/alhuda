@@ -18,6 +18,8 @@ Route::get('/', function () {
     return redirect()->route('dashboard');
 });
 
+Route::post('/locale', [\App\Http\Controllers\LocaleController::class, 'switch'])->name('locale.switch');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/queue', [QueueController::class, 'index'])->name('queue');

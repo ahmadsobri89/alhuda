@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { router, useForm, usePage } from '@inertiajs/vue3'
+import { useLocale } from '@/composables/useLocale'
 import KlinikLayout from '@/Layouts/KlinikLayout.vue'
 import Badge from '@/Components/Clinic/Badge.vue'
 import Btn from '@/Components/Clinic/Btn.vue'
@@ -18,6 +19,7 @@ const props = defineProps({
 
 const page  = usePage()
 const flash = computed(() => page.props.flash)
+const { t } = useLocale()
 
 /* ── filters ── */
 const search     = ref(props.filters?.search ?? '')
@@ -46,12 +48,20 @@ function selectInvoice (id) {
 
 /* ── labels ── */
 const statusTone  = { draft:'neutral', unpaid:'yellow', paid:'green', cancelled:'red' }
-const statusLabel = { draft:'Draf', unpaid:'Belum Bayar', paid:'Bayar', cancelled:'Batal' }
-const methodLabel = { cash:'Tunai', card:'Kad', duitnow:'DuitNow', panel:'Panel', insurance:'Insurans' }
-function typeTone (t) {
-  return { consultation:'blue', procedure:'purple', drug:'green', lab:'yellow', other:'neutral' }[t] ?? 'neutral'
+const statusLabel = computed(() => ({
+  draft: t('status_draft'), unpaid: t('status_unpaid'), paid: t('status_paid'), cancelled: t('status_cancelled'),
+}))
+const methodLabel = computed(() => ({
+  cash: t('method_cash'), card: t('method_card'), duitnow: t('method_duitnow'),
+  panel: t('method_panel'), insurance: t('method_insurance'),
+}))
+function typeTone (tp) {
+  return { consultation:'blue', procedure:'purple', drug:'green', lab:'yellow', other:'neutral' }[tp] ?? 'neutral'
 }
-const typeLabel = { consultation:'Konsultasi', procedure:'Prosedur', drug:'Ubat', lab:'Makmal', other:'Lain-lain' }
+const typeLabel = computed(() => ({
+  consultation: t('bill_item_cons'), procedure: t('bill_item_proc'),
+  drug: t('bill_item_drug'), lab: t('bill_item_lab'), other: t('bill_item_other'),
+}))
 
 /* ── quick service presets ── */
 const quickServices = [
@@ -106,13 +116,13 @@ function finalize () { router.patch(`/billing/${props.selected.id}/finalize`, {}
 /* ── payment modal ── */
 const showPayModal = ref(false)
 const payMethod    = ref('cash')
-const payMethods   = [
-  { value:'cash',      label:'Tunai' },
-  { value:'card',      label:'Kad' },
-  { value:'duitnow',   label:'DuitNow' },
-  { value:'panel',     label:'Panel / GL' },
-  { value:'insurance', label:'Insurans' },
-]
+const payMethods = computed(() => [
+  { value:'cash',      label: t('method_cash') },
+  { value:'card',      label: t('method_card') },
+  { value:'duitnow',   label: t('method_duitnow') },
+  { value:'panel',     label: t('method_panel') },
+  { value:'insurance', label: t('method_insurance') },
+])
 function submitPay () {
   router.patch(`/billing/${props.selected.id}/pay`,
     { payment_method: payMethod.value },
@@ -152,16 +162,16 @@ function submitNew () {
     <!-- ══ LEFT: senarai invois ══ -->
     <aside class="inv-list">
       <div class="inv-list__hd">
-        <span class="inv-list__title">Bil &amp; Invois</span>
-        <Btn variant="primary" size="sm" @click="showNewModal=true">+ Invois</Btn>
+        <span class="inv-list__title">{{ t('bill_title') }}</span>
+        <Btn variant="primary" size="sm" @click="showNewModal=true">{{ t('bill_new') }}</Btn>
       </div>
 
       <div style="padding:10px 12px 0">
-        <input v-model="search" class="input" style="width:100%;font-size:12px" placeholder="Cari invois / pesakit…" />
+        <input v-model="search" class="input" style="width:100%;font-size:12px" :placeholder="t('bill_search')" />
       </div>
 
       <div class="sf-chips">
-        <button v-for="(lbl,val) in { '':'Semua', draft:'Draf', unpaid:'Belum Bayar', paid:'Bayar', cancelled:'Batal' }"
+        <button v-for="(lbl,val) in { '': t('bill_filter_all'), draft: t('bill_filter_draft'), unpaid: t('bill_filter_unpaid'), paid: t('bill_filter_paid'), cancelled: t('bill_filter_cancel') }"
           :key="val" class="sf-chip" :class="{ active: statusFilt===val }" @click="setStatus(val)">{{ lbl }}</button>
       </div>
 
@@ -179,7 +189,7 @@ function submitNew () {
             <span class="inv-item__amt">RM {{ Number(inv.total_amount).toFixed(2) }}</span>
           </div>
         </div>
-        <p v-if="!invoices.data.length" class="inv-empty">Tiada invois ditemui</p>
+        <p v-if="!invoices.data.length" class="inv-empty">{{ t('bill_no_invoices') }}</p>
       </div>
 
       <div v-if="invoices.last_page>1" class="pg-bar">
@@ -196,19 +206,19 @@ function submitNew () {
       <!-- stats bar -->
       <div class="stats-bar">
         <div class="stat-box">
-          <div class="stat-lbl">Pendapatan Hari Ini</div>
+          <div class="stat-lbl">{{ t('bill_stat_today') }}</div>
           <div class="stat-val">RM {{ Number(stats.today_revenue).toFixed(2) }}</div>
         </div>
         <div class="stat-box">
-          <div class="stat-lbl">Kutipan Bulan Ini</div>
+          <div class="stat-lbl">{{ t('bill_stat_month') }}</div>
           <div class="stat-val">RM {{ Number(stats.month_collected).toFixed(2) }}</div>
         </div>
         <div class="stat-box">
-          <div class="stat-lbl">Invois Tertunggak</div>
+          <div class="stat-lbl">{{ t('bill_stat_pending') }}</div>
           <div class="stat-val">{{ stats.outstanding_count }}</div>
         </div>
         <div class="stat-box">
-          <div class="stat-lbl">Jumlah Tertunggak</div>
+          <div class="stat-lbl">{{ t('bill_stat_amount') }}</div>
           <div class="stat-val">RM {{ Number(stats.outstanding_amount).toFixed(2) }}</div>
         </div>
       </div>
@@ -223,7 +233,7 @@ function submitNew () {
           <rect x="9" y="3" width="6" height="4" rx="1"/>
           <path d="M9 12h6M9 16h4"/>
         </svg>
-        <p>Pilih invois dari senarai atau cipta invois baharu.</p>
+        <p>{{ t('bill_select') }}</p>
       </div>
 
       <!-- invoice detail -->
@@ -241,8 +251,8 @@ function submitNew () {
           </div>
           <div class="inv-hd-actions">
             <Btn v-if="selected.status!=='paid'&&selected.status!=='cancelled'"
-              variant="ghost" size="sm" style="color:#DC2626" @click="showCancelModal=true">Batalkan</Btn>
-            <Btn v-if="selected.status!=='paid'" variant="ghost" size="sm" @click="showDeleteModal=true">Padam</Btn>
+              variant="ghost" size="sm" style="color:#DC2626" @click="showCancelModal=true">{{ t('bill_cancel') }}</Btn>
+            <Btn v-if="selected.status!=='paid'" variant="ghost" size="sm" @click="showDeleteModal=true">{{ t('bill_delete') }}</Btn>
           </div>
         </div>
 
@@ -252,14 +262,14 @@ function submitNew () {
           <!-- items column -->
           <div class="card" style="flex:1;min-width:0">
             <div class="card__header">
-              <h3 class="card__title">Item Invois</h3>
+              <h3 class="card__title">{{ t('bill_items_title') }}</h3>
               <Btn v-if="['draft','unpaid'].includes(selected.status)"
-                variant="primary" size="sm" @click="openAddDrawer">+ Tambah Item</Btn>
+                variant="primary" size="sm" @click="openAddDrawer">{{ t('bill_add_item') }}</Btn>
             </div>
 
             <!-- table -->
             <div class="table__head" style="grid-template-columns:90px 1fr 60px 90px 90px 32px">
-              <div>Jenis</div><div>Penerangan</div><div>Qty</div><div>Harga</div><div>Jumlah</div><div></div>
+              <div>{{ t('bill_col_type') }}</div><div>{{ t('bill_col_desc') }}</div><div>{{ t('bill_col_qty') }}</div><div>{{ t('bill_col_price') }}</div><div>{{ t('bill_total') }}</div><div></div>
             </div>
             <div v-for="item in selected.items" :key="item.id"
               class="table__row" style="grid-template-columns:90px 1fr 60px 90px 90px 32px">
@@ -279,7 +289,7 @@ function submitNew () {
 
             <p v-if="!selected.items.length"
               style="padding:28px 16px;text-align:center;color:var(--fg3);font:400 12.5px var(--font-sans)">
-              Belum ada item — klik <strong>+ Tambah Item</strong> untuk mula.
+              {{ t('bill_no_items') }}
             </p>
           </div>
 
@@ -288,14 +298,14 @@ function submitNew () {
 
             <!-- summary -->
             <div class="card">
-              <div class="card__header"><h3 class="card__title">Ringkasan</h3></div>
+              <div class="card__header"><h3 class="card__title">{{ t('bill_summary') }}</h3></div>
               <div class="card__body" style="display:flex;flex-direction:column;gap:10px">
                 <div class="sum-row">
-                  <span class="sum-lbl">Subtotal</span>
+                  <span class="sum-lbl">{{ t('bill_subtotal') }}</span>
                   <span class="sum-val">RM {{ Number(selected.subtotal).toFixed(2) }}</span>
                 </div>
                 <div class="sum-row">
-                  <span class="sum-lbl">Diskaun</span>
+                  <span class="sum-lbl">{{ t('bill_discount') }}</span>
                   <span v-if="!discountEdit" class="sum-val">
                     RM {{ Number(selected.discount_amount).toFixed(2) }}
                     <button v-if="['draft','unpaid'].includes(selected.status)"
@@ -309,7 +319,7 @@ function submitNew () {
                 </div>
                 <div class="hr" />
                 <div class="sum-row">
-                  <span style="font:700 13px var(--font-sans);color:var(--fg1)">JUMLAH</span>
+                  <span style="font:700 13px var(--font-sans);color:var(--fg1)">{{ t('bill_total') }}</span>
                   <span class="total-val">RM {{ Number(selected.total_amount).toFixed(2) }}</span>
                 </div>
               </div>
@@ -317,35 +327,35 @@ function submitNew () {
 
             <!-- actions -->
             <div class="card">
-              <div class="card__header"><h3 class="card__title">Tindakan</h3></div>
+              <div class="card__header"><h3 class="card__title">{{ t('bill_actions') }}</h3></div>
               <div class="card__body" style="display:flex;flex-direction:column;gap:8px">
 
                 <template v-if="selected.status==='draft'">
-                  <Btn variant="secondary" @click="finalize" style="width:100%;justify-content:center">Muktamadkan Invois</Btn>
-                  <Btn variant="primary" @click="showPayModal=true" style="width:100%;justify-content:center">Kutip Pembayaran</Btn>
+                  <Btn variant="secondary" @click="finalize" style="width:100%;justify-content:center">{{ t('bill_finalize') }}</Btn>
+                  <Btn variant="primary" @click="showPayModal=true" style="width:100%;justify-content:center">{{ t('bill_collect') }}</Btn>
                 </template>
 
                 <template v-else-if="selected.status==='unpaid'">
-                  <Btn variant="primary" @click="showPayModal=true" style="width:100%;justify-content:center">Kutip Pembayaran</Btn>
+                  <Btn variant="primary" @click="showPayModal=true" style="width:100%;justify-content:center">{{ t('bill_collect') }}</Btn>
                 </template>
 
                 <template v-else-if="selected.status==='paid'">
                   <div class="paid-box">
-                    <div class="paid-box__title">✓ Diterima</div>
+                    <div class="paid-box__title">{{ t('bill_paid_title') }}</div>
                     <div class="paid-box__meta">{{ methodLabel[selected.payment_method] }} · {{ selected.paid_at }}</div>
-                    <div class="paid-box__meta">oleh {{ selected.paid_by }}</div>
+                    <div class="paid-box__meta">{{ t('bill_paid_by', { name: selected.paid_by }) }}</div>
                   </div>
                 </template>
 
                 <template v-else-if="selected.status==='cancelled'">
-                  <div class="cancelled-box">✕ Dibatalkan</div>
+                  <div class="cancelled-box">{{ t('bill_cancelled_on') }}</div>
                 </template>
 
               </div>
             </div>
 
             <div v-if="selected.notes" class="card">
-              <div class="card__header"><h3 class="card__title">Nota</h3></div>
+              <div class="card__header"><h3 class="card__title">{{ t('bill_notes_title') }}</h3></div>
               <div class="card__body">
                 <p style="font:400 12px var(--font-sans);color:var(--fg2);white-space:pre-wrap">{{ selected.notes }}</p>
               </div>
@@ -361,7 +371,7 @@ function submitNew () {
   <div v-if="showAddDrawer" class="drawer-backdrop" @click.self="showAddDrawer=false">
       <div class="add-drawer">
         <div class="add-drawer__hd">
-          <span style="font:700 14px var(--font-sans);color:var(--fg1)">Tambah Item</span>
+          <span style="font:700 14px var(--font-sans);color:var(--fg1)">{{ t('bill_drawer_title') }}</span>
           <button class="modal__close" @click="showAddDrawer=false">✕</button>
         </div>
 
@@ -369,7 +379,7 @@ function submitNew () {
 
           <!-- quick chips -->
           <div class="qsec">
-            <div class="qsec__label">Perkhidmatan Biasa</div>
+            <div class="qsec__label">{{ t('bill_quick_items') }}</div>
             <div class="qsec__grid">
               <button v-for="q in quickServices" :key="q.code"
                 class="qchip"
@@ -385,41 +395,41 @@ function submitNew () {
 
           <!-- form fields -->
           <div class="field">
-            <label class="field__label">Jenis *</label>
+            <label class="field__label">{{ t('bill_lbl_type') }} *</label>
             <select v-model="itemForm.type" class="select">
-              <option value="consultation">Konsultasi</option>
-              <option value="procedure">Prosedur</option>
-              <option value="drug">Ubat</option>
-              <option value="lab">Makmal</option>
-              <option value="other">Lain-lain</option>
+              <option value="consultation">{{ t('bill_item_cons') }}</option>
+              <option value="procedure">{{ t('bill_item_proc') }}</option>
+              <option value="drug">{{ t('bill_item_drug') }}</option>
+              <option value="lab">{{ t('bill_item_lab') }}</option>
+              <option value="other">{{ t('bill_item_other') }}</option>
             </select>
           </div>
 
           <div class="field">
-            <label class="field__label">Penerangan *</label>
-            <input v-model="itemForm.description" class="input" placeholder="Nama item / ubat…" />
+            <label class="field__label">{{ t('bill_lbl_desc') }} *</label>
+            <input v-model="itemForm.description" class="input" :placeholder="t('bill_ph_desc')" />
             <p v-if="itemForm.errors.description" class="field__err">{{ itemForm.errors.description }}</p>
           </div>
 
           <div class="field">
-            <label class="field__label">Kod (pilihan)</label>
-            <input v-model="itemForm.code" class="input" placeholder="cth. CONS-001" />
+            <label class="field__label">{{ t('bill_lbl_code') }}</label>
+            <input v-model="itemForm.code" class="input" :placeholder="t('bill_ph_code')" />
           </div>
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div class="field">
-              <label class="field__label">Kuantiti *</label>
+              <label class="field__label">{{ t('bill_lbl_qty') }} *</label>
               <input v-model.number="itemForm.quantity" type="number" min="0.01" step="1" class="input" />
             </div>
             <div class="field">
-              <label class="field__label">Harga Unit (RM) *</label>
+              <label class="field__label">{{ t('bill_lbl_price') }} *</label>
               <input v-model.number="itemForm.unit_price" type="number" min="0" step="0.01" class="input" />
             </div>
           </div>
 
           <!-- live total -->
           <div class="live-total">
-            <span style="font:500 12px var(--font-sans);color:var(--fg3)">Jumlah baris</span>
+            <span style="font:500 12px var(--font-sans);color:var(--fg3)">{{ t('bill_live_total') }}</span>
             <span style="font:800 20px var(--font-mono);color:var(--brand-green)">
               RM {{ itemLiveTotal.toFixed(2) }}
             </span>
@@ -428,8 +438,8 @@ function submitNew () {
         </div>
 
         <div class="add-drawer__ft">
-          <Btn variant="secondary" @click="showAddDrawer=false">Batal</Btn>
-          <Btn variant="primary" :loading="itemForm.processing" @click="addItem">Tambah ke Invois</Btn>
+          <Btn variant="secondary" @click="showAddDrawer=false">{{ t('btn_cancel') }}</Btn>
+          <Btn variant="primary" :loading="itemForm.processing" @click="addItem">{{ t('bill_add_btn') }}</Btn>
         </div>
       </div>
   </div>
@@ -438,18 +448,18 @@ function submitNew () {
   <div v-if="showPayModal" class="modal-backdrop" @click.self="showPayModal=false">
     <div class="modal" style="width:380px">
       <div class="modal__header">
-        <h3 class="modal__title">Kutip Pembayaran</h3>
+        <h3 class="modal__title">{{ t('bill_pay_title') }}</h3>
         <button class="modal__close" @click="showPayModal=false">✕</button>
       </div>
       <div class="modal__body" style="display:flex;flex-direction:column;gap:16px">
         <div style="text-align:center;padding:16px 0">
-          <div style="font:500 12px var(--font-sans);color:var(--fg3)">Jumlah Perlu Dibayar</div>
+          <div style="font:500 12px var(--font-sans);color:var(--fg3)">{{ t('bill_pay_amount') }}</div>
           <div style="font:800 32px var(--font-mono);color:var(--brand-green);margin-top:4px">
             RM {{ selected ? Number(selected.total_amount).toFixed(2) : '0.00' }}
           </div>
         </div>
         <div class="field">
-          <label class="field__label">Kaedah Pembayaran</label>
+          <label class="field__label">{{ t('bill_pay_method') }}</label>
           <div class="pay-grid">
             <button v-for="m in payMethods" :key="m.value"
               class="pay-btn" :class="{ active: payMethod===m.value }"
@@ -458,8 +468,8 @@ function submitNew () {
         </div>
       </div>
       <div class="modal__footer">
-        <Btn variant="secondary" @click="showPayModal=false">Batal</Btn>
-        <Btn variant="primary" @click="submitPay">Sahkan Pembayaran</Btn>
+        <Btn variant="secondary" @click="showPayModal=false">{{ t('btn_cancel') }}</Btn>
+        <Btn variant="primary" @click="submitPay">{{ t('bill_pay_confirm') }}</Btn>
       </div>
     </div>
   </div>
@@ -468,17 +478,17 @@ function submitNew () {
   <div v-if="showCancelModal" class="modal-backdrop" @click.self="showCancelModal=false">
     <div class="modal" style="width:360px">
       <div class="modal__header">
-        <h3 class="modal__title">Batalkan Invois?</h3>
+        <h3 class="modal__title">{{ t('bill_cancel_title') }}</h3>
         <button class="modal__close" @click="showCancelModal=false">✕</button>
       </div>
       <div class="modal__body">
         <p style="font:400 13px var(--font-sans);color:var(--fg2)">
-          Invois <strong>{{ selected?.invoice_number }}</strong> akan dibatalkan. Tindakan ini tidak boleh dibuat asal.
+          {{ t('bill_cancel_body', { inv: selected?.invoice_number }) }}
         </p>
       </div>
       <div class="modal__footer">
-        <Btn variant="secondary" @click="showCancelModal=false">Tidak</Btn>
-        <Btn variant="primary" style="background:#DC2626" @click="confirmCancel">Ya, Batalkan</Btn>
+        <Btn variant="secondary" @click="showCancelModal=false">{{ t('btn_cancel') }}</Btn>
+        <Btn variant="primary" style="background:#DC2626" @click="confirmCancel">{{ t('bill_cancel_confirm') }}</Btn>
       </div>
     </div>
   </div>
@@ -487,17 +497,17 @@ function submitNew () {
   <div v-if="showDeleteModal" class="modal-backdrop" @click.self="showDeleteModal=false">
     <div class="modal" style="width:360px">
       <div class="modal__header">
-        <h3 class="modal__title">Padam Invois?</h3>
+        <h3 class="modal__title">{{ t('bill_del_title') }}</h3>
         <button class="modal__close" @click="showDeleteModal=false">✕</button>
       </div>
       <div class="modal__body">
         <p style="font:400 13px var(--font-sans);color:var(--fg2)">
-          Invois <strong>{{ selected?.invoice_number }}</strong> dan semua itemnya akan dipadam kekal.
+          {{ t('bill_del_body', { inv: selected?.invoice_number }) }}
         </p>
       </div>
       <div class="modal__footer">
-        <Btn variant="secondary" @click="showDeleteModal=false">Tidak</Btn>
-        <Btn variant="primary" style="background:#DC2626" @click="confirmDelete">Ya, Padam</Btn>
+        <Btn variant="secondary" @click="showDeleteModal=false">{{ t('btn_cancel') }}</Btn>
+        <Btn variant="primary" style="background:#DC2626" @click="confirmDelete">{{ t('bill_del_confirm') }}</Btn>
       </div>
     </div>
   </div>
@@ -506,15 +516,15 @@ function submitNew () {
   <div v-if="showNewModal" class="modal-backdrop" @click.self="showNewModal=false">
     <div class="modal" style="width:480px">
       <div class="modal__header">
-        <h3 class="modal__title">Invois Baharu</h3>
+        <h3 class="modal__title">{{ t('bill_new_title') }}</h3>
         <button class="modal__close" @click="showNewModal=false">✕</button>
       </div>
       <div class="modal__body" style="display:flex;flex-direction:column;gap:14px">
 
         <div class="field" style="position:relative">
-          <label class="field__label">Pesakit *</label>
+          <label class="field__label">{{ t('bill_lbl_patient') }} *</label>
           <input v-model="patSearch" class="input"
-            placeholder="Cari nama / IC / ID pesakit…"
+            :placeholder="t('bill_ph_patient')"
             @focus="patDrop=true" @blur="setTimeout(()=>patDrop=false,180)" autocomplete="off" />
           <div v-if="patDrop && filteredPats.length" class="pdrop">
             <button v-for="p in filteredPats" :key="p.id"
@@ -527,18 +537,18 @@ function submitNew () {
         </div>
 
         <div class="field">
-          <label class="field__label">Tarikh Invois *</label>
+          <label class="field__label">{{ t('bill_lbl_date') }} *</label>
           <input v-model="newForm.invoice_date" type="date" class="input" />
         </div>
 
         <div class="field">
-          <label class="field__label">Nota (pilihan)</label>
-          <textarea v-model="newForm.notes" class="input" rows="2" placeholder="Nota tambahan…" />
+          <label class="field__label">{{ t('bill_lbl_notes') }}</label>
+          <textarea v-model="newForm.notes" class="input" rows="2" :placeholder="t('bill_ph_notes')" />
         </div>
       </div>
       <div class="modal__footer">
-        <Btn variant="secondary" @click="showNewModal=false">Batal</Btn>
-        <Btn variant="primary" :loading="newForm.processing" @click="submitNew">Cipta Invois</Btn>
+        <Btn variant="secondary" @click="showNewModal=false">{{ t('btn_cancel') }}</Btn>
+        <Btn variant="primary" :loading="newForm.processing" @click="submitNew">{{ t('bill_create') }}</Btn>
       </div>
     </div>
   </div>

@@ -5,6 +5,7 @@ import KlinikLayout from '@/Layouts/KlinikLayout.vue'
 import Avatar from '@/Components/Clinic/Avatar.vue'
 import Badge from '@/Components/Clinic/Badge.vue'
 import Btn from '@/Components/Clinic/Btn.vue'
+import { useLocale } from '@/composables/useLocale'
 
 defineOptions({ layout: KlinikLayout })
 
@@ -21,15 +22,23 @@ const props = defineProps({
 
 const page  = usePage()
 const flash = computed(() => page.props.flash)
+const { t } = useLocale()
 
 /* ── type labels ── */
-const typeLabel = {
-  new:'Baru', follow_up:'Susulan', annual_checkup:'Semakan Tahunan',
-  procedure:'Prosedur', antenatal:'Antenatal', teleconsult:'Teleperubatan',
-}
+const typeLabel = computed(() => ({
+  new: t('type_new'), follow_up: t('type_follow_up'), annual_checkup: t('type_annual_checkup'),
+  procedure: t('type_procedure'), antenatal: t('type_antenatal'), teleconsult: t('type_teleconsult'),
+}))
 const statusTone  = { confirmed:'neutral', waiting:'yellow', in_room:'green', done:'green', open:'yellow', closed:'neutral' }
-const statusLabel = { confirmed:'Belum Daftar', waiting:'Menunggu', in_room:'Dalam Bilik', done:'Selesai', open:'Buka', closed:'Tutup' }
-const methodLabel = { cash:'Tunai', card:'Kad', duitnow:'DuitNow', panel:'Panel', insurance:'Insurans' }
+const statusLabel = computed(() => ({
+  confirmed: t('queue_legend_conf'), waiting: t('status_waiting'),
+  in_room: t('status_in_room'), done: t('status_done'),
+  open: t('status_open'), closed: t('status_closed'),
+}))
+const methodLabel = computed(() => ({
+  cash: t('method_cash'), card: t('method_card'), duitnow: t('method_duitnow'),
+  panel: t('method_panel'), insurance: t('method_insurance'),
+}))
 const alertTone   = { orange:'#EA580C', yellow:'#D97706', blue:'#2563EB', red:'#DC2626' }
 const alertBg     = { orange:'#FFF7ED', yellow:'#FFFBEB', blue:'#EFF6FF', red:'#FEF2F2' }
 const alertIcon   = { stock:'📦', rx:'💊', inv:'📄', visit:'📋' }
@@ -48,12 +57,12 @@ function barH(val) { return Math.max(4, Math.round((val / maxRev.value) * 72)) +
     <!-- greeting -->
     <div class="greeting">
       <div>
-        <h2 class="greeting__name">Selamat datang, {{ userName }}</h2>
+        <h2 class="greeting__name">{{ t('dash_greeting', { name: userName }) }}</h2>
         <p class="greeting__date">{{ today }}</p>
       </div>
       <div class="greeting__actions">
-        <Btn variant="secondary" size="sm" @click="router.visit('/register-patient')">+ Daftar Pesakit</Btn>
-        <Btn variant="primary"   size="sm" @click="router.visit('/appointments')">+ Temujanji</Btn>
+        <Btn variant="secondary" size="sm" @click="router.visit('/register-patient')">{{ t('dash_register') }}</Btn>
+        <Btn variant="primary"   size="sm" @click="router.visit('/appointments')">{{ t('dash_appt') }}</Btn>
       </div>
     </div>
 
@@ -61,34 +70,34 @@ function barH(val) { return Math.max(4, Math.round((val / maxRev.value) * 72)) +
     <div class="kpi-row">
       <!-- Pesakit hari ini -->
       <div class="kpi-card">
-        <div class="kpi-card__label">Pesakit Hari Ini</div>
+        <div class="kpi-card__label">{{ t('dash_kpi_today') }}</div>
         <div class="kpi-card__val">{{ kpi.today_total }}</div>
         <div class="kpi-card__sub">
-          <span class="dot dot--green" />{{ kpi.today_in_room }} dalam bilik ·
-          <span class="dot dot--amber" />{{ kpi.today_waiting }} menunggu ·
-          <span class="dot dot--grey"  />{{ kpi.today_done }} selesai
+          <span class="dot dot--green" />{{ kpi.today_in_room }} {{ t('dash_in_room') }} ·
+          <span class="dot dot--amber" />{{ kpi.today_waiting }} {{ t('dash_waiting') }} ·
+          <span class="dot dot--grey"  />{{ kpi.today_done }} {{ t('dash_done') }}
         </div>
       </div>
 
       <!-- Revenue bulan -->
       <div class="kpi-card">
-        <div class="kpi-card__label">Kutipan Bulan Ini</div>
+        <div class="kpi-card__label">{{ t('dash_kpi_revenue') }}</div>
         <div class="kpi-card__val kpi-card__val--green">RM {{ Number(kpi.month_revenue).toLocaleString('ms-MY', {minimumFractionDigits:2, maximumFractionDigits:2}) }}</div>
-        <div class="kpi-card__sub">Hari ini: RM {{ Number(kpi.today_revenue).toFixed(2) }}</div>
+        <div class="kpi-card__sub">{{ t('dash_today_rev', { amount: Number(kpi.today_revenue).toFixed(2) }) }}</div>
       </div>
 
       <!-- Invois tertunggak -->
       <div class="kpi-card" :class="{ 'kpi-card--warn': kpi.pending_inv > 0 }">
-        <div class="kpi-card__label">Invois Tertunggak</div>
+        <div class="kpi-card__label">{{ t('dash_kpi_pending') }}</div>
         <div class="kpi-card__val" :style="kpi.pending_inv > 0 ? 'color:#D97706' : ''">{{ kpi.pending_inv }}</div>
-        <div class="kpi-card__sub">RM {{ Number(kpi.pending_amount).toFixed(2) }} belum dikutip</div>
+        <div class="kpi-card__sub">{{ t('dash_pending_amt', { amount: Number(kpi.pending_amount).toFixed(2) }) }}</div>
       </div>
 
       <!-- Jumlah pesakit aktif -->
       <div class="kpi-card">
-        <div class="kpi-card__label">Pesakit Berdaftar</div>
+        <div class="kpi-card__label">{{ t('dash_kpi_patients') }}</div>
         <div class="kpi-card__val">{{ kpi.total_patients }}</div>
-        <div class="kpi-card__sub">{{ kpi.open_visits }} rekod EMR terbuka</div>
+        <div class="kpi-card__sub">{{ t('dash_open_emr', { n: kpi.open_visits }) }}</div>
       </div>
     </div>
 
@@ -102,10 +111,10 @@ function barH(val) { return Math.max(4, Math.round((val / maxRev.value) * 72)) +
         <div class="card">
           <div class="card__header">
             <div>
-              <h3 class="card__title">Jadual Hari Ini</h3>
-              <p class="card__sub">{{ upcoming.length }} temujanji aktif</p>
+              <h3 class="card__title">{{ t('dash_schedule') }}</h3>
+              <p class="card__sub">{{ t('dash_active_appts', { n: upcoming.length }) }}</p>
             </div>
-            <Btn variant="ghost" size="sm" @click="router.visit('/queue')">Lihat Giliran →</Btn>
+            <Btn variant="ghost" size="sm" @click="router.visit('/queue')">{{ t('dash_view_queue') }}</Btn>
           </div>
 
           <div v-if="upcoming.length">
@@ -129,23 +138,23 @@ function barH(val) { return Math.max(4, Math.round((val / maxRev.value) * 72)) +
                 variant="primary"
                 size="sm"
                 @click="router.visit('/queue')"
-              >Mula →</Btn>
+              >{{ t('dash_start') }}</Btn>
             </div>
           </div>
           <div v-else class="empty-card">
-            Tiada temujanji aktif hari ini.
+            {{ t('dash_no_appts') }}
           </div>
         </div>
 
         <!-- Rekod EMR terkini -->
         <div class="card">
           <div class="card__header">
-            <h3 class="card__title">Rekod EMR Terkini</h3>
-            <Btn variant="ghost" size="sm" @click="router.visit('/emr')">Semua →</Btn>
+            <h3 class="card__title">{{ t('dash_emr_recent') }}</h3>
+            <Btn variant="ghost" size="sm" @click="router.visit('/emr')">{{ t('dash_all') }}</Btn>
           </div>
 
           <div class="table__head" style="grid-template-columns:1fr 80px 110px 90px">
-            <div>Pesakit</div><div>Tarikh</div><div>Doktor</div><div>Status</div>
+            <div>{{ t('dash_col_patient') }}</div><div>{{ t('dash_col_date') }}</div><div>{{ t('dash_col_doctor') }}</div><div>{{ t('dash_col_status') }}</div>
           </div>
           <div
             v-for="v in recentVisits"
@@ -162,7 +171,7 @@ function barH(val) { return Math.max(4, Math.round((val / maxRev.value) * 72)) +
             <div style="font:400 12px var(--font-sans);color:var(--fg3)">{{ v.doctor_name }}</div>
             <div><Badge :tone="statusTone[v.status]" size="xs">{{ statusLabel[v.status] }}</Badge></div>
           </div>
-          <p v-if="!recentVisits.length" class="empty-card">Tiada rekod EMR.</p>
+          <p v-if="!recentVisits.length" class="empty-card">{{ t('dash_no_emr') }}</p>
         </div>
 
       </div>
@@ -172,7 +181,7 @@ function barH(val) { return Math.max(4, Math.round((val / maxRev.value) * 72)) +
 
         <!-- Alerts -->
         <div v-if="alerts.length" class="card">
-          <div class="card__header"><h3 class="card__title">Perhatian</h3></div>
+          <div class="card__header"><h3 class="card__title">{{ t('dash_attention') }}</h3></div>
           <div
             v-for="(a, i) in alerts"
             :key="i"
@@ -191,7 +200,7 @@ function barH(val) { return Math.max(4, Math.round((val / maxRev.value) * 72)) +
         <div class="card">
           <div class="card__header">
             <div>
-              <h3 class="card__title">Pendapatan 7 Hari</h3>
+              <h3 class="card__title">{{ t('dash_revenue_7') }}</h3>
               <p class="card__sub">RM {{ Number(revChart.reduce((s,r)=>s+r.value,0)).toLocaleString('ms-MY',{minimumFractionDigits:2}) }}</p>
             </div>
           </div>
@@ -213,8 +222,8 @@ function barH(val) { return Math.max(4, Math.round((val / maxRev.value) * 72)) +
         <!-- Pembayaran terkini -->
         <div class="card">
           <div class="card__header">
-            <h3 class="card__title">Pembayaran Terkini</h3>
-            <Btn variant="ghost" size="sm" @click="router.visit('/billing')">Semua →</Btn>
+            <h3 class="card__title">{{ t('dash_payments') }}</h3>
+            <Btn variant="ghost" size="sm" @click="router.visit('/billing')">{{ t('dash_all') }}</Btn>
           </div>
 
           <div v-if="recentInvoices.length">
@@ -235,7 +244,7 @@ function barH(val) { return Math.max(4, Math.round((val / maxRev.value) * 72)) +
               </div>
             </div>
           </div>
-          <p v-else class="empty-card">Tiada pembayaran hari ini.</p>
+          <p v-else class="empty-card">{{ t('dash_no_payments') }}</p>
         </div>
 
       </div>

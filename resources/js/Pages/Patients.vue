@@ -6,6 +6,7 @@ import Avatar from '@/Components/Clinic/Avatar.vue'
 import Badge from '@/Components/Clinic/Badge.vue'
 import Btn from '@/Components/Clinic/Btn.vue'
 import Icon from '@/Components/Clinic/Icon.vue'
+import { useLocale } from '@/composables/useLocale'
 
 defineOptions({ layout: KlinikLayout })
 
@@ -150,8 +151,10 @@ function doDelete() {
   })
 }
 
+const { t } = useLocale()
+
 // ─── Helpers ───────────────────────────────────────────────────────────────
-function genderLabel(g) { return g === 'male' ? 'Lelaki' : 'Perempuan' }
+function genderLabel(g) { return g === 'male' ? t('gender_male') : t('gender_female') }
 </script>
 
 <template>
@@ -162,20 +165,20 @@ function genderLabel(g) { return g === 'male' ? 'Lelaki' : 'Perempuan' }
     <!-- Toolbar -->
     <div class="row">
       <div style="position:relative;flex:1;max-width:360px">
-        <input v-model="search" class="input" placeholder="Cari nama, IC, atau ID pesakit…" style="padding-left:36px" />
+        <input v-model="search" class="input" :placeholder="t('pat_search')" style="padding-left:36px" />
         <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--fg3)">
           <Icon name="search" :size="15" />
         </span>
       </div>
       <div class="spacer"></div>
-      <span style="font:500 12px var(--font-sans);color:var(--fg3)">{{ patients.total }} pesakit</span>
-      <Btn variant="primary" @click="openCreate"><Icon name="plus" :size="14" /> Daftar Pesakit</Btn>
+      <span style="font:500 12px var(--font-sans);color:var(--fg3)">{{ t('pat_count', { n: patients.total }) }}</span>
+      <Btn variant="primary" @click="openCreate"><Icon name="plus" :size="14" /> {{ t('pat_register') }}</Btn>
     </div>
 
     <!-- Table -->
     <div class="card" style="overflow:hidden">
       <div class="table__head" style="grid-template-columns:130px 2fr 1.3fr 70px 1.5fr 100px 110px 110px">
-        <div>ID</div><div>Pesakit</div><div>IC / Umur</div><div>Lawatan</div><div>Diagnosis</div><div>Alahan</div><div>Lawatan Akhir</div><div></div>
+        <div>{{ t('pat_col_id') }}</div><div>{{ t('pat_col_patient') }}</div><div>{{ t('pat_col_ic') }}</div><div>{{ t('pat_col_visits') }}</div><div>{{ t('pat_col_diagnosis') }}</div><div>{{ t('pat_col_allergy') }}</div><div>{{ t('pat_col_last_visit') }}</div><div></div>
       </div>
 
       <div
@@ -189,7 +192,7 @@ function genderLabel(g) { return g === 'male' ? 'Lelaki' : 'Perempuan' }
           <Avatar :name="p.name" size="sm" />
           <div>
             <div style="font:600 13px var(--font-sans)">{{ p.name }}</div>
-            <div v-if="p.status==='inactive'" style="font:500 10.5px var(--font-sans);color:var(--fg3)">Tidak aktif</div>
+            <div v-if="p.status==='inactive'" style="font:500 10.5px var(--font-sans);color:var(--fg3)">{{ t('pat_inactive_label') }}</div>
           </div>
         </div>
 
@@ -213,14 +216,14 @@ function genderLabel(g) { return g === 'male' ? 'Lelaki' : 'Perempuan' }
         <div style="font:500 11.5px var(--font-sans);color:var(--fg3)">{{ p.last_visit_at ?? '—' }}</div>
 
         <div class="row" style="gap:4px">
-          <Btn variant="ghost" size="sm" @click="viewPatient = p">Lihat</Btn>
-          <Btn variant="ghost" size="sm" @click="openEdit(p)">Edit</Btn>
+          <Btn variant="ghost" size="sm" @click="viewPatient = p">{{ t('btn_view') }}</Btn>
+          <Btn variant="ghost" size="sm" @click="openEdit(p)">{{ t('btn_edit') }}</Btn>
           <Btn variant="ghost" size="sm" style="color:var(--brand-red)" @click="deleteTarget = p">⊗</Btn>
         </div>
       </div>
 
       <div v-if="!patients.data?.length" style="padding:32px;text-align:center;color:var(--fg3);font:500 13px var(--font-sans)">
-        Tiada rekod pesakit dijumpai.
+        {{ t('pat_no_records') }}
       </div>
 
       <!-- Pagination -->
@@ -320,88 +323,88 @@ function genderLabel(g) { return g === 'male' ? 'Lelaki' : 'Perempuan' }
     <div v-if="showModal" class="modal-backdrop" @click.self="closeModal">
       <div class="modal modal--lg">
         <div class="modal__header">
-          <h3 class="modal__title">{{ editingPatient ? 'Kemaskini Rekod Pesakit' : 'Daftar Pesakit Baru' }}</h3>
+          <h3 class="modal__title">{{ editingPatient ? t('pat_modal_edit') : t('pat_modal_create') }}</h3>
           <button class="modal__close" @click="closeModal">✕</button>
         </div>
 
         <form @submit.prevent="submitPatient" class="modal__body">
 
-          <!-- Section: Maklumat Peribadi -->
-          <div class="modal-section-title">Maklumat Peribadi</div>
+          <!-- Section: Personal -->
+          <div class="modal-section-title">{{ t('pat_section_personal') }}</div>
           <div class="form-grid-3">
             <div class="field" style="grid-column:1/-1">
-              <label class="field__label">Nama Penuh <span class="req">*</span></label>
-              <input v-model="patientForm.name" class="input" placeholder="Nama penuh seperti dalam IC" />
+              <label class="field__label">{{ t('pat_lbl_name') }} <span class="req">*</span></label>
+              <input v-model="patientForm.name" class="input" :placeholder="t('pat_ph_name')" />
               <span v-if="patientForm.errors.name" class="field__error">{{ patientForm.errors.name }}</span>
             </div>
             <div class="field">
-              <label class="field__label">No. Kad Pengenalan <span class="req">*</span></label>
+              <label class="field__label">{{ t('pat_lbl_ic') }} <span class="req">*</span></label>
               <input v-model="patientForm.ic_number" class="input" placeholder="780229-08-5234" @blur="onIcBlur" />
               <span v-if="patientForm.errors.ic_number" class="field__error">{{ patientForm.errors.ic_number }}</span>
             </div>
             <div class="field">
-              <label class="field__label">Tarikh Lahir <span class="req">*</span></label>
+              <label class="field__label">{{ t('pat_lbl_dob') }} <span class="req">*</span></label>
               <input v-model="patientForm.date_of_birth" type="date" class="input" />
               <span v-if="patientForm.errors.date_of_birth" class="field__error">{{ patientForm.errors.date_of_birth }}</span>
             </div>
             <div class="field">
-              <label class="field__label">Jantina <span class="req">*</span></label>
+              <label class="field__label">{{ t('pat_lbl_gender') }} <span class="req">*</span></label>
               <select v-model="patientForm.gender" class="select">
-                <option value="male">Lelaki</option>
-                <option value="female">Perempuan</option>
+                <option value="male">{{ t('gender_male') }}</option>
+                <option value="female">{{ t('gender_female') }}</option>
               </select>
             </div>
           </div>
 
-          <!-- Section: Hubungi -->
-          <div class="modal-section-title" style="margin-top:18px">Hubungi &amp; Alamat</div>
+          <!-- Section: Contact -->
+          <div class="modal-section-title" style="margin-top:18px">{{ t('pat_section_contact') }}</div>
           <div class="form-grid-3">
             <div class="field">
-              <label class="field__label">No. Telefon</label>
+              <label class="field__label">{{ t('pat_lbl_phone') }}</label>
               <input v-model="patientForm.phone" class="input" placeholder="012-3456789" />
             </div>
             <div class="field">
-              <label class="field__label">Emel</label>
-              <input v-model="patientForm.email" type="email" class="input" placeholder="pesakit@emel.com" />
+              <label class="field__label">{{ t('pat_lbl_email') }}</label>
+              <input v-model="patientForm.email" type="email" class="input" placeholder="patient@email.com" />
               <span v-if="patientForm.errors.email" class="field__error">{{ patientForm.errors.email }}</span>
             </div>
             <div class="field">
-              <label class="field__label">Poskod</label>
+              <label class="field__label">{{ t('pat_lbl_postcode') }}</label>
               <input v-model="patientForm.postcode" class="input" placeholder="43000" maxlength="10" />
             </div>
             <div class="field" style="grid-column:1/-1">
-              <label class="field__label">Alamat</label>
-              <input v-model="patientForm.address" class="input" placeholder="No. rumah, jalan, taman…" />
+              <label class="field__label">{{ t('pat_lbl_address') }}</label>
+              <input v-model="patientForm.address" class="input" :placeholder="t('pat_ph_address')" />
             </div>
             <div class="field">
-              <label class="field__label">Bandar</label>
+              <label class="field__label">{{ t('pat_lbl_city') }}</label>
               <input v-model="patientForm.city" class="input" placeholder="Kajang" />
             </div>
             <div class="field">
-              <label class="field__label">Negeri</label>
+              <label class="field__label">{{ t('pat_lbl_state') }}</label>
               <select v-model="patientForm.state" class="select">
-                <option value="">— Pilih negeri —</option>
+                <option value="">{{ t('pat_select_state') }}</option>
                 <option v-for="s in states" :key="s" :value="s">{{ s }}</option>
               </select>
             </div>
           </div>
 
-          <!-- Section: Perubatan -->
-          <div class="modal-section-title" style="margin-top:18px">Maklumat Perubatan</div>
+          <!-- Section: Medical -->
+          <div class="modal-section-title" style="margin-top:18px">{{ t('pat_section_medical') }}</div>
           <div class="form-grid-3">
             <div class="field">
-              <label class="field__label">Kumpulan Darah</label>
+              <label class="field__label">{{ t('pat_lbl_blood') }}</label>
               <select v-model="patientForm.blood_type" class="select">
-                <option value="">— Tidak diketahui —</option>
+                <option value="">{{ t('pat_select_blood') }}</option>
                 <option v-for="bt in bloodTypes" :key="bt" :value="bt">{{ bt }}</option>
               </select>
             </div>
             <div class="field" style="grid-column:2/-1">
-              <label class="field__label">Alahan</label>
-              <input v-model="patientForm.allergies" class="input" placeholder="cth: Penicillin, Aspirin" />
+              <label class="field__label">{{ t('pat_lbl_allergy') }}</label>
+              <input v-model="patientForm.allergies" class="input" :placeholder="t('pat_ph_allergy')" />
             </div>
             <div class="field" style="grid-column:1/-1">
-              <label class="field__label">Diagnosis / Penyakit Kronik</label>
+              <label class="field__label">{{ t('pat_lbl_conditions') }}</label>
               <div class="tag-input-wrap">
                 <span v-for="(c,i) in patientForm.conditions" :key="i" class="cond-tag">
                   {{ c }} <button type="button" @click="removeCondition(i)">×</button>
@@ -425,15 +428,15 @@ function genderLabel(g) { return g === 'male' ? 'Lelaki' : 'Perempuan' }
             </div>
           </div>
 
-          <!-- Section: Kecemasan -->
-          <div class="modal-section-title" style="margin-top:18px">Kenalan Kecemasan</div>
+          <!-- Section: Emergency -->
+          <div class="modal-section-title" style="margin-top:18px">{{ t('pat_section_emg') }}</div>
           <div class="form-grid-3">
             <div class="field" style="grid-column:1/3">
-              <label class="field__label">Nama Kenalan</label>
-              <input v-model="patientForm.emergency_contact_name" class="input" placeholder="Nama ahli keluarga" />
+              <label class="field__label">{{ t('pat_lbl_emg_name') }}</label>
+              <input v-model="patientForm.emergency_contact_name" class="input" :placeholder="t('pat_ph_emg_name')" />
             </div>
             <div class="field">
-              <label class="field__label">No. Telefon</label>
+              <label class="field__label">{{ t('pat_lbl_emg_phone') }}</label>
               <input v-model="patientForm.emergency_contact_phone" class="input" placeholder="013-XXXXXXX" />
             </div>
           </div>
@@ -441,10 +444,10 @@ function genderLabel(g) { return g === 'male' ? 'Lelaki' : 'Perempuan' }
           <!-- Status (edit only) -->
           <div v-if="editingPatient" style="margin-top:18px">
             <div class="field" style="max-width:200px">
-              <label class="field__label">Status Rekod</label>
+              <label class="field__label">{{ t('pat_lbl_status') }}</label>
               <select v-model="patientForm.status" class="select">
-                <option value="active">Aktif</option>
-                <option value="inactive">Tidak Aktif</option>
+                <option value="active">{{ t('status_active') }}</option>
+                <option value="inactive">{{ t('status_inactive') }}</option>
               </select>
             </div>
           </div>

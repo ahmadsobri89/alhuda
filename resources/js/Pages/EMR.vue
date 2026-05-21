@@ -5,6 +5,7 @@ import Badge from '@/Components/Clinic/Badge.vue'
 import Btn from '@/Components/Clinic/Btn.vue'
 import { router, useForm, usePage } from '@inertiajs/vue3'
 import { computed, ref, watch } from 'vue'
+import { useLocale } from '@/composables/useLocale'
 
 defineOptions({ layout: KlinikLayout })
 
@@ -18,6 +19,7 @@ const props = defineProps({
 })
 
 const flash = computed(() => usePage().props.flash?.success)
+const { t } = useLocale()
 
 /* ── Visit list navigation ────────────────────────── */
 const search     = ref(props.filters?.search ?? '')
@@ -180,12 +182,12 @@ function deleteVisit() {
 /* ── Helpers ─────────────────────────────────────── */
 const SOAP_LABELS = { S: 'Subjective', O: 'Objective', A: 'Assessment', P: 'Plan' }
 const SOAP_FIELDS = { S: 'soap_s', O: 'soap_o', A: 'soap_a', P: 'soap_p' }
-const SOAP_HINTS  = {
-  S: 'Aduan pesakit, simptom, tempoh, riwayat…',
-  O: 'Penemuan klinikal, tanda vital, ujian…',
-  A: 'Diagnosis, penilaian keadaan pesakit…',
-  P: 'Pelan rawatan, ubat, rujukan, tindak lanjut…',
-}
+const soapHints = computed(() => ({
+  S: t('emr_soap_hint_s'),
+  O: t('emr_soap_hint_o'),
+  A: t('emr_soap_hint_a'),
+  P: t('emr_soap_hint_p'),
+}))
 </script>
 
 <template>
@@ -194,18 +196,18 @@ const SOAP_HINTS  = {
     <!-- ── Left: Visit list ──────────────────────────── -->
     <div class="visit-list">
       <div class="vl-header">
-        <div style="font:700 14px var(--font-sans);color:var(--fg1)">Rekod Perubatan</div>
+        <div style="font:700 14px var(--font-sans);color:var(--fg1)">{{ t('emr_records') }}</div>
         <Btn variant="primary" size="sm" @click="openNewModal">
           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-          Baru
+          {{ t('emr_new_btn') }}
         </Btn>
       </div>
 
       <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:6px">
         <input v-model="search" class="input" style="font-size:12px;padding:6px 10px"
-               placeholder="Cari nama / IC…" />
+               :placeholder="t('emr_search_ph')" />
         <div style="display:flex;gap:4px">
-          <button v-for="f in [['','Semua'],['open','Buka'],['closed','Tutup']]" :key="f[0]"
+          <button v-for="f in [['', t('emr_filter_all')],['open', t('emr_filter_open')],['closed', t('emr_filter_closed')]]" :key="f[0]"
                   :class="['status-chip', statusFilter === f[0] ? 'active' : '']"
                   @click="statusFilter = f[0]">{{ f[1] }}</button>
         </div>
@@ -213,14 +215,14 @@ const SOAP_HINTS  = {
 
       <div style="flex:1;overflow-y:auto">
         <div v-if="!visits?.data?.length" style="padding:24px;text-align:center;color:var(--fg3);font:500 12px var(--font-sans)">
-          Tiada rekod dijumpai
+          {{ t('emr_no_records') }}
         </div>
         <div v-for="v in visits?.data" :key="v.id"
              :class="['vl-item', selected?.id === v.id ? 'active' : '']"
              @click="openVisit(v.id)">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
             <span style="font:600 12.5px var(--font-sans);color:var(--fg1);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ v.patient_name }}</span>
-            <Badge :tone="v.status === 'open' ? 'yellow' : 'green'" style="font-size:9px;padding:1px 5px">{{ v.status === 'open' ? 'Buka' : 'Tutup' }}</Badge>
+            <Badge :tone="v.status === 'open' ? 'yellow' : 'green'" style="font-size:9px;padding:1px 5px">{{ v.status === 'open' ? t('emr_filter_open') : t('emr_filter_closed') }}</Badge>
           </div>
           <div style="font:500 10.5px var(--font-mono);color:var(--fg3)">{{ v.patient_ic }} · {{ v.visit_date }}</div>
           <div v-if="v.chief_complaint" style="font:400 11px var(--font-sans);color:var(--fg2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ v.chief_complaint }}</div>
@@ -243,11 +245,11 @@ const SOAP_HINTS  = {
       <!-- Empty state -->
       <div v-if="!selected" class="empty-state">
         <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="color:var(--border)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-        <div style="font:600 14px var(--font-sans);color:var(--fg2);margin-top:12px">Pilih rekod dari senarai</div>
-        <div style="font:400 12px var(--font-sans);color:var(--fg3);margin-top:4px">atau cipta rekod perubatan baru</div>
+        <div style="font:600 14px var(--font-sans);color:var(--fg2);margin-top:12px">{{ t('emr_select_record') }}</div>
+        <div style="font:400 12px var(--font-sans);color:var(--fg3);margin-top:4px">{{ t('emr_or_create') }}</div>
         <Btn variant="primary" style="margin-top:14px" @click="openNewModal">
           <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-          Rekod Baru
+          {{ t('emr_new_record_btn') }}
         </Btn>
       </div>
 
@@ -271,7 +273,7 @@ const SOAP_HINTS  = {
                 {{ selected.patient_ic }} · {{ selected.patient_age_gender }} · {{ selected.patient_blood_type }} · {{ selected.patient_id_str }}
               </div>
               <div style="font:500 11px var(--font-sans);color:var(--fg3);margin-top:2px">
-                Doktor: {{ selected.doctor_name }} · {{ selected.visit_date }}
+                {{ t('emr_lbl_doctor') }}: {{ selected.doctor_name }} · {{ selected.visit_date }}
               </div>
             </div>
             <!-- Vitals inline -->
@@ -300,13 +302,13 @@ const SOAP_HINTS  = {
                   <div class="vital__unit">%</div>
                 </div>
                 <div class="vital">
-                  <div class="vital__label">Berat</div>
+                  <div class="vital__label">{{ t('emr_vital_weight') }}</div>
                   <div class="vital__val">{{ selected.vitals.weight }}</div>
                   <div class="vital__unit">kg</div>
                 </div>
               </template>
               <Btn variant="ghost" size="sm" @click="editVitals = !editVitals">
-                {{ selected.vitals ? 'Edit Vital' : '+ Vital' }}
+                {{ selected.vitals ? t('emr_edit_vitals') : t('emr_add_vitals') }}
               </Btn>
             </div>
           </div>
@@ -315,19 +317,19 @@ const SOAP_HINTS  = {
           <div v-if="editVitals" class="vitals-form">
             <div class="form-grid-vitals">
               <div class="field">
-                <label class="field__label">Sistol (mmHg)</label>
+                <label class="field__label">{{ t('emr_vital_systol') }}</label>
                 <input v-model="vitalsForm.bp_systolic" type="number" class="input" placeholder="120" />
               </div>
               <div class="field">
-                <label class="field__label">Diastol (mmHg)</label>
+                <label class="field__label">{{ t('emr_vital_diastol') }}</label>
                 <input v-model="vitalsForm.bp_diastolic" type="number" class="input" placeholder="80" />
               </div>
               <div class="field">
-                <label class="field__label">Nadi (bpm)</label>
+                <label class="field__label">{{ t('emr_vital_pulse') }}</label>
                 <input v-model="vitalsForm.heart_rate" type="number" class="input" placeholder="80" />
               </div>
               <div class="field">
-                <label class="field__label">Suhu (°C)</label>
+                <label class="field__label">{{ t('emr_vital_temp') }}</label>
                 <input v-model="vitalsForm.temperature" type="number" step="0.1" class="input" placeholder="36.8" />
               </div>
               <div class="field">
@@ -335,17 +337,17 @@ const SOAP_HINTS  = {
                 <input v-model="vitalsForm.spo2" type="number" class="input" placeholder="99" />
               </div>
               <div class="field">
-                <label class="field__label">Berat (kg)</label>
+                <label class="field__label">{{ t('emr_vital_weight2') }}</label>
                 <input v-model="vitalsForm.weight" type="number" step="0.1" class="input" placeholder="65.0" />
               </div>
               <div class="field">
-                <label class="field__label">Tinggi (cm)</label>
+                <label class="field__label">{{ t('emr_vital_height') }}</label>
                 <input v-model="vitalsForm.height" type="number" class="input" placeholder="165" />
               </div>
             </div>
             <div class="row" style="gap:6px;margin-top:10px">
-              <Btn variant="primary" size="sm" :disabled="vitalsForm.processing" @click="saveVitals">Simpan Vital</Btn>
-              <Btn variant="ghost" size="sm" @click="editVitals = false">Batal</Btn>
+              <Btn variant="primary" size="sm" :disabled="vitalsForm.processing" @click="saveVitals">{{ t('emr_save_vitals') }}</Btn>
+              <Btn variant="ghost" size="sm" @click="editVitals = false">{{ t('btn_cancel') }}</Btn>
             </div>
           </div>
         </div>
@@ -359,9 +361,9 @@ const SOAP_HINTS  = {
             <!-- SOAP notes -->
             <div class="card">
               <div class="card__header">
-                <h3 class="card__title">Nota SOAP</h3>
+                <h3 class="card__title">{{ t('emr_soap') }}</h3>
                 <p v-if="selected.status === 'closed'" class="card__sub" style="color:var(--brand-green)">
-                  ✓ Ditandatangan oleh {{ selected.signed_by }} pada {{ selected.signed_at }}
+                  ✓ {{ t('emr_signed_by', { name: selected.signed_by, date: selected.signed_at }) }}
                 </p>
                 <div class="spacer"></div>
                 <div class="tabs" style="margin:0">
@@ -375,7 +377,7 @@ const SOAP_HINTS  = {
                   v-model="soapForm[SOAP_FIELDS[soapTab]]"
                   class="input"
                   :rows="8"
-                  :placeholder="SOAP_HINTS[soapTab]"
+                  :placeholder="soapHints[soapTab]"
                   :disabled="selected.status === 'closed'"
                   style="resize:vertical;width:100%"
                   @input="soapDirty = true"
@@ -383,10 +385,10 @@ const SOAP_HINTS  = {
                 <div class="row" style="margin-top:8px;gap:6px">
                   <Btn v-if="selected.status === 'open'" variant="primary" size="sm"
                        :disabled="soapForm.processing || !soapDirty" @click="saveSoap">
-                    {{ soapForm.processing ? 'Menyimpan…' : 'Simpan SOAP' }}
+                    {{ soapForm.processing ? t('emr_saving') : t('emr_save_soap') }}
                   </Btn>
                   <span v-if="soapDirty" style="font:500 11px var(--font-sans);color:var(--brand-orange);padding-top:2px">
-                    Belum disimpan
+                    {{ t('emr_soap_unsaved') }}
                   </span>
                 </div>
               </div>
@@ -395,16 +397,16 @@ const SOAP_HINTS  = {
             <!-- Diagnoses -->
             <div class="card">
               <div class="card__header">
-                <h3 class="card__title">Diagnosis · ICD-10</h3>
+                <h3 class="card__title">{{ t('emr_dx') }}</h3>
                 <div class="spacer"></div>
                 <Btn v-if="selected.status === 'open'" variant="ghost" size="sm" @click="showDxForm = !showDxForm">
-                  {{ showDxForm ? 'Tutup' : '+ Tambah' }}
+                  {{ showDxForm ? t('btn_close') : t('emr_add_dx') }}
                 </Btn>
               </div>
 
               <!-- Add diagnosis form -->
               <div v-if="showDxForm && selected.status === 'open'" class="card__body" style="border-bottom:1px solid var(--border)">
-                <div style="font:700 11px var(--font-sans);letter-spacing:.05em;text-transform:uppercase;color:var(--fg3);margin-bottom:8px">Pilih cepat</div>
+                <div style="font:700 11px var(--font-sans);letter-spacing:.05em;text-transform:uppercase;color:var(--fg3);margin-bottom:8px">{{ t('emr_quick_select') }}</div>
                 <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">
                   <button v-for="q in QUICK_ICD" :key="q.code"
                           :class="['icd-chip', dxForm.icd_code === q.code ? 'icd-chip--active':'']"
@@ -414,25 +416,25 @@ const SOAP_HINTS  = {
                 </div>
                 <div class="form-grid-3" style="margin-bottom:10px">
                   <div class="field">
-                    <label class="field__label">Kod ICD-10 *</label>
+                    <label class="field__label">{{ t('emr_icd_code') }}</label>
                     <input v-model="dxForm.icd_code" class="input" placeholder="E11.9" maxlength="10" />
                     <span v-if="dxForm.errors.icd_code" class="field__error">{{ dxForm.errors.icd_code }}</span>
                   </div>
                   <div class="field" style="grid-column:2/-1">
-                    <label class="field__label">Keterangan *</label>
-                    <input v-model="dxForm.description" class="input" placeholder="Nama diagnosis" maxlength="255" />
+                    <label class="field__label">{{ t('emr_diagnosis_desc') }}</label>
+                    <input v-model="dxForm.description" class="input" :placeholder="t('emr_diagnosis_name_ph')" maxlength="255" />
                     <span v-if="dxForm.errors.description" class="field__error">{{ dxForm.errors.description }}</span>
                   </div>
                   <div class="field">
-                    <label class="field__label">Jenis</label>
+                    <label class="field__label">{{ t('emr_diagnosis_type') }}</label>
                     <select v-model="dxForm.type" class="select">
-                      <option value="primary">Utama</option>
-                      <option value="secondary">Sekunder</option>
+                      <option value="primary">{{ t('emr_dx_primary') }}</option>
+                      <option value="secondary">{{ t('emr_dx_secondary') }}</option>
                     </select>
                   </div>
                 </div>
                 <Btn variant="primary" size="sm" :disabled="dxForm.processing || !dxForm.icd_code || !dxForm.description" @click="addDiagnosis">
-                  Tambah Diagnosis
+                  {{ t('emr_add_diagnosis') }}
                 </Btn>
               </div>
 
@@ -444,14 +446,14 @@ const SOAP_HINTS  = {
                     {{ dx.icd_code }}
                   </Badge>
                   <div style="flex:1;font:500 13px var(--font-sans);color:var(--fg1)">{{ dx.description }}</div>
-                  <span style="font:500 11px var(--font-sans);color:var(--fg3)">{{ dx.type === 'primary' ? 'Utama' : 'Sekunder' }}</span>
+                  <span style="font:500 11px var(--font-sans);color:var(--fg3)">{{ dx.type === 'primary' ? t('emr_dx_primary') : t('emr_dx_secondary') }}</span>
                   <button v-if="selected.status === 'open'"
                           style="background:none;border:none;color:var(--fg3);cursor:pointer;font-size:14px;padding:0 2px"
                           @click="removeDiagnosis(dx.id)">✕</button>
                 </div>
               </div>
               <div v-else style="padding:20px 18px;font:500 12px var(--font-sans);color:var(--fg3)">
-                Tiada diagnosis ditambah
+                {{ t('emr_no_diagnosis') }}
               </div>
             </div>
 
@@ -462,24 +464,24 @@ const SOAP_HINTS  = {
 
             <!-- Visit info -->
             <div class="card">
-              <div class="card__header"><h3 class="card__title">Maklumat Lawatan</h3></div>
+              <div class="card__header"><h3 class="card__title">{{ t('emr_sec_info') }}</h3></div>
               <div class="card__body" style="display:flex;flex-direction:column;gap:10px">
                 <div class="info-row">
-                  <span class="info-label">Tarikh Lawatan</span>
+                  <span class="info-label">{{ t('emr_visit_date') }}</span>
                   <span class="info-val">{{ selected.visit_date }}</span>
                 </div>
                 <div class="info-row">
-                  <span class="info-label">Aduan Utama</span>
+                  <span class="info-label">{{ t('emr_lbl_complaint2') }}</span>
                   <span class="info-val">{{ selected.chief_complaint || '—' }}</span>
                 </div>
                 <div class="info-row">
-                  <span class="info-label">Status</span>
+                  <span class="info-label">{{ t('emr_lbl_status') }}</span>
                   <Badge :tone="selected.status === 'open' ? 'yellow' : 'green'">
-                    {{ selected.status === 'open' ? 'Terbuka' : 'Ditutup' }}
+                    {{ selected.status === 'open' ? t('emr_status_open') : t('emr_status_closed') }}
                   </Badge>
                 </div>
                 <div v-if="selected.signed_by" class="info-row">
-                  <span class="info-label">Ditandatangan</span>
+                  <span class="info-label">{{ t('emr_signed_label') }}</span>
                   <span class="info-val" style="font-size:11px">{{ selected.signed_by }}<br>{{ selected.signed_at }}</span>
                 </div>
               </div>
@@ -487,23 +489,23 @@ const SOAP_HINTS  = {
 
             <!-- Actions -->
             <div class="card">
-              <div class="card__header"><h3 class="card__title">Tindakan</h3></div>
+              <div class="card__header"><h3 class="card__title">{{ t('emr_actions') }}</h3></div>
               <div class="card__body" style="display:flex;flex-direction:column;gap:8px">
                 <template v-if="selected.status === 'open'">
                   <Btn variant="primary" style="width:100%;justify-content:center" @click="showCloseConfirm = true">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    Tandatangan &amp; Tutup
+                    {{ t('emr_close_sign') }}
                   </Btn>
                   <Btn variant="secondary" style="width:100%;justify-content:center" @click="saveSoap" :disabled="soapForm.processing">
-                    Simpan SOAP
+                    {{ t('emr_save_soap') }}
                   </Btn>
                 </template>
                 <div v-else style="background:var(--brand-green-light);border:1px solid var(--brand-green);border-radius:8px;padding:10px 12px;font:500 12px var(--font-sans);color:var(--brand-green-dark);text-align:center">
-                  ✓ Rekod ditutup
+                  {{ t('emr_record_closed') }}
                 </div>
                 <div class="hr"></div>
                 <Btn variant="ghost" style="width:100%;justify-content:center;color:var(--brand-red)" @click="showDeleteConfirm = true">
-                  Padam Rekod
+                  {{ t('emr_delete_record') }}
                 </Btn>
               </div>
             </div>
@@ -518,16 +520,16 @@ const SOAP_HINTS  = {
       <div v-if="showNewModal" class="modal-backdrop" @click.self="showNewModal = false">
         <div class="modal">
           <div class="modal__header">
-            <h3 class="modal__title">Rekod Perubatan Baru</h3>
+            <h3 class="modal__title">{{ t('emr_new_modal_title') }}</h3>
             <button class="modal__close" @click="showNewModal = false">✕</button>
           </div>
           <form @submit.prevent="submitNewVisit" class="modal__body">
-            <div class="modal-section-title">Pesakit</div>
+            <div class="modal-section-title">{{ t('emr_sec_patient') }}</div>
             <div class="field" style="margin-bottom:14px">
-              <label class="field__label">Cari Pesakit *</label>
+              <label class="field__label">{{ t('emr_lbl_search_patient') }}</label>
               <div style="position:relative">
                 <input v-model="patientSearch" type="text" class="input"
-                       placeholder="Taip nama atau IC…"
+                       :placeholder="t('emr_ph_patient')"
                        @input="newForm.patient_id = ''" autocomplete="off" />
                 <div v-if="patientResults.length" class="pdrop">
                   <button v-for="p in patientResults" :key="p.id"
@@ -539,26 +541,26 @@ const SOAP_HINTS  = {
               </div>
               <span v-if="newForm.errors.patient_id" class="field__error">{{ newForm.errors.patient_id }}</span>
             </div>
-            <div class="modal-section-title">Butiran</div>
+            <div class="modal-section-title">{{ t('emr_details_section') }}</div>
             <div class="form-grid-3" style="margin-bottom:10px">
               <div class="field">
-                <label class="field__label">Tarikh *</label>
+                <label class="field__label">{{ t('emr_date_label') }}</label>
                 <input v-model="newForm.visit_date" type="date" class="input" required />
               </div>
               <div class="field" style="grid-column:2/-1">
-                <label class="field__label">Doktor</label>
+                <label class="field__label">{{ t('emr_lbl_doctor') }}</label>
                 <input v-model="newForm.doctor_name" type="text" class="input" />
               </div>
               <div class="field" style="grid-column:1/-1">
-                <label class="field__label">Aduan Utama</label>
+                <label class="field__label">{{ t('emr_lbl_complaint') }}</label>
                 <input v-model="newForm.chief_complaint" type="text" class="input"
-                       placeholder="cth: Demam 3 hari, batuk" maxlength="500" />
+                       :placeholder="t('emr_complaint_ph')" maxlength="500" />
               </div>
             </div>
             <div class="modal__footer">
-              <Btn variant="secondary" type="button" @click="showNewModal = false">Batal</Btn>
+              <Btn variant="secondary" type="button" @click="showNewModal = false">{{ t('btn_cancel') }}</Btn>
               <Btn variant="primary" type="submit" :disabled="newForm.processing || !newForm.patient_id">
-                {{ newForm.processing ? 'Membuka…' : 'Buka Rekod' }}
+                {{ newForm.processing ? t('emr_opening') : t('emr_open_record') }}
               </Btn>
             </div>
           </form>
@@ -571,18 +573,18 @@ const SOAP_HINTS  = {
       <div v-if="showCloseConfirm" class="modal-backdrop" @click.self="showCloseConfirm = false">
         <div class="modal modal--sm">
           <div class="modal__header">
-            <h3 class="modal__title">Tandatangan &amp; Tutup Rekod</h3>
+            <h3 class="modal__title">{{ t('emr_confirm_close') }}</h3>
             <button class="modal__close" @click="showCloseConfirm = false">✕</button>
           </div>
           <div class="modal__body">
             <p style="font:400 14px var(--font-sans);color:var(--fg2);margin:0 0 6px">
-              Tutup rekod perubatan <strong>{{ selected?.patient_name }}</strong>? Selepas ditandatangan, rekod tidak boleh diedit.
+              {{ t('emr_close_body_patient', { name: selected?.patient_name }) }}
             </p>
             <div class="modal__footer">
-              <Btn variant="secondary" @click="showCloseConfirm = false">Batal</Btn>
+              <Btn variant="secondary" @click="showCloseConfirm = false">{{ t('btn_cancel') }}</Btn>
               <Btn variant="primary" @click="closeVisit">
                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                Ya, Tandatangan
+                {{ t('emr_confirm_close_btn') }}
               </Btn>
             </div>
           </div>
@@ -595,17 +597,17 @@ const SOAP_HINTS  = {
       <div v-if="showDeleteConfirm" class="modal-backdrop" @click.self="showDeleteConfirm = false">
         <div class="modal modal--sm">
           <div class="modal__header">
-            <h3 class="modal__title" style="color:var(--brand-red)">Padam Rekod Perubatan</h3>
+            <h3 class="modal__title" style="color:var(--brand-red)">{{ t('emr_del_title') }}</h3>
             <button class="modal__close" @click="showDeleteConfirm = false">✕</button>
           </div>
           <div class="modal__body">
             <p style="font:400 14px var(--font-sans);color:var(--fg2);margin:0 0 4px">
-              Padam rekod <strong>{{ selected?.patient_name }}</strong> ({{ selected?.visit_date }})?
+              {{ t('emr_del_body', { name: selected?.patient_name, date: selected?.visit_date }) }}
             </p>
-            <p style="font:400 12px var(--font-sans);color:var(--fg3);margin:0">Tanda vital dan diagnosis berkaitan turut akan dipadam.</p>
+            <p style="font:400 12px var(--font-sans);color:var(--fg3);margin:0">{{ t('emr_del_vitals_note') }}</p>
             <div class="modal__footer">
-              <Btn variant="secondary" @click="showDeleteConfirm = false">Batal</Btn>
-              <Btn variant="primary" style="background:var(--brand-red)" @click="deleteVisit">Ya, Padam</Btn>
+              <Btn variant="secondary" @click="showDeleteConfirm = false">{{ t('btn_cancel') }}</Btn>
+              <Btn variant="primary" style="background:var(--brand-red)" @click="deleteVisit">{{ t('emr_del_confirm') }}</Btn>
             </div>
           </div>
         </div>

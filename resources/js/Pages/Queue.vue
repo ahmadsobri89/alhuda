@@ -6,6 +6,7 @@ import Avatar from '@/Components/Clinic/Avatar.vue'
 import Badge from '@/Components/Clinic/Badge.vue'
 import Btn from '@/Components/Clinic/Btn.vue'
 import TriagePill from '@/Components/Clinic/TriagePill.vue'
+import { useLocale } from '@/composables/useLocale'
 
 defineOptions({ layout: KlinikLayout })
 
@@ -17,6 +18,7 @@ const props = defineProps({
 
 const page  = usePage()
 const flash = computed(() => page.props.flash)
+const { t } = useLocale()
 
 /* ── split by group ── */
 const active  = computed(() => props.queue.filter(r => ['in_room','waiting','confirmed'].includes(r.status)))
@@ -24,12 +26,19 @@ const finished = computed(() => props.queue.filter(r => ['done','no_show','cance
 
 /* ── status helpers ── */
 const statusTone = { in_room:'green', waiting:'yellow', confirmed:'neutral', done:'green', no_show:'neutral', cancelled:'red' }
-const statusLabel = { in_room:'Dalam Bilik', waiting:'Menunggu', confirmed:'Belum Daftar', done:'Selesai', no_show:'Tiada Hadir', cancelled:'Batal' }
+const statusLabel = computed(() => ({
+  in_room:   t('status_in_room'),
+  waiting:   t('status_waiting'),
+  confirmed: t('queue_legend_conf'),
+  done:      t('status_done'),
+  no_show:   t('status_no_show'),
+  cancelled: t('status_cancelled'),
+}))
 
-const typeLabel = {
-  new:'Baru', follow_up:'Susulan', annual_checkup:'Semakan Tahunan',
-  procedure:'Prosedur', antenatal:'Antenatal', teleconsult:'Teleperubatan',
-}
+const typeLabel = computed(() => ({
+  new: t('type_new'), follow_up: t('type_follow_up'), annual_checkup: t('type_annual_checkup'),
+  procedure: t('type_procedure'), antenatal: t('type_antenatal'), teleconsult: t('type_teleconsult'),
+}))
 const typeTone = {
   new:'blue', follow_up:'neutral', annual_checkup:'purple',
   procedure:'yellow', antenatal:'green', teleconsult:'blue',
@@ -88,33 +97,33 @@ startAutoRefresh()
       <div class="stat-box stat-box--total">
         <div class="stat-icon">📋</div>
         <div>
-          <div class="stat-lbl">Giliran Hari Ini</div>
+          <div class="stat-lbl">{{ t('queue_stat_total') }}</div>
           <div class="stat-val">{{ stats.total_today }}</div>
         </div>
       </div>
       <div class="stat-box stat-box--wait">
         <div class="stat-icon">⏳</div>
         <div>
-          <div class="stat-lbl">Menunggu</div>
+          <div class="stat-lbl">{{ t('queue_stat_waiting') }}</div>
           <div class="stat-val">{{ stats.waiting }}</div>
         </div>
       </div>
       <div class="stat-box stat-box--room">
         <div class="stat-icon">🚪</div>
         <div>
-          <div class="stat-lbl">Dalam Bilik</div>
+          <div class="stat-lbl">{{ t('queue_stat_in_room') }}</div>
           <div class="stat-val">{{ stats.in_room }}</div>
         </div>
       </div>
       <div class="stat-box stat-box--done">
         <div class="stat-icon">✅</div>
         <div>
-          <div class="stat-lbl">Selesai</div>
+          <div class="stat-lbl">{{ t('queue_stat_done') }}</div>
           <div class="stat-val">{{ stats.done }}</div>
         </div>
       </div>
       <div class="stat-date">
-        <div class="stat-lbl">Tarikh</div>
+        <div class="stat-lbl">{{ t('queue_stat_date') }}</div>
         <div class="stat-day">{{ today }}</div>
       </div>
     </div>
@@ -128,30 +137,30 @@ startAutoRefresh()
       <!-- AKTIF -->
       <div class="card" style="overflow:hidden">
         <div class="card__header">
-          <h3 class="card__title">Giliran Aktif</h3>
+          <h3 class="card__title">{{ t('queue_active_title') }}</h3>
           <div style="display:flex;gap:6px;align-items:center">
             <span v-if="active.length" class="count-pill">{{ active.length }}</span>
-            <Btn variant="secondary" size="sm" @click="router.visit('/appointments')">+ Temujanji Baru</Btn>
+            <Btn variant="secondary" size="sm" @click="router.visit('/appointments')">{{ t('queue_new_appt') }}</Btn>
           </div>
         </div>
 
         <!-- legend -->
         <div class="legend">
-          <span class="legend-item legend-item--room">Dalam Bilik</span>
-          <span class="legend-item legend-item--wait">Menunggu</span>
-          <span class="legend-item legend-item--conf">Belum Daftar</span>
+          <span class="legend-item legend-item--room">{{ t('queue_legend_room') }}</span>
+          <span class="legend-item legend-item--wait">{{ t('queue_legend_wait') }}</span>
+          <span class="legend-item legend-item--conf">{{ t('queue_legend_conf') }}</span>
         </div>
 
         <!-- table head -->
         <div class="table__head q-cols">
-          <div>No. Giliran</div>
-          <div>Pesakit</div>
-          <div>Masa / Jenis</div>
-          <div>IC / Umur</div>
-          <div>Aduan Utama</div>
-          <div>Tunggu</div>
-          <div>Status</div>
-          <div>Tindakan</div>
+          <div>{{ t('queue_col_no') }}</div>
+          <div>{{ t('queue_col_patient') }}</div>
+          <div>{{ t('queue_col_time') }}</div>
+          <div>{{ t('queue_col_ic') }}</div>
+          <div>{{ t('queue_col_complaint') }}</div>
+          <div>{{ t('queue_col_wait') }}</div>
+          <div>{{ t('queue_col_status') }}</div>
+          <div>{{ t('queue_col_action') }}</div>
         </div>
 
         <!-- active rows -->
@@ -194,7 +203,7 @@ startAutoRefresh()
 
             <!-- wait -->
             <div class="wait-val" :style="{ color: waitColor(row.wait_minutes, row.status) }">
-              {{ row.status === 'in_room' ? 'Dalam bilik' : waitLabel(row.wait_minutes) }}
+              {{ row.status === 'in_room' ? t('queue_in_room') : waitLabel(row.wait_minutes) }}
             </div>
 
             <!-- status badge -->
@@ -204,46 +213,46 @@ startAutoRefresh()
             <div class="action-cell">
               <!-- confirmed: check-in or no-show -->
               <template v-if="row.status === 'confirmed'">
-                <Btn variant="primary" size="sm" @click="setStatus(row.id, 'waiting')">Daftar Masuk</Btn>
-                <button class="ghost-sm" @click="setStatus(row.id, 'no_show')" title="Tiada Hadir">✕</button>
+                <Btn variant="primary" size="sm" @click="setStatus(row.id, 'waiting')">{{ t('queue_checkin') }}</Btn>
+                <button class="ghost-sm" @click="setStatus(row.id, 'no_show')" :title="t('queue_no_show_title')">✕</button>
               </template>
 
               <!-- waiting: call to room or no-show -->
               <template v-else-if="row.status === 'waiting'">
-                <Btn variant="primary" size="sm" @click="setStatus(row.id, 'in_room')">Panggil Masuk</Btn>
-                <button class="ghost-sm" @click="setStatus(row.id, 'no_show')" title="Tiada Hadir">✕</button>
+                <Btn variant="primary" size="sm" @click="setStatus(row.id, 'in_room')">{{ t('queue_call_in') }}</Btn>
+                <button class="ghost-sm" @click="setStatus(row.id, 'no_show')" :title="t('queue_no_show_title')">✕</button>
               </template>
 
               <!-- in_room: open EMR + done -->
               <template v-else-if="row.status === 'in_room'">
-                <Btn variant="primary" size="sm" @click="goEmr(row)">Buka EMR →</Btn>
-                <Btn variant="secondary" size="sm" @click="setStatus(row.id, 'done')">Selesai</Btn>
+                <Btn variant="primary" size="sm" @click="goEmr(row)">{{ t('queue_open_emr') }}</Btn>
+                <Btn variant="secondary" size="sm" @click="setStatus(row.id, 'done')">{{ t('queue_done_btn') }}</Btn>
               </template>
             </div>
           </div>
         </template>
 
         <div v-else class="empty-q">
-          <span>Tiada giliran aktif hari ini.</span>
-          <Btn variant="secondary" size="sm" @click="router.visit('/appointments')">+ Daftar Pesakit</Btn>
+          <span>{{ t('queue_no_active') }}</span>
+          <Btn variant="secondary" size="sm" @click="router.visit('/appointments')">{{ t('queue_register') }}</Btn>
         </div>
       </div>
 
       <!-- SELESAI -->
       <div v-if="finished.length" class="card" style="overflow:hidden">
         <div class="card__header">
-          <h3 class="card__title" style="color:var(--fg3)">Selesai Hari Ini</h3>
+          <h3 class="card__title" style="color:var(--fg3)">{{ t('queue_finished_title') }}</h3>
           <span class="count-pill count-pill--grey">{{ finished.length }}</span>
         </div>
 
         <div class="table__head q-cols-done">
-          <div>No.</div>
-          <div>Pesakit</div>
-          <div>Masa / Jenis</div>
-          <div>IC / Umur</div>
-          <div>Aduan Utama</div>
-          <div>Status</div>
-          <div>Tindakan</div>
+          <div>{{ t('queue_col_no_short') }}</div>
+          <div>{{ t('queue_col_patient') }}</div>
+          <div>{{ t('queue_col_time') }}</div>
+          <div>{{ t('queue_col_ic') }}</div>
+          <div>{{ t('queue_col_complaint') }}</div>
+          <div>{{ t('queue_col_status') }}</div>
+          <div>{{ t('queue_col_action') }}</div>
         </div>
 
         <div
@@ -279,13 +288,13 @@ startAutoRefresh()
               class="ghost-sm"
               style="font-size:11px;padding:3px 8px;color:var(--brand-green)"
               @click="goEmr(row)"
-            >Lihat EMR</button>
+            >{{ t('queue_view_emr') }}</button>
             <button
               v-if="row.status === 'no_show'"
               class="ghost-sm"
               style="font-size:11px;padding:3px 8px"
               @click="setStatus(row.id, 'waiting')"
-            >Daftar Semula</button>
+            >{{ t('queue_reregister') }}</button>
           </div>
         </div>
       </div>

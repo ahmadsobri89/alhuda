@@ -5,6 +5,7 @@ import Badge from '@/Components/Clinic/Badge.vue'
 import Btn from '@/Components/Clinic/Btn.vue'
 import { router, useForm, usePage } from '@inertiajs/vue3'
 import { computed, ref, watch } from 'vue'
+import { useLocale } from '@/composables/useLocale'
 
 defineOptions({ layout: KlinikLayout })
 
@@ -48,22 +49,24 @@ const STATUS_TONE = {
   cancelled: 'neutral',
   no_show:   'red',
 }
-const STATUS_LABELS = {
-  confirmed: 'Disahkan',
-  waiting:   'Menunggu',
-  in_room:   'Dalam Bilik',
-  done:      'Selesai',
-  cancelled: 'Batal',
-  no_show:   'Tidak Hadir',
-}
-const TYPE_LABELS = {
-  new:            'Pesakit Baru',
-  follow_up:      'Susulan',
-  annual_checkup: 'Semakan Tahunan',
-  procedure:      'Prosedur',
-  antenatal:      'Antenatal',
-  teleconsult:    'Teleperubatan',
-}
+const { t } = useLocale()
+
+const STATUS_LABELS = computed(() => ({
+  confirmed: t('status_confirmed'),
+  waiting:   t('status_waiting'),
+  in_room:   t('status_in_room'),
+  done:      t('status_done'),
+  cancelled: t('status_cancelled'),
+  no_show:   t('status_no_show'),
+}))
+const TYPE_LABELS = computed(() => ({
+  new:            t('type_new'),
+  follow_up:      t('type_follow_up'),
+  annual_checkup: t('type_annual_checkup'),
+  procedure:      t('type_procedure'),
+  antenatal:      t('type_antenatal'),
+  teleconsult:    t('type_teleconsult'),
+}))
 const CHIP_CLASS = {
   confirmed: 'chip-blue',
   waiting:   'chip-yellow',
@@ -201,31 +204,31 @@ const weekLabel = computed(() => {
       <div class="spacer"></div>
       <Btn variant="primary" @click="openCreate()">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-        Temujanji Baru
+        {{ t('appt_new') }}
       </Btn>
     </div>
 
     <!-- ── KPIs ────────────────────────────────────── -->
     <div class="kpi-grid">
       <div class="kpi">
-        <div class="kpi__label">Jumlah Minggu Ini</div>
+        <div class="kpi__label">{{ t('appt_kpi_total') }}</div>
         <div class="kpi__value">{{ stats.total }}</div>
         <div class="kpi__sub">{{ weekLabel }}</div>
       </div>
       <div class="kpi">
-        <div class="kpi__label">Disahkan</div>
+        <div class="kpi__label">{{ t('appt_kpi_confirmed') }}</div>
         <div class="kpi__value" style="color:#1d4ed8">{{ stats.confirmed }}</div>
-        <div class="kpi__sub">belum selesai</div>
+        <div class="kpi__sub">{{ t('appt_kpi_pending') }}</div>
       </div>
       <div class="kpi">
-        <div class="kpi__label">Selesai</div>
+        <div class="kpi__label">{{ t('appt_kpi_done') }}</div>
         <div class="kpi__value" style="color:var(--brand-green)">{{ stats.done }}</div>
-        <div class="kpi__sub">minggu ini</div>
+        <div class="kpi__sub">{{ t('appt_kpi_week') }}</div>
       </div>
       <div class="kpi">
-        <div class="kpi__label">Dibatalkan / Tidak Hadir</div>
+        <div class="kpi__label">{{ t('appt_kpi_cancelled') }}</div>
         <div class="kpi__value" style="color:var(--fg3)">{{ stats.cancelled }}</div>
-        <div class="kpi__sub">minggu ini</div>
+        <div class="kpi__sub">{{ t('appt_kpi_week') }}</div>
       </div>
     </div>
 
@@ -286,7 +289,7 @@ const weekLabel = computed(() => {
       <!-- Queue card -->
       <div class="card" style="display:flex;flex-direction:column;overflow:hidden;min-height:0">
         <div class="card__header">
-          <h3 class="card__title">Senarai Hari Ini</h3>
+          <h3 class="card__title">{{ t('appt_today_list') }}</h3>
           <span class="spacer"></span>
           <span style="background:var(--brand-green);color:#fff;font:700 11px var(--font-sans);padding:2px 8px;border-radius:999px">{{ todayList.length }}</span>
         </div>
@@ -294,7 +297,7 @@ const weekLabel = computed(() => {
         <div v-if="todayList.length === 0"
              style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:32px;color:var(--fg3);font:500 13px var(--font-sans);text-align:center">
           <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
-          Tiada temujanji hari ini
+          {{ t('appt_no_today') }}
         </div>
 
         <div v-else style="flex:1;overflow-y:auto">
@@ -326,38 +329,38 @@ const weekLabel = computed(() => {
 
           <div class="drawer__body">
             <!-- Appointment info -->
-            <div class="drow-section-title">Maklumat Temujanji</div>
+            <div class="drow-section-title">{{ t('appt_draw_info') }}</div>
             <div class="info-grid">
               <div class="info-row">
-                <span class="info-label">Tarikh</span>
+                <span class="info-label">{{ t('appt_lbl_date') }}</span>
                 <span class="info-val">{{ viewAppt.appointment_date }}</span>
               </div>
               <div class="info-row">
-                <span class="info-label">Masa</span>
+                <span class="info-label">{{ t('appt_lbl_time') }}</span>
                 <span class="info-val mono">{{ viewAppt.appointment_time }} ({{ viewAppt.duration_minutes }} min)</span>
               </div>
               <div class="info-row">
-                <span class="info-label">Jenis</span>
+                <span class="info-label">{{ t('appt_lbl_type') }}</span>
                 <span class="info-val">{{ TYPE_LABELS[viewAppt.type] }}</span>
               </div>
               <div class="info-row">
-                <span class="info-label">Doktor</span>
+                <span class="info-label">{{ t('appt_lbl_doctor') }}</span>
                 <span class="info-val">{{ viewAppt.doctor_name }}</span>
               </div>
               <div class="info-row" style="grid-column:1/-1">
-                <span class="info-label">Status</span>
+                <span class="info-label">{{ t('appt_lbl_status') }}</span>
                 <Badge :tone="STATUS_TONE[viewAppt.status]" style="align-self:flex-start;margin-top:2px">{{ STATUS_LABELS[viewAppt.status] }}</Badge>
               </div>
               <div v-if="viewAppt.reason" class="info-row" style="grid-column:1/-1">
-                <span class="info-label">Sebab / Aduan</span>
+                <span class="info-label">{{ t('appt_lbl_reason') }}</span>
                 <span class="info-val">{{ viewAppt.reason }}</span>
               </div>
               <div v-if="viewAppt.patient_allergies" class="info-row" style="grid-column:1/-1">
-                <span class="info-label">Alahan Pesakit</span>
+                <span class="info-label">{{ t('appt_lbl_allergy') }}</span>
                 <Badge tone="red" style="align-self:flex-start;margin-top:2px">⚠ {{ viewAppt.patient_allergies }}</Badge>
               </div>
               <div v-if="viewAppt.notes" class="info-row" style="grid-column:1/-1">
-                <span class="info-label">Nota</span>
+                <span class="info-label">{{ t('appt_lbl_notes') }}</span>
                 <span class="info-val" style="white-space:pre-wrap">{{ viewAppt.notes }}</span>
               </div>
             </div>
@@ -365,38 +368,38 @@ const weekLabel = computed(() => {
             <!-- Status workflow -->
             <div v-if="!['done','cancelled','no_show'].includes(viewAppt.status)">
               <div class="hr" style="margin:18px 0 14px"></div>
-              <div class="drow-section-title">Kemaskini Status</div>
+              <div class="drow-section-title">{{ t('appt_update_status') }}</div>
               <div class="row" style="flex-wrap:wrap;gap:6px">
                 <button v-if="viewAppt.status === 'confirmed'"
                         class="btn btn--secondary btn--sm" style="background:#fef9c3;border-color:#fde68a;color:#854d0e"
                         @click="updateStatus(viewAppt, 'waiting')">
-                  Pesakit Tiba
+                  {{ t('appt_arrived') }}
                 </button>
                 <button v-if="viewAppt.status === 'waiting'"
                         class="btn btn--secondary btn--sm" style="background:#f3e8ff;border-color:#e9d5ff;color:#6b21a8"
                         @click="updateStatus(viewAppt, 'in_room')">
-                  Masuk Bilik
+                  {{ t('appt_enter_room') }}
                 </button>
                 <button v-if="viewAppt.status === 'in_room'"
                         class="btn btn--secondary btn--sm" style="background:var(--brand-green-light);border-color:var(--brand-green);color:var(--brand-green-dark)"
                         @click="updateStatus(viewAppt, 'done')">
-                  Selesai
+                  {{ t('appt_done') }}
                 </button>
                 <button class="btn btn--ghost btn--sm"
                         @click="updateStatus(viewAppt, 'cancelled')">
-                  Batalkan
+                  {{ t('appt_cancel_action') }}
                 </button>
                 <button class="btn btn--ghost btn--sm" style="color:var(--brand-red)"
                         @click="updateStatus(viewAppt, 'no_show')">
-                  Tidak Hadir
+                  {{ t('appt_no_show_action') }}
                 </button>
               </div>
             </div>
 
             <div class="hr" style="margin:18px 0 14px"></div>
             <div class="row" style="gap:8px">
-              <Btn variant="secondary" style="flex:1" @click="openEdit(viewAppt)">Edit Temujanji</Btn>
-              <Btn variant="ghost" style="color:var(--brand-red)" @click="confirmDelete(viewAppt)">Padam</Btn>
+              <Btn variant="secondary" style="flex:1" @click="openEdit(viewAppt)">{{ t('appt_edit') }}</Btn>
+              <Btn variant="ghost" style="color:var(--brand-red)" @click="confirmDelete(viewAppt)">{{ t('appt_delete') }}</Btn>
             </div>
           </div>
         </div>
@@ -408,18 +411,18 @@ const weekLabel = computed(() => {
       <div v-if="showModal" class="modal-backdrop" @click.self="closeModal">
         <div class="modal modal--lg">
           <div class="modal__header">
-            <h3 class="modal__title">{{ editTarget ? 'Edit Temujanji' : 'Temujanji Baru' }}</h3>
+            <h3 class="modal__title">{{ editTarget ? t('appt_modal_edit') : t('appt_modal_create') }}</h3>
             <button class="modal__close" @click="closeModal">✕</button>
           </div>
           <form @submit.prevent="submitForm" class="modal__body">
 
             <!-- Patient search -->
-            <div class="modal-section-title">Pesakit</div>
+            <div class="modal-section-title">{{ t('appt_sec_patient') }}</div>
             <div class="field" style="margin-bottom:14px">
-              <label class="field__label">Cari Pesakit <span style="color:var(--brand-red)">*</span></label>
+              <label class="field__label">{{ t('appt_search_patient') }} <span style="color:var(--brand-red)">*</span></label>
               <div style="position:relative">
                 <input v-model="patientSearch" type="text" class="input"
-                       placeholder="Taip nama atau nombor IC..."
+                       :placeholder="t('appt_ph_patient')"
                        @input="form.patient_id = ''" autocomplete="off" />
                 <div v-if="patientResults.length" class="pdrop">
                   <button v-for="p in patientResults" :key="p.id"
@@ -433,60 +436,60 @@ const weekLabel = computed(() => {
               <span v-if="form.errors.patient_id" class="field__error">{{ form.errors.patient_id }}</span>
             </div>
 
-            <div class="modal-section-title">Butiran Temujanji</div>
+            <div class="modal-section-title">{{ t('appt_sec_details') }}</div>
             <div class="form-grid-3" style="margin-bottom:14px">
               <div class="field">
-                <label class="field__label">Tarikh <span style="color:var(--brand-red)">*</span></label>
+                <label class="field__label">{{ t('appt_lbl_date') }} <span style="color:var(--brand-red)">*</span></label>
                 <input v-model="form.appointment_date" type="date" class="input" required />
               </div>
               <div class="field">
-                <label class="field__label">Masa <span style="color:var(--brand-red)">*</span></label>
+                <label class="field__label">{{ t('appt_lbl_time') }} <span style="color:var(--brand-red)">*</span></label>
                 <select v-model="form.appointment_time" class="select" required>
                   <option v-for="s in slots" :key="s" :value="s">{{ s }}</option>
                 </select>
               </div>
               <div class="field">
-                <label class="field__label">Tempoh</label>
+                <label class="field__label">{{ t('appt_lbl_duration') }}</label>
                 <select v-model="form.duration_minutes" class="select">
-                  <option :value="15">15 minit</option>
-                  <option :value="30">30 minit</option>
-                  <option :value="45">45 minit</option>
-                  <option :value="60">60 minit</option>
+                  <option :value="15">{{ t('appt_duration_15') }}</option>
+                  <option :value="30">{{ t('appt_duration_30') }}</option>
+                  <option :value="45">{{ t('appt_duration_45') }}</option>
+                  <option :value="60">{{ t('appt_duration_60') }}</option>
                 </select>
               </div>
               <div class="field">
-                <label class="field__label">Jenis Lawatan</label>
+                <label class="field__label">{{ t('appt_lbl_type') }}</label>
                 <select v-model="form.type" class="select">
                   <option v-for="(lbl, val) in TYPE_LABELS" :key="val" :value="val">{{ lbl }}</option>
                 </select>
               </div>
               <div class="field" style="grid-column:2/-1">
-                <label class="field__label">Doktor</label>
+                <label class="field__label">{{ t('appt_lbl_doctor') }}</label>
                 <input v-model="form.doctor_name" type="text" class="input" />
               </div>
               <div v-if="editTarget" class="field">
-                <label class="field__label">Status</label>
+                <label class="field__label">{{ t('appt_lbl_status') }}</label>
                 <select v-model="form.status" class="select">
                   <option v-for="(lbl, val) in STATUS_LABELS" :key="val" :value="val">{{ lbl }}</option>
                 </select>
               </div>
               <div class="field" style="grid-column:1/-1">
-                <label class="field__label">Sebab / Aduan Utama</label>
+                <label class="field__label">{{ t('appt_lbl_reason') }}</label>
                 <input v-model="form.reason" type="text" class="input"
-                       placeholder="cth: Kawalan tekanan darah" maxlength="255" />
+                       :placeholder="t('appt_ph_reason')" maxlength="255" />
               </div>
               <div class="field" style="grid-column:1/-1">
-                <label class="field__label">Nota Tambahan</label>
+                <label class="field__label">{{ t('appt_lbl_notes') }}</label>
                 <textarea v-model="form.notes" class="input" rows="3"
-                          placeholder="Nota dalaman untuk doktor atau jururawat..." maxlength="1000"
+                          :placeholder="t('appt_ph_notes')" maxlength="1000"
                           style="resize:vertical"></textarea>
               </div>
             </div>
 
             <div class="modal__footer">
-              <Btn variant="secondary" type="button" @click="closeModal">Batal</Btn>
+              <Btn variant="secondary" type="button" @click="closeModal">{{ t('btn_cancel') }}</Btn>
               <Btn variant="primary" type="submit" :disabled="form.processing || !form.patient_id">
-                {{ form.processing ? 'Menyimpan...' : (editTarget ? 'Kemaskini' : 'Simpan Temujanji') }}
+                {{ form.processing ? t('btn_saving') : (editTarget ? t('btn_update') : t('appt_save')) }}
               </Btn>
             </div>
           </form>
@@ -499,18 +502,17 @@ const weekLabel = computed(() => {
       <div v-if="deleteTarget" class="modal-backdrop" @click.self="deleteTarget = null">
         <div class="modal modal--sm">
           <div class="modal__header">
-            <h3 class="modal__title" style="color:var(--brand-red)">Padam Temujanji</h3>
+            <h3 class="modal__title" style="color:var(--brand-red)">{{ t('appt_del_title') }}</h3>
             <button class="modal__close" @click="deleteTarget = null">✕</button>
           </div>
           <div class="modal__body">
             <p style="font:400 14px var(--font-sans);color:var(--fg2);margin:0 0 6px">
-              Padam temujanji untuk <strong>{{ deleteTarget.patient_name }}</strong>
-              pada {{ deleteTarget.appointment_date }} pukul {{ deleteTarget.appointment_time }}?
+              {{ t('appt_del_body', { name: deleteTarget.patient_name, date: deleteTarget.appointment_date, time: deleteTarget.appointment_time }) }}
             </p>
-            <p style="font:400 13px var(--font-sans);color:var(--fg3);margin:0">Tindakan ini tidak boleh dibatalkan.</p>
+            <p style="font:400 13px var(--font-sans);color:var(--fg3);margin:0">{{ t('appt_del_warning') }}</p>
             <div class="modal__footer">
-              <Btn variant="secondary" @click="deleteTarget = null">Batal</Btn>
-              <Btn variant="primary" style="background:var(--brand-red)" @click="doDelete">Ya, Padam</Btn>
+              <Btn variant="secondary" @click="deleteTarget = null">{{ t('btn_cancel') }}</Btn>
+              <Btn variant="primary" style="background:var(--brand-red)" @click="doDelete">{{ t('appt_del_confirm') }}</Btn>
             </div>
           </div>
         </div>

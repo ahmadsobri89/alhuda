@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useForm, router, usePage } from '@inertiajs/vue3'
+import { useLocale } from '@/composables/useLocale'
 import KlinikLayout from '@/Layouts/KlinikLayout.vue'
 import Avatar from '@/Components/Clinic/Avatar.vue'
 import Badge from '@/Components/Clinic/Badge.vue'
@@ -14,16 +15,17 @@ const props = defineProps({
   auditLogs:  { type: Object, default: () => ({ data: [], links: [] }) },
 })
 
+const { t } = useLocale()
 const tab = ref('users')
 
 // ─── Role helpers ──────────────────────────────────────────────────────────
-const roleLabels = {
-  doctor:       'Doktor',
-  nurse:        'Jururawat',
-  pharmacist:   'Farmasi',
-  receptionist: 'Resepsionis',
-  admin:        'Super Admin',
-}
+const roleLabels = computed(() => ({
+  doctor:       t('set_role_doctor'),
+  nurse:        t('set_role_nurse'),
+  pharmacist:   t('set_role_pharmacist'),
+  receptionist: t('set_role_receptionist'),
+  admin:        t('set_role_admin'),
+}))
 
 function roleTone(role) {
   if (role === 'admin')  return 'red'
@@ -114,20 +116,20 @@ const flash = computed(() => page.props.flash?.success)
     <div v-if="flash" class="flash-success">{{ flash }}</div>
 
     <div class="tabs">
-      <button :class="['tab', tab==='users'    ? 'active':'']" @click="tab='users'">Pengguna &amp; Peranan</button>
-      <button :class="['tab', tab==='security' ? 'active':'']" @click="tab='security'">Keselamatan</button>
-      <button :class="['tab', tab==='audit'    ? 'active':'']" @click="tab='audit'">Log Audit</button>
+      <button :class="['tab', tab==='users'    ? 'active':'']" @click="tab='users'">{{ t('set_tab_users') }}</button>
+      <button :class="['tab', tab==='security' ? 'active':'']" @click="tab='security'">{{ t('set_tab_security') }}</button>
+      <button :class="['tab', tab==='audit'    ? 'active':'']" @click="tab='audit'">{{ t('set_tab_audit') }}</button>
     </div>
 
     <!-- ── Users Tab ───────────────────────────────────────────────────── -->
     <div v-if="tab==='users'">
       <div class="card" style="overflow:hidden">
         <div class="card__header">
-          <h3 class="card__title" style="flex:1">Pengguna Sistem</h3>
-          <Btn variant="primary" size="sm" @click="openCreate">+ Tambah Pengguna</Btn>
+          <h3 class="card__title" style="flex:1">{{ t('set_users_title') }}</h3>
+          <Btn variant="primary" size="sm" @click="openCreate">{{ t('set_new_user') }}</Btn>
         </div>
         <div class="table__head" style="grid-template-columns:2fr 1fr 1.6fr 90px 90px 100px">
-          <div>Pengguna</div><div>Peranan</div><div>Emel</div><div>MFA</div><div>Status</div><div></div>
+          <div>{{ t('set_col_user') }}</div><div>{{ t('set_col_role') }}</div><div>{{ t('set_col_email') }}</div><div>{{ t('set_col_mfa') }}</div><div>{{ t('set_col_status') }}</div><div></div>
         </div>
         <div
           v-for="u in users" :key="u.id"
@@ -146,12 +148,12 @@ const flash = computed(() => page.props.flash?.success)
           <div><Badge :tone="u.mfa_enabled?'green':'orange'">{{ u.mfa_enabled ? '✓ TOTP' : 'Off' }}</Badge></div>
           <div><Badge :tone="u.status==='active'?'green':'neutral'">{{ u.status }}</Badge></div>
           <div class="row" style="gap:4px">
-            <Btn variant="ghost" size="sm" @click="openEdit(u)">Edit</Btn>
-            <Btn variant="ghost" size="sm" style="color:var(--brand-red)" @click="confirmDelete(u)">Padam</Btn>
+            <Btn variant="ghost" size="sm" @click="openEdit(u)">{{ t('btn_edit') }}</Btn>
+            <Btn variant="ghost" size="sm" style="color:var(--brand-red)" @click="confirmDelete(u)">{{ t('btn_delete') }}</Btn>
           </div>
         </div>
         <div v-if="!users.length" style="padding:24px;text-align:center;color:var(--fg3);font:500 13px var(--font-sans)">
-          Tiada pengguna dijumpai.
+          {{ t('set_no_users') }}
         </div>
       </div>
     </div>
@@ -159,8 +161,8 @@ const flash = computed(() => page.props.flash?.success)
     <!-- ── Security Tab ────────────────────────────────────────────────── -->
     <div v-if="tab==='security'" class="card">
       <div class="card__header">
-        <h3 class="card__title" style="flex:1">Dasar Kata Laluan &amp; MFA</h3>
-        <Btn variant="primary" size="sm" :disabled="policyForm.processing" @click="savePolicies">Simpan Perubahan</Btn>
+        <h3 class="card__title" style="flex:1">{{ t('set_policy_title') }}</h3>
+        <Btn variant="primary" size="sm" :disabled="policyForm.processing" @click="savePolicies">{{ t('set_save_policy') }}</Btn>
       </div>
       <div class="card__body" style="display:flex;flex-direction:column;gap:14px">
         <div v-for="p in policyState" :key="p.id" class="row" style="gap:12px">
@@ -176,9 +178,9 @@ const flash = computed(() => page.props.flash?.success)
 
     <!-- ── Audit Tab ───────────────────────────────────────────────────── -->
     <div v-if="tab==='audit'" class="card" style="overflow:hidden">
-      <div class="card__header"><h3 class="card__title">Log Audit Sistem</h3></div>
+      <div class="card__header"><h3 class="card__title">{{ t('set_audit_title') }}</h3></div>
       <div class="table__head" style="grid-template-columns:140px 160px 160px 1fr 130px 90px">
-        <div>Masa</div><div>Pengguna</div><div>Tindakan</div><div>Sumber</div><div>IP</div><div>Hasil</div>
+        <div>{{ t('set_col_time') }}</div><div>{{ t('set_col_user') }}</div><div>{{ t('set_col_action') }}</div><div>{{ t('set_col_resource') }}</div><div>{{ t('set_col_ip') }}</div><div>{{ t('set_col_result') }}</div>
       </div>
       <div
         v-for="r in auditLogs.data" :key="r.id"
@@ -190,10 +192,10 @@ const flash = computed(() => page.props.flash?.success)
         <div class="mono" :style="{ font:'600 11.5px var(--font-mono)', color: r.ok?'var(--brand-green-dark)':'var(--brand-red)' }">{{ r.act }}</div>
         <div style="font:400 12px var(--font-sans);color:var(--fg2)">{{ r.res }}</div>
         <div class="mono" style="font:500 11.5px var(--font-mono);color:var(--fg3)">{{ r.ip }}</div>
-        <div><Badge :tone="r.ok?'green':'red'">{{ r.ok ? 'OK' : 'Gagal' }}</Badge></div>
+        <div><Badge :tone="r.ok?'green':'red'">{{ r.ok ? 'OK' : t('set_result_fail') }}</Badge></div>
       </div>
       <div v-if="!auditLogs.data?.length" style="padding:24px;text-align:center;color:var(--fg3);font:500 13px var(--font-sans)">
-        Tiada rekod audit.
+        {{ t('set_no_audit') }}
       </div>
       <!-- Pagination -->
       <div v-if="auditLogs.last_page > 1" class="audit-pagination">
@@ -213,57 +215,57 @@ const flash = computed(() => page.props.flash?.success)
     <div v-if="showModal" class="modal-backdrop" @click.self="closeModal">
       <div class="modal">
         <div class="modal__header">
-          <h3 class="modal__title">{{ editingUser ? 'Edit Pengguna' : 'Tambah Pengguna Baru' }}</h3>
+          <h3 class="modal__title">{{ editingUser ? t('set_modal_edit') : t('set_modal_create') }}</h3>
           <button class="modal__close" @click="closeModal">✕</button>
         </div>
         <form @submit.prevent="submitUser" class="modal__body">
           <div class="form-grid">
             <div class="field">
-              <label class="field__label">Nama Penuh</label>
-              <input v-model="userForm.name" class="input" placeholder="Nama penuh" />
+              <label class="field__label">{{ t('set_lbl_name') }}</label>
+              <input v-model="userForm.name" class="input" :placeholder="t('set_ph_name')" />
               <span v-if="userForm.errors.name" class="field__error">{{ userForm.errors.name }}</span>
             </div>
             <div class="field">
-              <label class="field__label">Emel</label>
+              <label class="field__label">{{ t('set_lbl_email') }}</label>
               <input v-model="userForm.email" type="email" class="input" placeholder="emel@alhuda.my" />
               <span v-if="userForm.errors.email" class="field__error">{{ userForm.errors.email }}</span>
             </div>
             <div class="field">
-              <label class="field__label">Peranan</label>
+              <label class="field__label">{{ t('set_lbl_role') }}</label>
               <select v-model="userForm.role" class="select">
-                <option value="doctor">Doktor</option>
-                <option value="nurse">Jururawat</option>
-                <option value="pharmacist">Farmasi</option>
-                <option value="receptionist">Resepsionis</option>
-                <option value="admin">Super Admin</option>
+                <option value="doctor">{{ t('set_role_doctor') }}</option>
+                <option value="nurse">{{ t('set_role_nurse') }}</option>
+                <option value="pharmacist">{{ t('set_role_pharmacist') }}</option>
+                <option value="receptionist">{{ t('set_role_receptionist') }}</option>
+                <option value="admin">{{ t('set_role_admin') }}</option>
               </select>
               <span v-if="userForm.errors.role" class="field__error">{{ userForm.errors.role }}</span>
             </div>
             <div class="field" v-if="userForm.role === 'doctor'">
-              <label class="field__label">No. MMC</label>
+              <label class="field__label">{{ t('set_lbl_mmc') }}</label>
               <input v-model="userForm.mmc_number" class="input" placeholder="MMC-XXXXX" />
             </div>
             <div class="field">
-              <label class="field__label">Kata Laluan {{ editingUser ? '(kosongkan jika tidak tukar)' : '' }}</label>
-              <input v-model="userForm.password" type="password" class="input" placeholder="Min. 8 aksara" />
+              <label class="field__label">{{ t('set_lbl_password') }} {{ editingUser ? t('set_pw_change_note') : '' }}</label>
+              <input v-model="userForm.password" type="password" class="input" :placeholder="t('set_ph_password')" />
               <span v-if="userForm.errors.password" class="field__error">{{ userForm.errors.password }}</span>
             </div>
             <div class="field">
-              <label class="field__label">Status</label>
+              <label class="field__label">{{ t('set_lbl_status') }}</label>
               <select v-model="userForm.status" class="select">
-                <option value="active">Aktif</option>
-                <option value="inactive">Tidak Aktif</option>
+                <option value="active">{{ t('status_active') }}</option>
+                <option value="inactive">{{ t('status_inactive') }}</option>
               </select>
             </div>
           </div>
           <div class="row" style="gap:10px;margin-top:8px">
             <button type="button" :class="['toggle', userForm.mfa_enabled ? 'on':'']" @click="userForm.mfa_enabled = !userForm.mfa_enabled"></button>
-            <span style="font:500 13px var(--font-sans);color:var(--fg2)">Aktifkan MFA (TOTP)</span>
+            <span style="font:500 13px var(--font-sans);color:var(--fg2)">{{ t('set_mfa_label') }}</span>
           </div>
           <div class="modal__footer">
-            <Btn type="button" variant="secondary" @click="closeModal">Batal</Btn>
+            <Btn type="button" variant="secondary" @click="closeModal">{{ t('btn_cancel') }}</Btn>
             <Btn type="submit" variant="primary" :disabled="userForm.processing">
-              {{ editingUser ? 'Kemaskini' : 'Tambah' }}
+              {{ editingUser ? t('btn_update') : t('btn_add') }}
             </Btn>
           </div>
         </form>
@@ -276,17 +278,16 @@ const flash = computed(() => page.props.flash?.success)
     <div v-if="deleteTarget" class="modal-backdrop" @click.self="deleteTarget = null">
       <div class="modal modal--sm">
         <div class="modal__header">
-          <h3 class="modal__title" style="color:var(--brand-red)">Padam Pengguna</h3>
+          <h3 class="modal__title" style="color:var(--brand-red)">{{ t('set_del_title') }}</h3>
           <button class="modal__close" @click="deleteTarget = null">✕</button>
         </div>
         <div class="modal__body">
           <p style="font:400 13.5px var(--font-sans);color:var(--fg2);line-height:1.6;margin:0 0 16px">
-            Anda pasti mahu memadam <strong>{{ deleteTarget.name }}</strong>?
-            Tindakan ini tidak boleh dibatalkan.
+            {{ t('set_del_body', { name: deleteTarget.name }) }}
           </p>
           <div class="modal__footer">
-            <Btn variant="secondary" @click="deleteTarget = null">Batal</Btn>
-            <Btn variant="primary" style="background:var(--brand-red)" @click="doDelete">Ya, Padam</Btn>
+            <Btn variant="secondary" @click="deleteTarget = null">{{ t('btn_cancel') }}</Btn>
+            <Btn variant="primary" style="background:var(--brand-red)" @click="doDelete">{{ t('set_del_confirm') }}</Btn>
           </div>
         </div>
       </div>

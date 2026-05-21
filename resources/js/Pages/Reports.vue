@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { router } from '@inertiajs/vue3'
+import { useLocale } from '@/composables/useLocale'
 import KlinikLayout from '@/Layouts/KlinikLayout.vue'
 import Badge from '@/Components/Clinic/Badge.vue'
 import Btn from '@/Components/Clinic/Btn.vue'
@@ -23,22 +24,33 @@ const props = defineProps({
   invValue:    Number,
 })
 
+const { t } = useLocale()
+
 /* ── period switch ── */
 function setPeriod(p) {
   router.get('/reports', { period: p }, { preserveState: true, replace: true })
 }
 
 /* ── labels ── */
-const methodLabel = { cash:'Tunai', card:'Kad', duitnow:'DuitNow', panel:'Panel', insurance:'Insurans' }
+const methodLabel = computed(() => ({
+  cash: t('method_cash'), card: t('method_card'), duitnow: t('method_duitnow'),
+  panel: t('method_panel'), insurance: t('method_insurance'),
+}))
 const methodColor = { cash:'var(--brand-green)', card:'#2563EB', duitnow:'#D97706', panel:'#7C3AED', insurance:'#0891B2' }
-const typeLabel   = {
-  new:'Baru', follow_up:'Susulan', annual_checkup:'Semakan Tahunan',
-  procedure:'Prosedur', antenatal:'Antenatal', teleconsult:'Teleperubatan',
-}
+const typeLabel = computed(() => ({
+  new: t('type_new'), follow_up: t('type_follow_up'), annual_checkup: t('type_annual_checkup'),
+  procedure: t('type_procedure'), antenatal: t('type_antenatal'), teleconsult: t('type_teleconsult'),
+}))
 const statusTone  = { done:'green', confirmed:'neutral', waiting:'yellow', in_room:'green', no_show:'neutral', cancelled:'red' }
-const statusLabel = { done:'Selesai', confirmed:'Belum Daftar', waiting:'Menunggu', in_room:'Dalam Bilik', no_show:'Tiada Hadir', cancelled:'Batal' }
-const rxTone      = { pending:'yellow', verifying:'blue', ready:'green', dispensed:'neutral' }
-const rxLabel     = { pending:'Tertunggak', verifying:'Semakan', ready:'Sedia', dispensed:'Diberikan' }
+const statusLabel = computed(() => ({
+  done: t('status_done'), confirmed: t('queue_legend_conf'), waiting: t('status_waiting'),
+  in_room: t('status_in_room'), no_show: t('status_no_show'), cancelled: t('status_cancelled'),
+}))
+const rxTone  = { pending:'yellow', verifying:'blue', ready:'green', dispensed:'neutral' }
+const rxLabel = computed(() => ({
+  pending: t('status_pending'), verifying: t('status_verifying'),
+  ready: t('status_ready'), dispensed: t('status_dispensed'),
+}))
 
 /* ── diff badge ── */
 function diffLabel(diff) {
@@ -69,9 +81,9 @@ function fmtRM(v) { return 'RM ' + Number(v).toLocaleString('ms-MY', { minimumFr
     <!-- ── toolbar ── -->
     <div class="toolbar">
       <div class="period-tabs">
-        <button class="ptab" :class="{ active: period === 'month' }"       @click="setPeriod('month')">Bulan Ini</button>
-        <button class="ptab" :class="{ active: period === 'last_month' }"  @click="setPeriod('last_month')">Bulan Lepas</button>
-        <button class="ptab" :class="{ active: period === 'year' }"        @click="setPeriod('year')">Tahun Ini</button>
+        <button class="ptab" :class="{ active: period === 'month' }"       @click="setPeriod('month')">{{ t('rep_period_month') }}</button>
+        <button class="ptab" :class="{ active: period === 'last_month' }"  @click="setPeriod('last_month')">{{ t('rep_period_last_month') }}</button>
+        <button class="ptab" :class="{ active: period === 'year' }"        @click="setPeriod('year')">{{ t('rep_period_year') }}</button>
       </div>
       <span class="period-label">{{ periodLabel }}</span>
     </div>
@@ -80,39 +92,39 @@ function fmtRM(v) { return 'RM ' + Number(v).toLocaleString('ms-MY', { minimumFr
     <div class="kpi-row">
 
       <div class="kpi-card">
-        <div class="kpi-card__label">Pendapatan</div>
+        <div class="kpi-card__label">{{ t('rep_kpi_revenue') }}</div>
         <div class="kpi-card__val kpi-card__val--green">{{ fmtRM(kpi.revenue) }}</div>
         <div class="kpi-card__sub">
           <span v-if="kpi.revenue_diff !== null">
             <Badge :tone="diffTone(kpi.revenue_diff)" size="xs">{{ diffLabel(kpi.revenue_diff) }}</Badge>
-            vs tempoh lepas
+            {{ t('rep_vs_prev') }}
           </span>
-          <span v-else>Tiada data lepas</span>
+          <span v-else>{{ t('rep_no_prev') }}</span>
         </div>
       </div>
 
       <div class="kpi-card">
-        <div class="kpi-card__label">Pesakit Dilawati</div>
+        <div class="kpi-card__label">{{ t('rep_kpi_patients') }}</div>
         <div class="kpi-card__val">{{ kpi.patients }}</div>
         <div class="kpi-card__sub">
-          <span v-if="kpi.patients_prev > 0">Sebelum: {{ kpi.patients_prev }}</span>
-          <span v-else>{{ kpi.new_patients }} pesakit baru</span>
+          <span v-if="kpi.patients_prev > 0">{{ t('rep_before', { n: kpi.patients_prev }) }}</span>
+          <span v-else>{{ t('rep_new_patients_sub', { n: kpi.new_patients }) }}</span>
         </div>
       </div>
 
       <div class="kpi-card">
-        <div class="kpi-card__label">Temujanji</div>
+        <div class="kpi-card__label">{{ t('rep_kpi_appts') }}</div>
         <div class="kpi-card__val">{{ kpi.appt_total }}</div>
         <div class="kpi-card__sub">
-          {{ kpi.appt_done }} selesai ·
-          <span style="color:#DC2626">{{ kpi.appt_no_show }} tiada hadir</span>
+          {{ kpi.appt_done }} {{ t('dash_done') }} ·
+          <span style="color:#DC2626">{{ kpi.appt_no_show }} {{ t('status_no_show') }}</span>
         </div>
       </div>
 
       <div class="kpi-card">
-        <div class="kpi-card__label">Pesakit Berdaftar</div>
+        <div class="kpi-card__label">{{ t('rep_kpi_registered') }}</div>
         <div class="kpi-card__val">{{ kpi.total_patients }}</div>
-        <div class="kpi-card__sub">+ {{ kpi.new_patients }} baharu tempoh ini</div>
+        <div class="kpi-card__sub">{{ t('rep_new_period', { n: kpi.new_patients }) }}</div>
       </div>
 
     </div>
@@ -123,8 +135,8 @@ function fmtRM(v) { return 'RM ' + Number(v).toLocaleString('ms-MY', { minimumFr
       <!-- Monthly revenue trend -->
       <div class="card">
         <div class="card__header">
-          <h3 class="card__title">Trend Pendapatan Bulanan</h3>
-          <p class="card__sub" style="margin-left:auto">12 bulan terakhir</p>
+          <h3 class="card__title">{{ t('rep_trend') }}</h3>
+          <p class="card__sub" style="margin-left:auto">{{ t('rep_12_months') }}</p>
         </div>
         <div class="monthly-chart">
           <div v-for="r in monthlyRev" :key="r.label + r.year" class="month-col">
@@ -144,7 +156,7 @@ function fmtRM(v) { return 'RM ' + Number(v).toLocaleString('ms-MY', { minimumFr
 
       <!-- Revenue by payment method -->
       <div class="card">
-        <div class="card__header"><h3 class="card__title">Kaedah Pembayaran</h3></div>
+        <div class="card__header"><h3 class="card__title">{{ t('rep_by_method') }}</h3></div>
         <div class="card__body" style="display:flex;flex-direction:column;gap:14px">
           <div v-if="byMethod.length" v-for="m in byMethod" :key="m.method" class="hbar-row">
             <div class="hbar-label">{{ methodLabel[m.method] ?? m.method }}</div>
@@ -153,7 +165,7 @@ function fmtRM(v) { return 'RM ' + Number(v).toLocaleString('ms-MY', { minimumFr
             </div>
             <div class="hbar-val">{{ fmtRM(m.total) }}</div>
           </div>
-          <p v-else style="color:var(--fg3);font:400 12px var(--font-sans)">Tiada pembayaran dalam tempoh ini.</p>
+          <p v-else style="color:var(--fg3);font:400 12px var(--font-sans)">{{ t('rep_no_payments') }}</p>
         </div>
       </div>
 
@@ -164,7 +176,7 @@ function fmtRM(v) { return 'RM ' + Number(v).toLocaleString('ms-MY', { minimumFr
 
       <!-- Daily revenue -->
       <div class="card">
-        <div class="card__header"><h3 class="card__title">Pendapatan Harian</h3></div>
+        <div class="card__header"><h3 class="card__title">{{ t('rep_daily') }}</h3></div>
         <div v-if="dailyRev.length" class="daily-chart">
           <div v-for="r in dailyRev" :key="r.date" class="daily-col">
             <div class="daily-val">{{ fmtRM(r.value).replace('RM ','') }}</div>
@@ -174,27 +186,27 @@ function fmtRM(v) { return 'RM ' + Number(v).toLocaleString('ms-MY', { minimumFr
             <div class="daily-lbl">{{ r.label }}</div>
           </div>
         </div>
-        <p v-else class="empty-section">Tiada rekod pendapatan dalam tempoh ini.</p>
+        <p v-else class="empty-section">{{ t('rep_no_daily') }}</p>
       </div>
 
       <!-- Appointments by type -->
       <div class="card">
-        <div class="card__header"><h3 class="card__title">Temujanji Mengikut Jenis</h3></div>
+        <div class="card__header"><h3 class="card__title">{{ t('rep_by_type') }}</h3></div>
         <div class="card__body" style="display:flex;flex-direction:column;gap:12px">
-          <div v-if="byType.length" v-for="t in byType" :key="t.type" class="hbar-row">
-            <div class="hbar-label">{{ typeLabel[t.type] ?? t.type }}</div>
+          <div v-if="byType.length" v-for="tp in byType" :key="tp.type" class="hbar-row">
+            <div class="hbar-label">{{ typeLabel[tp.type] ?? tp.type }}</div>
             <div class="hbar-track">
-              <div class="hbar-fill" :style="{ width: barPct(t.count, maxType) }" />
+              <div class="hbar-fill" :style="{ width: barPct(tp.count, maxType) }" />
             </div>
-            <div class="hbar-val hbar-val--sm">{{ t.count }}</div>
+            <div class="hbar-val hbar-val--sm">{{ tp.count }}</div>
           </div>
-          <p v-else style="color:var(--fg3);font:400 12px var(--font-sans)">Tiada data.</p>
+          <p v-else style="color:var(--fg3);font:400 12px var(--font-sans)">{{ t('rep_no_data') }}</p>
         </div>
       </div>
 
       <!-- Appointments by status -->
       <div class="card">
-        <div class="card__header"><h3 class="card__title">Status Temujanji</h3></div>
+        <div class="card__header"><h3 class="card__title">{{ t('rep_by_status') }}</h3></div>
         <div class="card__body" style="display:flex;flex-direction:column;gap:10px">
           <div v-if="byStatus.length" v-for="s in byStatus" :key="s.status" class="status-row">
             <Badge :tone="statusTone[s.status] ?? 'neutral'" size="xs">{{ statusLabel[s.status] ?? s.status }}</Badge>
@@ -203,7 +215,7 @@ function fmtRM(v) { return 'RM ' + Number(v).toLocaleString('ms-MY', { minimumFr
             </div>
             <span class="hbar-val hbar-val--sm">{{ s.count }}</span>
           </div>
-          <p v-else style="color:var(--fg3);font:400 12px var(--font-sans)">Tiada data.</p>
+          <p v-else style="color:var(--fg3);font:400 12px var(--font-sans)">{{ t('rep_no_data') }}</p>
         </div>
       </div>
 
@@ -214,7 +226,7 @@ function fmtRM(v) { return 'RM ' + Number(v).toLocaleString('ms-MY', { minimumFr
 
       <!-- Top ICD-10 -->
       <div class="card">
-        <div class="card__header"><h3 class="card__title">Diagnosis Teratas (ICD-10)</h3></div>
+        <div class="card__header"><h3 class="card__title">{{ t('rep_top_dx') }}</h3></div>
         <div class="card__body" style="display:flex;flex-direction:column;gap:12px">
           <div v-if="topIcd.length" v-for="(d, i) in topIcd" :key="d.code" class="icd-row">
             <span class="icd-rank">{{ i + 1 }}</span>
@@ -227,7 +239,7 @@ function fmtRM(v) { return 'RM ' + Number(v).toLocaleString('ms-MY', { minimumFr
             </div>
             <div class="hbar-val hbar-val--sm">{{ d.count }}</div>
           </div>
-          <p v-else class="empty-section">Tiada rekod diagnosis dalam tempoh ini.</p>
+          <p v-else class="empty-section">{{ t('rep_no_dx') }}</p>
         </div>
       </div>
 
@@ -237,8 +249,8 @@ function fmtRM(v) { return 'RM ' + Number(v).toLocaleString('ms-MY', { minimumFr
         <!-- Pharmacy summary -->
         <div class="card">
           <div class="card__header">
-            <h3 class="card__title">Farmasi — Preskripsi</h3>
-            <Btn variant="ghost" size="sm" @click="router.visit('/pharmacy')">Semua →</Btn>
+            <h3 class="card__title">{{ t('rep_pharmacy') }}</h3>
+            <Btn variant="ghost" size="sm" @click="router.visit('/pharmacy')">{{ t('rep_all') }}</Btn>
           </div>
           <div class="card__body" style="display:flex;flex-direction:column;gap:10px">
             <div v-if="rxSummary.length" v-for="r in rxSummary" :key="r.status" class="status-row">
@@ -248,35 +260,35 @@ function fmtRM(v) { return 'RM ' + Number(v).toLocaleString('ms-MY', { minimumFr
               </div>
               <span class="hbar-val hbar-val--sm">{{ r.count }}</span>
             </div>
-            <p v-else class="empty-section">Tiada preskripsi.</p>
+            <p v-else class="empty-section">{{ t('rep_no_rx') }}</p>
           </div>
         </div>
 
         <!-- Inventory summary -->
         <div class="card">
           <div class="card__header">
-            <h3 class="card__title">Inventori</h3>
-            <Btn variant="ghost" size="sm" @click="router.visit('/inventory')">Urus →</Btn>
+            <h3 class="card__title">{{ t('rep_inventory') }}</h3>
+            <Btn variant="ghost" size="sm" @click="router.visit('/inventory')">{{ t('rep_manage') }}</Btn>
           </div>
           <div class="card__body" style="display:flex;flex-direction:column;gap:12px">
 
             <div class="inv-stats">
               <div class="inv-stat">
                 <div class="inv-stat__val">{{ invTotal }}</div>
-                <div class="inv-stat__lbl">Jumlah Item</div>
+                <div class="inv-stat__lbl">{{ t('rep_inv_total') }}</div>
               </div>
               <div class="inv-stat">
                 <div class="inv-stat__val" :style="invLow.length ? 'color:#DC2626' : 'color:var(--brand-green)'">{{ invLow.length }}</div>
-                <div class="inv-stat__lbl">Stok Rendah</div>
+                <div class="inv-stat__lbl">{{ t('rep_inv_low') }}</div>
               </div>
               <div class="inv-stat">
                 <div class="inv-stat__val inv-stat__val--mono">RM {{ Number(invValue).toFixed(0) }}</div>
-                <div class="inv-stat__lbl">Nilai Stok</div>
+                <div class="inv-stat__lbl">{{ t('rep_inv_value') }}</div>
               </div>
             </div>
 
             <div v-if="invLow.length">
-              <div class="inv-low-title">Perlu Ditambah Semula</div>
+              <div class="inv-low-title">{{ t('rep_inv_restock') }}</div>
               <div v-for="item in invLow" :key="item.name" class="inv-low-row">
                 <span class="inv-low-dot">⚠</span>
                 <span class="inv-low-name">{{ item.name }}</span>

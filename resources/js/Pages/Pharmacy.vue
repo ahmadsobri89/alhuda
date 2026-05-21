@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useForm, router, usePage } from '@inertiajs/vue3'
+import { useLocale } from '@/composables/useLocale'
 import KlinikLayout from '@/Layouts/KlinikLayout.vue'
 import Avatar from '@/Components/Clinic/Avatar.vue'
 import Badge from '@/Components/Clinic/Badge.vue'
@@ -19,6 +20,7 @@ const props = defineProps({
 
 const page  = usePage()
 const flash = computed(() => page.props.flash?.success)
+const { t } = useLocale()
 const tab   = ref('queue')
 
 // ─── History search ────────────────────────────────────────────────────────
@@ -33,7 +35,10 @@ watch(search, v => {
 
 // ─── Status helpers ────────────────────────────────────────────────────────
 const STATUS_TONE = { pending: 'orange', verifying: 'blue', ready: 'green', dispensed: 'neutral', cancelled: 'neutral' }
-const STATUS_LABEL = { pending: 'Menunggu', verifying: 'Semakan', ready: 'Sedia', dispensed: 'Dispensed', cancelled: 'Dibatal' }
+const STATUS_LABEL = computed(() => ({
+  pending: t('status_pending'), verifying: t('status_verifying'),
+  ready: t('status_ready'), dispensed: t('status_dispensed'), cancelled: t('status_cancelled'),
+}))
 
 // ─── Patient search (for form) ─────────────────────────────────────────────
 const patientSearch   = ref('')
@@ -158,14 +163,14 @@ function doDispense() {
       <Icon name="sparkle" :size="16" />
       <div>
         <div class="ai-box__title">
-          Semakan AI Ubat ·
+          {{ t('rx_ai_check') }} ·
           <span v-if="allergiesInQueue.length">
-            Alahan dikesan: {{ allergiesInQueue.join(', ') }} — preskripsi telah disemak.
+            {{ t('rx_allergy_detected', { list: allergiesInQueue.join(', ') }) }}
           </span>
-          <span v-else>Tiada interaksi kritikal dikesan.</span>
+          <span v-else>{{ t('rx_no_interaction') }}</span>
         </div>
         <div class="ai-box__body">
-          {{ queue.length }} preskripsi dalam antrian · {{ queue.filter(r=>r.status==='ready').length }} sedia untuk dispens.
+          {{ t('rx_ai_summary', { total: queue.length, ready: queue.filter(r=>r.status==='ready').length }) }}
         </div>
       </div>
     </div>
@@ -173,21 +178,21 @@ function doDispense() {
     <!-- Tabs + New Rx button -->
     <div class="row">
       <div class="tabs">
-        <button :class="['tab', tab==='queue'   ? 'active':'']" @click="tab='queue'">Antrian Ubat ({{ queue.length }})</button>
-        <button :class="['tab', tab==='history' ? 'active':'']" @click="tab='history'">Sejarah</button>
+        <button :class="['tab', tab==='queue'   ? 'active':'']" @click="tab='queue'">{{ t('rx_queue_tab', { n: queue.length }) }}</button>
+        <button :class="['tab', tab==='history' ? 'active':'']" @click="tab='history'">{{ t('rx_history_tab') }}</button>
       </div>
       <div class="spacer"></div>
-      <Btn variant="primary" @click="openCreate"><Icon name="plus" :size="14" /> Preskripsi Baru</Btn>
+      <Btn variant="primary" @click="openCreate"><Icon name="plus" :size="14" /> {{ t('rx_new') }}</Btn>
     </div>
 
     <!-- ── Queue Tab ────────────────────────────────────────────────────── -->
     <div v-if="tab==='queue'" class="card" style="overflow:hidden">
       <div class="card__header">
-        <h3 class="card__title">Antrian Dispensing</h3>
-        <p class="card__sub">{{ queue.length }} preskripsi menunggu</p>
+        <h3 class="card__title">{{ t('rx_queue_title') }}</h3>
+        <p class="card__sub">{{ t('rx_queue_waiting', { n: queue.length }) }}</p>
       </div>
       <div class="table__head" style="grid-template-columns:130px 1.8fr 60px 1.2fr 110px 110px 190px">
-        <div>No. Rx</div><div>Pesakit</div><div>Ubat</div><div>Doktor</div><div>Masa Tunggu</div><div>Status</div><div></div>
+        <div>{{ t('rx_col_no') }}</div><div>{{ t('rx_col_patient') }}</div><div>{{ t('rx_col_drug') }}</div><div>{{ t('rx_col_doctor') }}</div><div>{{ t('rx_col_wait') }}</div><div>{{ t('rx_col_status') }}</div><div></div>
       </div>
       <div
         v-for="rx in queue" :key="rx.id"
@@ -207,15 +212,15 @@ function doDispense() {
         <div class="mono" style="font:500 12px var(--font-mono);color:var(--fg3)">{{ rx.wait_time }}</div>
         <div><Badge :tone="STATUS_TONE[rx.status]">{{ STATUS_LABEL[rx.status] }}</Badge></div>
         <div class="row" style="gap:4px;justify-content:flex-end">
-          <Btn variant="ghost" size="sm" @click="viewRx = rx">Lihat</Btn>
-          <Btn v-if="rx.status==='pending'"    variant="ghost"   size="sm" @click="setStatus(rx,'verifying')">Semak</Btn>
-          <Btn v-if="rx.status==='verifying'"  variant="ghost"   size="sm" @click="setStatus(rx,'ready')">Sedia</Btn>
-          <Btn v-if="rx.status==='ready'"      variant="primary" size="sm" @click="confirmDispense(rx)">Dispens →</Btn>
-          <Btn v-if="rx.status!=='dispensed'"  variant="ghost"   size="sm" style="color:var(--fg3)" @click="setStatus(rx,'cancelled')">Batal</Btn>
+          <Btn variant="ghost" size="sm" @click="viewRx = rx">{{ t('rx_view') }}</Btn>
+          <Btn v-if="rx.status==='pending'"    variant="ghost"   size="sm" @click="setStatus(rx,'verifying')">{{ t('rx_check') }}</Btn>
+          <Btn v-if="rx.status==='verifying'"  variant="ghost"   size="sm" @click="setStatus(rx,'ready')">{{ t('rx_ready') }}</Btn>
+          <Btn v-if="rx.status==='ready'"      variant="primary" size="sm" @click="confirmDispense(rx)">{{ t('rx_dispense') }}</Btn>
+          <Btn v-if="rx.status!=='dispensed'"  variant="ghost"   size="sm" style="color:var(--fg3)" @click="setStatus(rx,'cancelled')">{{ t('rx_cancel') }}</Btn>
         </div>
       </div>
       <div v-if="!queue.length" style="padding:32px;text-align:center;color:var(--fg3);font:500 13px var(--font-sans)">
-        Antrian kosong — tiada preskripsi menunggu.
+        {{ t('rx_queue_empty') }}
       </div>
     </div>
 
@@ -223,7 +228,7 @@ function doDispense() {
     <div v-if="tab==='history'">
       <div class="row">
         <div style="position:relative;flex:1;max-width:360px">
-          <input v-model="search" class="input" placeholder="Cari No. Rx atau nama pesakit…" style="padding-left:36px" />
+          <input v-model="search" class="input" :placeholder="t('rx_history_search_ph')" style="padding-left:36px" />
           <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--fg3)">
             <Icon name="search" :size="15" />
           </span>
@@ -231,7 +236,7 @@ function doDispense() {
       </div>
       <div class="card" style="overflow:hidden">
         <div class="table__head" style="grid-template-columns:130px 1.8fr 60px 1.2fr 150px 100px 120px">
-          <div>No. Rx</div><div>Pesakit</div><div>Ubat</div><div>Doktor</div><div>Masa</div><div>Status</div><div></div>
+          <div>{{ t('rx_col_no') }}</div><div>{{ t('rx_col_patient') }}</div><div>{{ t('rx_col_drug') }}</div><div>{{ t('rx_col_doctor') }}</div><div>{{ t('rx_col_wait') }}</div><div>{{ t('rx_col_status') }}</div><div></div>
         </div>
         <div
           v-for="rx in history.data" :key="rx.id"
@@ -251,12 +256,12 @@ function doDispense() {
           </div>
           <div><Badge :tone="STATUS_TONE[rx.status]">{{ STATUS_LABEL[rx.status] }}</Badge></div>
           <div class="row" style="gap:4px">
-            <Btn variant="ghost" size="sm" @click="viewRx = rx">Lihat</Btn>
+            <Btn variant="ghost" size="sm" @click="viewRx = rx">{{ t('rx_view') }}</Btn>
             <Btn variant="ghost" size="sm" style="color:var(--brand-red)" @click="deleteTarget = rx">⊗</Btn>
           </div>
         </div>
         <div v-if="!history.data?.length" style="padding:32px;text-align:center;color:var(--fg3);font:500 13px var(--font-sans)">
-          Tiada rekod sejarah.
+          {{ t('rx_no_history') }}
         </div>
         <!-- Pagination -->
         <div v-if="history.last_page > 1" class="pagination">
@@ -303,16 +308,16 @@ function doDispense() {
 
           <!-- Meta -->
           <div class="info-grid" style="margin-bottom:14px">
-            <div class="info-row"><span class="info-label">Doktor</span><span class="info-val">{{ viewRx.prescribing_doctor }}</span></div>
-            <div class="info-row"><span class="info-label">Masa</span><span class="info-val mono">{{ viewRx.created_at }}</span></div>
-            <div v-if="viewRx.dispensed_by" class="info-row"><span class="info-label">Dispens oleh</span><span class="info-val">{{ viewRx.dispensed_by }}</span></div>
-            <div v-if="viewRx.dispensed_at" class="info-row"><span class="info-label">Masa Dispens</span><span class="info-val mono">{{ viewRx.dispensed_at }}</span></div>
+            <div class="info-row"><span class="info-label">{{ t('rx_draw_doctor') }}</span><span class="info-val">{{ viewRx.prescribing_doctor }}</span></div>
+            <div class="info-row"><span class="info-label">{{ t('rx_draw_time') }}</span><span class="info-val mono">{{ viewRx.created_at }}</span></div>
+            <div v-if="viewRx.dispensed_by" class="info-row"><span class="info-label">{{ t('rx_draw_dispensed_by') }}</span><span class="info-val">{{ viewRx.dispensed_by }}</span></div>
+            <div v-if="viewRx.dispensed_at" class="info-row"><span class="info-label">{{ t('rx_draw_dispensed_at') }}</span><span class="info-val mono">{{ viewRx.dispensed_at }}</span></div>
           </div>
 
           <div class="hr" style="margin:14px 0"></div>
 
           <!-- Drug items -->
-          <div class="drow-section-title">Senarai Ubat ({{ viewRx.items.length }} item)</div>
+          <div class="drow-section-title">{{ t('rx_draw_drugs', { n: viewRx.items.length }) }}</div>
           <div class="drug-list">
             <div v-for="(item, i) in viewRx.items" :key="i" class="drug-card">
               <div class="drug-card__name">{{ item.drug_name }}</div>
@@ -322,14 +327,14 @@ function doDispense() {
                 <span v-if="item.duration"> · {{ item.duration }}</span>
               </div>
               <div class="drug-card__footer">
-                <span class="drug-card__qty">Qty: {{ item.quantity }}</span>
+                <span class="drug-card__qty">{{ t('rx_draw_qty', { n: item.quantity }) }}</span>
                 <span v-if="item.instructions" class="drug-card__instr">{{ item.instructions }}</span>
               </div>
             </div>
           </div>
 
           <div v-if="viewRx.notes" style="margin-top:14px">
-            <div class="drow-section-title">Nota</div>
+            <div class="drow-section-title">{{ t('rx_draw_notes') }}</div>
             <p style="font:400 12.5px var(--font-sans);color:var(--fg2);line-height:1.6;margin:0">{{ viewRx.notes }}</p>
           </div>
 
@@ -338,14 +343,14 @@ function doDispense() {
           <!-- Actions -->
           <div class="row" style="gap:8px;flex-wrap:wrap">
             <template v-if="viewRx.status === 'pending'">
-              <Btn variant="secondary" style="flex:1" @click="setStatus(viewRx,'verifying');viewRx=null">Semak Preskripsi</Btn>
-              <Btn variant="ghost" size="sm" @click="openEdit(viewRx);viewRx=null">Edit</Btn>
+              <Btn variant="secondary" style="flex:1" @click="setStatus(viewRx,'verifying');viewRx=null">{{ t('rx_semak') }}</Btn>
+              <Btn variant="ghost" size="sm" @click="openEdit(viewRx);viewRx=null">{{ t('btn_edit') }}</Btn>
             </template>
             <template v-if="viewRx.status === 'verifying'">
-              <Btn variant="secondary" style="flex:1" @click="setStatus(viewRx,'ready');viewRx=null">Tandakan Sedia</Btn>
+              <Btn variant="secondary" style="flex:1" @click="setStatus(viewRx,'ready');viewRx=null">{{ t('rx_tandakan_sedia') }}</Btn>
             </template>
             <template v-if="viewRx.status === 'ready'">
-              <Btn variant="primary" style="flex:1" @click="confirmDispense(viewRx);viewRx=null">Dispens →</Btn>
+              <Btn variant="primary" style="flex:1" @click="confirmDispense(viewRx);viewRx=null">{{ t('rx_dispense') }}</Btn>
             </template>
           </div>
         </div>
@@ -358,21 +363,21 @@ function doDispense() {
     <div v-if="showModal" class="modal-backdrop" @click.self="closeModal">
       <div class="modal modal--xl">
         <div class="modal__header">
-          <h3 class="modal__title">{{ editingRx ? 'Edit Preskripsi · ' + editingRx.rx_number : 'Preskripsi Baru' }}</h3>
+          <h3 class="modal__title">{{ editingRx ? t('rx_modal_edit') + ' · ' + editingRx.rx_number : t('rx_modal_create') }}</h3>
           <button class="modal__close" @click="closeModal">✕</button>
         </div>
         <form @submit.prevent="submitRx" class="modal__body">
 
           <!-- Patient + Doctor -->
-          <div class="modal-section-title">Maklumat Preskripsi</div>
+          <div class="modal-section-title">{{ t('rx_sec_info') }}</div>
           <div class="form-grid-2" style="margin-bottom:14px">
             <div class="field">
-              <label class="field__label">Pesakit <span class="req">*</span></label>
+              <label class="field__label">{{ t('rx_lbl_patient') }} <span class="req">*</span></label>
               <div style="position:relative">
                 <input
                   v-model="patientSearch"
                   class="input"
-                  placeholder="Cari nama, IC, atau ID pesakit…"
+                  :placeholder="t('bill_ph_patient')"
                   @input="patientDropdown=true"
                   @focus="patientDropdown=true"
                   autocomplete="off"
@@ -393,21 +398,21 @@ function doDispense() {
               <span v-if="rxForm.errors.patient_id" class="field__error">{{ rxForm.errors.patient_id }}</span>
             </div>
             <div class="field">
-              <label class="field__label">Nama Doktor <span class="req">*</span></label>
+              <label class="field__label">{{ t('rx_lbl_doctor') }} <span class="req">*</span></label>
               <input v-model="rxForm.prescribing_doctor" class="input" placeholder="Dr. Nama" />
               <span v-if="rxForm.errors.prescribing_doctor" class="field__error">{{ rxForm.errors.prescribing_doctor }}</span>
             </div>
           </div>
 
           <!-- Drug items -->
-          <div class="modal-section-title">Senarai Ubat</div>
+          <div class="modal-section-title">{{ t('rx_sec_drugs') }}</div>
           <div class="drug-items-header">
-            <span style="flex:2">Nama Ubat</span>
-            <span style="flex:1">Dos</span>
-            <span style="flex:1.5">Kekerapan</span>
-            <span style="flex:1">Tempoh</span>
-            <span style="width:60px">Kuantiti</span>
-            <span style="flex:1.2">Arahan</span>
+            <span style="flex:2">{{ t('rx_lbl_drug') }}</span>
+            <span style="flex:1">{{ t('rx_lbl_dose') }}</span>
+            <span style="flex:1.5">{{ t('rx_lbl_freq') }}</span>
+            <span style="flex:1">{{ t('rx_lbl_duration') }}</span>
+            <span style="width:60px">{{ t('rx_lbl_qty') }}</span>
+            <span style="flex:1.2">{{ t('rx_lbl_instruction') }}</span>
             <span style="width:32px"></span>
           </div>
           <div v-for="(item, i) in rxForm.items" :key="i" class="drug-item-row">
@@ -437,18 +442,18 @@ function doDispense() {
           </div>
           <span v-if="rxForm.errors.items" class="field__error">{{ rxForm.errors.items }}</span>
 
-          <button type="button" class="add-item-btn" @click="addItem">+ Tambah Ubat</button>
+          <button type="button" class="add-item-btn" @click="addItem">{{ t('rx_add_drug') }}</button>
 
           <!-- Notes -->
           <div class="field" style="margin-top:14px">
-            <label class="field__label">Nota Tambahan</label>
-            <textarea v-model="rxForm.notes" class="input" rows="2" placeholder="Nota untuk farmasis…" style="resize:vertical"></textarea>
+            <label class="field__label">{{ t('rx_lbl_notes') }}</label>
+            <textarea v-model="rxForm.notes" class="input" rows="2" :placeholder="t('rx_notes_ph')" style="resize:vertical"></textarea>
           </div>
 
           <div class="modal__footer">
-            <Btn type="button" variant="secondary" @click="closeModal">Batal</Btn>
+            <Btn type="button" variant="secondary" @click="closeModal">{{ t('btn_cancel') }}</Btn>
             <Btn type="submit" variant="primary" :disabled="rxForm.processing">
-              {{ editingRx ? 'Kemaskini Preskripsi' : 'Cipta Preskripsi' }}
+              {{ editingRx ? t('rx_modal_edit_btn') : t('rx_modal_create_btn') }}
             </Btn>
           </div>
         </form>
@@ -461,17 +466,17 @@ function doDispense() {
     <div v-if="dispenseTarget" class="modal-backdrop" @click.self="dispenseTarget=null">
       <div class="modal modal--sm">
         <div class="modal__header">
-          <h3 class="modal__title">Sahkan Dispensing</h3>
+          <h3 class="modal__title">{{ t('rx_dispense_confirm') }}</h3>
           <button class="modal__close" @click="dispenseTarget=null">✕</button>
         </div>
         <div class="modal__body">
           <div style="font:500 13px var(--font-sans);color:var(--fg2);line-height:1.6;margin-bottom:14px">
-            Dispens preskripsi <strong class="mono">{{ dispenseTarget.rx_number }}</strong>
-            kepada <strong>{{ dispenseTarget.patient_name }}</strong>?
-            <br/>{{ dispenseTarget.items.length }} item ubat akan ditanda sebagai telah diserahkan.
+            {{ t('rx_dispense_body', { patient: dispenseTarget.patient_name }) }}
+            <strong class="mono">{{ dispenseTarget.rx_number }}</strong>
+            <br/>{{ t('rx_dispense_items', { n: dispenseTarget.items.length }) }}
           </div>
           <div v-if="dispenseTarget.patient_allergies" class="allergy-alert" style="margin-bottom:14px">
-            ⚠ Alahan pesakit: <strong>{{ dispenseTarget.patient_allergies }}</strong>
+            ⚠ {{ t('rx_patient_allergy', { list: dispenseTarget.patient_allergies }) }}
           </div>
           <!-- Drug summary -->
           <div style="background:var(--bg-soft);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:6px">
@@ -481,8 +486,8 @@ function doDispense() {
             </div>
           </div>
           <div class="modal__footer">
-            <Btn variant="secondary" @click="dispenseTarget=null">Batal</Btn>
-            <Btn variant="primary" @click="doDispense">Sahkan Dispens</Btn>
+            <Btn variant="secondary" @click="dispenseTarget=null">{{ t('btn_cancel') }}</Btn>
+            <Btn variant="primary" @click="doDispense">{{ t('rx_confirm_dispense') }}</Btn>
           </div>
         </div>
       </div>
@@ -494,16 +499,16 @@ function doDispense() {
     <div v-if="deleteTarget" class="modal-backdrop" @click.self="deleteTarget=null">
       <div class="modal modal--sm">
         <div class="modal__header">
-          <h3 class="modal__title" style="color:var(--brand-red)">Padam Preskripsi</h3>
+          <h3 class="modal__title" style="color:var(--brand-red)">{{ t('rx_del_title') }}</h3>
           <button class="modal__close" @click="deleteTarget=null">✕</button>
         </div>
         <div class="modal__body">
           <p style="font:400 13.5px var(--font-sans);color:var(--fg2);line-height:1.6;margin:0 0 16px">
-            Padam preskripsi <strong class="mono">{{ deleteTarget.rx_number }}</strong>? Tindakan ini tidak boleh dibatalkan.
+            {{ t('rx_del_body', { rx: deleteTarget.rx_number }) }}
           </p>
           <div class="modal__footer">
-            <Btn variant="secondary" @click="deleteTarget=null">Batal</Btn>
-            <Btn variant="primary" style="background:var(--brand-red)" @click="doDelete">Ya, Padam</Btn>
+            <Btn variant="secondary" @click="deleteTarget=null">{{ t('btn_cancel') }}</Btn>
+            <Btn variant="primary" style="background:var(--brand-red)" @click="doDelete">{{ t('rx_del_confirm') }}</Btn>
           </div>
         </div>
       </div>

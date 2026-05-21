@@ -3,40 +3,28 @@ import { computed } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import Icon from '@/Components/Clinic/Icon.vue'
 import Avatar from '@/Components/Clinic/Avatar.vue'
+import { useLocale } from '@/composables/useLocale'
 
 const page = usePage()
 const currentRoute = computed(() => page.props.currentRoute || 'dashboard')
+const { t, locale, switchLocale } = useLocale()
 
-const navItems = [
-  { id: 'dashboard',     icon: 'home',     label: 'Dashboard' },
-  { id: 'queue',         icon: 'queue',    label: 'Queue',              count: 12 },
-  { id: 'register',      icon: 'plus',     label: 'Register Patient', routeName: 'register-patient' },
-  { id: 'patients',      icon: 'users',    label: 'Patients' },
-  { id: 'appointments',  icon: 'calendar', label: 'Appointments' },
-  { id: 'emr',           icon: 'emr',      label: 'EMR / Consultation', badge: '3' },
-  { id: 'pharmacy',      icon: 'pill',     label: 'Pharmacy' },
-  { id: 'inventory',     icon: 'flask',    label: 'Inventory' },
-  { id: 'billing',       icon: 'invoice',  label: 'Billing' },
-  { id: 'reports',       icon: 'chart',    label: 'Reports' },
-  { id: 'settings',      icon: 'settings', label: 'Settings' },
-]
+const navItems = computed(() => [
+  { id: 'dashboard',     icon: 'home',     label: t('nav_dashboard') },
+  { id: 'queue',         icon: 'queue',    label: t('nav_queue'),         count: 12 },
+  { id: 'register',      icon: 'plus',     label: t('nav_register'),      routeName: 'register-patient' },
+  { id: 'patients',      icon: 'users',    label: t('nav_patients') },
+  { id: 'appointments',  icon: 'calendar', label: t('nav_appointments') },
+  { id: 'emr',           icon: 'emr',      label: t('nav_emr'),           badge: '3' },
+  { id: 'pharmacy',      icon: 'pill',     label: t('nav_pharmacy') },
+  { id: 'inventory',     icon: 'flask',    label: t('nav_inventory') },
+  { id: 'billing',       icon: 'invoice',  label: t('nav_billing') },
+  { id: 'reports',       icon: 'chart',    label: t('nav_reports') },
+  { id: 'settings',      icon: 'settings', label: t('nav_settings') },
+])
 
-const titles = {
-  dashboard:    ['Dashboard',                       'Tuesday, 14 May 2026 · Dr. Aiman Rashid'],
-  queue:        ['Patient Queue',                   '12 waiting · 2 urgent · avg wait 14 min'],
-  register:     ['Register New Patient',            'MyKad-driven smart intake'],
-  emr:          ['Consultation · Aminah binti Hassan', 'Session #2026-00482 · Started 10:42 AM'],
-  patients:     ['Registered Patients',             '1,247 active patients'],
-  appointments: ['Appointments',                    'Week of 12–17 May 2026'],
-  pharmacy:     ['Pharmacy',                        '4 pending prescriptions · AI drug check active'],
-  inventory:    ['Drug Inventory',                  '284 SKUs · 12 low-stock · 4 expiring within 90d'],
-  billing:      ['Billing & Invoice',               'Invoice INV-2026-001847'],
-  reports:      ['Reports & Analytics',             'Executive dashboard · May 2026'],
-  settings:     ['Settings & Security',             'RBAC · MFA · Audit · Backup'],
-}
-
-const title = computed(() => titles[currentRoute.value]?.[0] || '')
-const subtitle = computed(() => titles[currentRoute.value]?.[1] || '')
+const title    = computed(() => t(`page_title_${currentRoute.value}`))
+const subtitle = computed(() => page.props.pageSubtitle ?? '')
 
 function navigate(item) {
   router.visit(route(item.routeName || item.id))
@@ -70,6 +58,9 @@ function navigate(item) {
           <div style="font:600 12.5px var(--font-sans); color: var(--fg1)">Dr. Aiman Rashid</div>
           <div style="font:500 11px var(--font-mono); color: var(--fg3)">MMC-87231 · Doctor</div>
         </div>
+        <button class="logout-btn" :title="t('layout_logout')" @click="router.post('/logout')">
+          <Icon name="logout" :size="16" />
+        </button>
       </div>
     </aside>
 
@@ -83,8 +74,11 @@ function navigate(item) {
         </div>
         <div class="topbar__search">
           <Icon name="search" :size="15" />
-          <input placeholder="Search patient, IC, or EMR code…" />
+          <input :placeholder="t('layout_search_placeholder')" />
         </div>
+        <button class="lang-btn" @click="switchLocale" :title="locale === 'ms' ? 'Switch to English' : 'Tukar ke Bahasa Malaysia'">
+          {{ locale === 'ms' ? 'EN' : 'BM' }}
+        </button>
         <button class="topbar__bell"><Icon name="bell" :size="17" /></button>
       </div>
 
