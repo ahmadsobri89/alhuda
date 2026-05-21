@@ -8,6 +8,7 @@ use App\Http\Controllers\BillingController;
 use App\Http\Controllers\EMRController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\MCController;
+use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\PharmacyController;
 use App\Http\Controllers\ProfileController;
@@ -49,6 +50,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/emr/{visit}/mc',  [MCController::class, 'store'])->name('mc.store');
     Route::delete('/mc/{mc}',       [MCController::class, 'destroy'])->name('mc.destroy');
     Route::get('/mc/{mc}/print',    [MCController::class, 'print'])->name('mc.print');
+    // Referral Letters
+    Route::post('/emr/{visit}/referral',       [ReferralController::class, 'store'])->name('referral.store');
+    Route::delete('/referral/{referral}',      [ReferralController::class, 'destroy'])->name('referral.destroy');
+    Route::get('/referral/{referral}/print',   [ReferralController::class, 'print'])->name('referral.print');
     // Pharmacy — CRUD
     Route::get('/pharmacy',                                    [PharmacyController::class, 'index'])->name('pharmacy');
     Route::post('/pharmacy/prescriptions',                     [PharmacyController::class, 'store'])->name('pharmacy.store');

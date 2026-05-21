@@ -188,6 +188,28 @@ function deleteMc(mcId) {
   router.delete(`/mc/${mcId}`, { preserveScroll: true, onSuccess: () => { showMcDelId.value = null } })
 }
 
+/* ── Referral Letter ──────────────────────────────── */
+const showRefForm  = ref(false)
+const showRefDelId = ref(null)
+const refForm      = useForm({
+  referred_to:      '',
+  referred_to_dept: '',
+  urgency:          'routine',
+  reason:           '',
+  clinical_summary: '',
+  relevant_history: '',
+})
+
+function issueReferral() {
+  refForm.post(`/emr/${props.selected.id}/referral`, {
+    preserveScroll: true,
+    onSuccess: () => { refForm.reset(); refForm.urgency = 'routine'; showRefForm.value = false },
+  })
+}
+function deleteReferral(refId) {
+  router.delete(`/referral/${refId}`, { preserveScroll: true, onSuccess: () => { showRefDelId.value = null } })
+}
+
 /* ── Close / Delete visit ─────────────────────────── */
 const showCloseConfirm  = ref(false)
 const showDeleteConfirm = ref(false)
@@ -530,6 +552,81 @@ const soapHints = computed(() => ({
               </div>
             </div>
 
+            <!-- Referral Letter -->
+            <div class="card">
+              <div class="card__header">
+                <h3 class="card__title">{{ t('ref_section') }}</h3>
+                <div class="spacer"></div>
+                <Btn variant="ghost" size="sm" @click="showRefForm = !showRefForm">
+                  {{ showRefForm ? t('ref_cancel') : t('ref_issue_btn') }}
+                </Btn>
+              </div>
+
+              <!-- Issue Referral form -->
+              <div v-if="showRefForm" class="card__body" style="border-bottom:1px solid var(--border)">
+                <div class="field" style="margin-bottom:8px">
+                  <label class="field__label">{{ t('ref_lbl_to') }} *</label>
+                  <input v-model="refForm.referred_to" type="text" class="input" :placeholder="t('ref_ph_to')" maxlength="255" />
+                  <span v-if="refForm.errors.referred_to" class="field__error">{{ refForm.errors.referred_to }}</span>
+                </div>
+                <div class="field" style="margin-bottom:8px">
+                  <label class="field__label">{{ t('ref_lbl_dept') }}</label>
+                  <input v-model="refForm.referred_to_dept" type="text" class="input" :placeholder="t('ref_ph_dept')" maxlength="255" />
+                </div>
+                <div class="field" style="margin-bottom:8px">
+                  <label class="field__label">{{ t('ref_lbl_urgency') }}</label>
+                  <select v-model="refForm.urgency" class="select">
+                    <option value="routine">{{ t('ref_urgency_routine') }}</option>
+                    <option value="urgent">{{ t('ref_urgency_urgent') }}</option>
+                    <option value="emergency">{{ t('ref_urgency_emergency') }}</option>
+                  </select>
+                </div>
+                <div class="field" style="margin-bottom:8px">
+                  <label class="field__label">{{ t('ref_lbl_reason') }} *</label>
+                  <textarea v-model="refForm.reason" class="input" rows="3" :placeholder="t('ref_ph_reason')" maxlength="1000" style="resize:vertical"></textarea>
+                  <span v-if="refForm.errors.reason" class="field__error">{{ refForm.errors.reason }}</span>
+                </div>
+                <div class="field" style="margin-bottom:8px">
+                  <label class="field__label">{{ t('ref_lbl_summary') }}</label>
+                  <textarea v-model="refForm.clinical_summary" class="input" rows="3" :placeholder="t('ref_ph_summary')" maxlength="2000" style="resize:vertical"></textarea>
+                </div>
+                <div class="field" style="margin-bottom:10px">
+                  <label class="field__label">{{ t('ref_lbl_history') }}</label>
+                  <textarea v-model="refForm.relevant_history" class="input" rows="2" :placeholder="t('ref_ph_history')" maxlength="2000" style="resize:vertical"></textarea>
+                </div>
+                <Btn variant="primary" size="sm" style="width:100%;justify-content:center"
+                     :disabled="refForm.processing || !refForm.referred_to || !refForm.reason"
+                     @click="issueReferral">
+                  {{ refForm.processing ? t('ref_submitting') : t('ref_issue_btn') }}
+                </Btn>
+              </div>
+
+              <!-- Referral list -->
+              <div v-if="selected.referrals?.length">
+                <div v-for="ref in selected.referrals" :key="ref.id"
+                     style="padding:10px 14px;border-top:1px solid var(--border)">
+                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                    <span style="font:700 11px var(--font-mono);color:#1d4ed8">{{ ref.ref_number }}</span>
+                    <span :class="['ref-urgency-chip', `ref-urgency-${ref.urgency}`]">{{ t(`ref_urgency_${ref.urgency}`) }}</span>
+                    <span style="font:500 10px var(--font-sans);color:var(--fg3);margin-left:auto">{{ ref.issue_date }}</span>
+                  </div>
+                  <div style="font:600 12px var(--font-sans);color:var(--fg1);margin-bottom:2px">{{ ref.referred_to }}</div>
+                  <div v-if="ref.referred_to_dept" style="font:400 11px var(--font-sans);color:var(--fg2);margin-bottom:2px">{{ ref.referred_to_dept }}</div>
+                  <div style="font:400 11px var(--font-sans);color:var(--fg2);margin-bottom:6px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">{{ ref.reason }}</div>
+                  <div style="display:flex;gap:6px">
+                    <a :href="`/referral/${ref.id}/print`" target="_blank" class="mc-print-btn" style="color:#1d4ed8;border-color:#93c5fd;background:#eff6ff">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                      {{ t('ref_print') }}
+                    </a>
+                    <button class="mc-del-btn" @click="showRefDelId = ref.id">{{ t('ref_delete') }}</button>
+                  </div>
+                </div>
+              </div>
+              <div v-else style="padding:16px 14px;font:500 12px var(--font-sans);color:var(--fg3)">
+                {{ t('ref_no_records') }}
+              </div>
+            </div>
+
             <!-- Medical Certificate -->
             <div class="card">
               <div class="card__header">
@@ -668,6 +765,27 @@ const soapHints = computed(() => ({
               </Btn>
             </div>
           </form>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- ── Referral Delete confirm ───────────────────────── -->
+    <Teleport to="body">
+      <div v-if="showRefDelId !== null" class="modal-backdrop" @click.self="showRefDelId = null">
+        <div class="modal modal--sm">
+          <div class="modal__header">
+            <h3 class="modal__title" style="color:var(--brand-red)">{{ t('ref_del_confirm') }}</h3>
+            <button class="modal__close" @click="showRefDelId = null">✕</button>
+          </div>
+          <div class="modal__body">
+            <p style="font:400 14px var(--font-sans);color:var(--fg2);margin:0 0 16px">
+              {{ t('ref_del_body', { ref_number: selected?.referrals?.find(r => r.id === showRefDelId)?.ref_number }) }}
+            </p>
+            <div class="modal__footer">
+              <Btn variant="secondary" @click="showRefDelId = null">{{ t('btn_cancel') }}</Btn>
+              <Btn variant="primary" style="background:var(--brand-red)" @click="deleteReferral(showRefDelId)">{{ t('ref_del_yes') }}</Btn>
+            </div>
+          </div>
         </div>
       </div>
     </Teleport>
@@ -883,4 +1001,13 @@ const soapHints = computed(() => ({
   color: var(--fg3); font: 500 11px var(--font-sans); cursor: pointer;
 }
 .mc-del-btn:hover { border-color: var(--brand-red); color: var(--brand-red); }
+
+/* Referral urgency chips */
+.ref-urgency-chip {
+  display: inline-block; padding: 1px 7px; border-radius: 999px;
+  font: 600 9.5px var(--font-sans); text-transform: uppercase; letter-spacing: .04em;
+}
+.ref-urgency-routine   { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
+.ref-urgency-urgent    { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
+.ref-urgency-emergency { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; }
 </style>

@@ -43,7 +43,7 @@ class EMRController extends Controller
 
         $selected = null;
         if ($request->filled('visit')) {
-            $v = Visit::with(['patient', 'vitals', 'diagnoses', 'medicalCertificates'])->find($request->visit);
+            $v = Visit::with(['patient', 'vitals', 'diagnoses', 'medicalCertificates', 'referrals'])->find($request->visit);
             if ($v) $selected = $this->formatVisit($v);
         }
 
@@ -111,6 +111,16 @@ class EMRController extends Controller
                 'diagnosis'  => $mc->diagnosis,
                 'issued_by'  => $mc->issued_by,
                 'issue_date' => $mc->issue_date->format('d/m/Y'),
+            ])->values()->toArray(),
+            'referrals' => $v->referrals->map(fn ($r) => [
+                'id'               => $r->id,
+                'ref_number'       => $r->ref_number,
+                'referred_to'      => $r->referred_to,
+                'referred_to_dept' => $r->referred_to_dept,
+                'urgency'          => $r->urgency,
+                'reason'           => $r->reason,
+                'issued_by'        => $r->issued_by,
+                'issue_date'       => $r->issue_date->format('d/m/Y'),
             ])->values()->toArray(),
         ];
     }

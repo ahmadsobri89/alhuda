@@ -51,4 +51,9 @@ class Visit extends Model
     {
         return $this->hasMany(MedicalCertificate::class)->orderByDesc('id');
     }
+
+    public function referrals(): HasMany
+    {
+        return $this->hasMany(ReferralLetter::class)->orderByDesc('id');
+    }
 }
