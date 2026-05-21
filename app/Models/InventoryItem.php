@@ -3,11 +3,14 @@
 namespace App\Models;
 
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class InventoryItem extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'name', 'generic_name', 'form', 'category', 'classification',
         'lot_number', 'expiry_date', 'supplier',

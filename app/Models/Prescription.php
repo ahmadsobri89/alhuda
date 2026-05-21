@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Prescription extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'rx_number', 'patient_id', 'prescribing_doctor', 'user_id',
         'status', 'notes', 'drug_check_passed', 'drug_check_notes',

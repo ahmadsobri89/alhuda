@@ -68,7 +68,7 @@ class DashboardController extends Controller
         $alerts = collect();
 
         // Low-stock inventory
-        $lowStock = InventoryItem::whereColumn('stock_qty', '<=', 'reorder_point')->count();
+        $lowStock = InventoryItem::whereColumn('stock_quantity', '<=', 'reorder_level')->count();
         if ($lowStock) {
             $alerts->push(['type'=>'stock','title'=>'Stok Rendah','msg'=>$lowStock.' item perlu ditambah semula','tone'=>'orange']);
         }
