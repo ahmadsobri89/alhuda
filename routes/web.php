@@ -66,6 +66,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/billing/{invoice}/pay',                [BillingController::class, 'pay'])->name('billing.pay');
     Route::patch('/billing/{invoice}/cancel',             [BillingController::class, 'cancel'])->name('billing.cancel');
     Route::delete('/billing/{invoice}',                   [BillingController::class, 'destroy'])->name('billing.destroy');
+    Route::get('/billing/{invoice}/print',                [BillingController::class, 'print'])->name('billing.print');
     Route::get('/reports', [ReportsController::class, 'index'])->name('reports');
 
     // Settings — CRUD

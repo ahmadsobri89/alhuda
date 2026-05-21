@@ -203,4 +203,11 @@ class BillingController extends Controller
         AuditLog::record('billing.delete', $info);
         return redirect()->route('billing')->with('success', 'Invois dipadam.');
     }
+
+    public function print(Invoice $invoice)
+    {
+        $invoice->load(['patient', 'items']);
+        AuditLog::record('billing.print', "{$invoice->patient->name} · {$invoice->invoice_number}");
+        return view('billing.print', compact('invoice'));
+    }
 }

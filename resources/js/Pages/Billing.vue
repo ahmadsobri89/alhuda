@@ -250,6 +250,12 @@ function submitNew () {
             <div class="inv-hd-sub">{{ selected.patient_name }} · {{ selected.patient_ic }} · {{ selected.invoice_date }}</div>
           </div>
           <div class="inv-hd-actions">
+            <a :href="`/billing/${selected.id}/print`" target="_blank" class="print-btn" :title="t('bill_print')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
+              </svg>
+              {{ t('bill_print') }}
+            </a>
             <Btn v-if="selected.status!=='paid'&&selected.status!=='cancelled'"
               variant="ghost" size="sm" style="color:#DC2626" @click="showCancelModal=true">{{ t('bill_cancel') }}</Btn>
             <Btn v-if="selected.status!=='paid'" variant="ghost" size="sm" @click="showDeleteModal=true">{{ t('bill_delete') }}</Btn>
@@ -649,6 +655,17 @@ function submitNew () {
 .paid-box__title { font: 700 12px var(--font-sans); color: #16A34A; }
 .paid-box__meta  { font: 500 11px var(--font-sans); color: var(--fg3); margin-top: 3px; }
 .cancelled-box { background: #FEF2F2; border: 1px solid #FECACA; border-radius: 8px; padding: 12px; text-align: center; font: 700 12px var(--font-sans); color: #DC2626; }
+
+/* print btn */
+.print-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 12px; border-radius: 7px;
+  border: 1.5px solid var(--border);
+  background: #fff; color: var(--fg2);
+  font: 600 12px var(--font-sans);
+  text-decoration: none; cursor: pointer; transition: all .12s;
+}
+.print-btn:hover { border-color: var(--brand-green); color: var(--brand-green); background: var(--brand-green-light); }
 
 /* remove btn */
 .rm-btn {
