@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\ReportsController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\QueueController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\EMRController;
 use App\Http\Controllers\InventoryController;
@@ -16,8 +19,8 @@ Route::get('/', function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/dashboard', fn () => Inertia::render('Dashboard', ['currentRoute' => 'dashboard']))->name('dashboard');
-    Route::get('/queue',        fn () => Inertia::render('Queue',        ['currentRoute' => 'queue']))->name('queue');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/queue', [QueueController::class, 'index'])->name('queue');
     Route::get('/register-patient', fn () => Inertia::render('Register', ['currentRoute' => 'register']))->name('register-patient');
     // Patients — CRUD
     Route::get('/patients',            [PatientController::class, 'index'])->name('patients');
@@ -61,7 +64,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/billing/{invoice}/pay',                [BillingController::class, 'pay'])->name('billing.pay');
     Route::patch('/billing/{invoice}/cancel',             [BillingController::class, 'cancel'])->name('billing.cancel');
     Route::delete('/billing/{invoice}',                   [BillingController::class, 'destroy'])->name('billing.destroy');
-    Route::get('/reports',      fn () => Inertia::render('Reports',      ['currentRoute' => 'reports']))->name('reports');
+    Route::get('/reports', [ReportsController::class, 'index'])->name('reports');
 
     // Settings — CRUD
     Route::get('/settings',                [SettingsController::class, 'index'])->name('settings');
