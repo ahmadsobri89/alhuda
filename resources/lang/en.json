@@ -592,5 +592,22 @@
   "bill_print": "Print Invoice",
   "page_title_billing": "Billing & Invoice",
   "page_title_reports": "Reports & Analytics",
-  "page_title_settings": "Settings & Security"
+  "page_title_settings": "Settings & Security",
+  "mc_section": "Medical Certificate (MC)",
+  "mc_issue_btn": "Issue MC",
+  "mc_no_records": "No MC issued.",
+  "mc_print": "Print MC",
+  "mc_delete": "Delete",
+  "mc_lbl_start": "Start Date",
+  "mc_lbl_days": "Number of Days",
+  "mc_lbl_diagnosis": "Diagnosis / Reason",
+  "mc_lbl_notes": "Notes",
+  "mc_ph_diagnosis": "e.g. Acute fever, URTI",
+  "mc_ph_notes": "Additional instructions (optional)",
+  "mc_submitting": "Issuing…",
+  "mc_cancel": "Cancel",
+  "mc_days_suffix": "day(s)",
+  "mc_del_confirm": "Delete this MC?",
+  "mc_del_body": "MC :mc_number will be permanently deleted.",
+  "mc_del_yes": "Yes, Delete"
 }

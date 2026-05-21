@@ -168,6 +168,26 @@ function removeDiagnosis(dxId) {
   router.delete(`/emr/${props.selected.id}/diagnoses/${dxId}`, { preserveScroll: true })
 }
 
+/* ── Medical Certificate ──────────────────────────── */
+const showMcForm    = ref(false)
+const showMcDelId   = ref(null)
+const mcForm        = useForm({
+  start_date: props.today,
+  days:       1,
+  diagnosis:  '',
+  notes:      '',
+})
+
+function issueMc() {
+  mcForm.post(`/emr/${props.selected.id}/mc`, {
+    preserveScroll: true,
+    onSuccess: () => { mcForm.reset(); mcForm.start_date = props.today; mcForm.days = 1; showMcForm.value = false },
+  })
+}
+function deleteMc(mcId) {
+  router.delete(`/mc/${mcId}`, { preserveScroll: true, onSuccess: () => { showMcDelId.value = null } })
+}
+
 /* ── Close / Delete visit ─────────────────────────── */
 const showCloseConfirm  = ref(false)
 const showDeleteConfirm = ref(false)
@@ -510,10 +530,94 @@ const soapHints = computed(() => ({
               </div>
             </div>
 
+            <!-- Medical Certificate -->
+            <div class="card">
+              <div class="card__header">
+                <h3 class="card__title">{{ t('mc_section') }}</h3>
+                <div class="spacer"></div>
+                <Btn variant="ghost" size="sm" @click="showMcForm = !showMcForm">
+                  {{ showMcForm ? t('mc_cancel') : t('mc_issue_btn') }}
+                </Btn>
+              </div>
+
+              <!-- Issue MC form -->
+              <div v-if="showMcForm" class="card__body" style="border-bottom:1px solid var(--border)">
+                <div class="field" style="margin-bottom:8px">
+                  <label class="field__label">{{ t('mc_lbl_start') }}</label>
+                  <input v-model="mcForm.start_date" type="date" class="input" required />
+                  <span v-if="mcForm.errors.start_date" class="field__error">{{ mcForm.errors.start_date }}</span>
+                </div>
+                <div class="field" style="margin-bottom:8px">
+                  <label class="field__label">{{ t('mc_lbl_days') }}</label>
+                  <input v-model="mcForm.days" type="number" min="1" max="365" class="input" />
+                  <span v-if="mcForm.errors.days" class="field__error">{{ mcForm.errors.days }}</span>
+                </div>
+                <div class="field" style="margin-bottom:8px">
+                  <label class="field__label">{{ t('mc_lbl_diagnosis') }}</label>
+                  <input v-model="mcForm.diagnosis" type="text" class="input" :placeholder="t('mc_ph_diagnosis')" maxlength="255" />
+                </div>
+                <div class="field" style="margin-bottom:10px">
+                  <label class="field__label">{{ t('mc_lbl_notes') }}</label>
+                  <input v-model="mcForm.notes" type="text" class="input" :placeholder="t('mc_ph_notes')" maxlength="500" />
+                </div>
+                <Btn variant="primary" size="sm" style="width:100%;justify-content:center"
+                     :disabled="mcForm.processing || !mcForm.start_date || mcForm.days < 1"
+                     @click="issueMc">
+                  {{ mcForm.processing ? t('mc_submitting') : t('mc_issue_btn') }}
+                </Btn>
+              </div>
+
+              <!-- MC list -->
+              <div v-if="selected.mcs?.length">
+                <div v-for="mc in selected.mcs" :key="mc.id"
+                     style="padding:10px 14px;border-top:1px solid var(--border)">
+                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                    <span style="font:700 11px var(--font-mono);color:var(--brand-green-dark)">{{ mc.mc_number }}</span>
+                    <span style="font:500 10px var(--font-sans);color:var(--fg3);margin-left:auto">{{ mc.issue_date }}</span>
+                  </div>
+                  <div style="font:500 12px var(--font-sans);color:var(--fg1);margin-bottom:2px">
+                    {{ mc.days }} {{ t('mc_days_suffix') }} · {{ mc.start_date }} → {{ mc.end_date }}
+                  </div>
+                  <div v-if="mc.diagnosis" style="font:400 11px var(--font-sans);color:var(--fg2);margin-bottom:6px">{{ mc.diagnosis }}</div>
+                  <div style="display:flex;gap:6px">
+                    <a :href="`/mc/${mc.id}/print`" target="_blank" class="mc-print-btn">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                      {{ t('mc_print') }}
+                    </a>
+                    <button class="mc-del-btn" @click="showMcDelId = mc.id">{{ t('mc_delete') }}</button>
+                  </div>
+                </div>
+              </div>
+              <div v-else style="padding:16px 14px;font:500 12px var(--font-sans);color:var(--fg3)">
+                {{ t('mc_no_records') }}
+              </div>
+            </div>
+
           </div>
         </div>
       </template>
     </div>
+
+    <!-- ── MC Delete confirm ───────────────────────────── -->
+    <Teleport to="body">
+      <div v-if="showMcDelId !== null" class="modal-backdrop" @click.self="showMcDelId = null">
+        <div class="modal modal--sm">
+          <div class="modal__header">
+            <h3 class="modal__title" style="color:var(--brand-red)">{{ t('mc_del_confirm') }}</h3>
+            <button class="modal__close" @click="showMcDelId = null">✕</button>
+          </div>
+          <div class="modal__body">
+            <p style="font:400 14px var(--font-sans);color:var(--fg2);margin:0 0 16px">
+              {{ t('mc_del_body', { mc_number: selected?.mcs?.find(m => m.id === showMcDelId)?.mc_number }) }}
+            </p>
+            <div class="modal__footer">
+              <Btn variant="secondary" @click="showMcDelId = null">{{ t('btn_cancel') }}</Btn>
+              <Btn variant="primary" style="background:var(--brand-red)" @click="deleteMc(showMcDelId)">{{ t('mc_del_yes') }}</Btn>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
 
     <!-- ── New Visit Modal ──────────────────────────── -->
     <Teleport to="body">
@@ -762,4 +866,21 @@ const soapHints = computed(() => ({
 .page-btn { min-width: 28px; height: 28px; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--fg2); font: 500 11px var(--font-sans); cursor: pointer; padding: 0 6px; }
 .page-btn.active { background: var(--brand-green); border-color: var(--brand-green); color: #fff; font-weight: 700; }
 .page-btn:disabled { opacity: .4; cursor: default; }
+
+/* MC buttons */
+.mc-print-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px; background: var(--brand-green-light);
+  border: 1px solid var(--brand-green); border-radius: 5px;
+  color: var(--brand-green-dark); font: 600 11px var(--font-sans);
+  text-decoration: none; cursor: pointer;
+}
+.mc-print-btn:hover { background: var(--brand-green); color: #fff; }
+.mc-del-btn {
+  display: inline-flex; align-items: center;
+  padding: 3px 8px; background: none;
+  border: 1px solid var(--border); border-radius: 5px;
+  color: var(--fg3); font: 500 11px var(--font-sans); cursor: pointer;
+}
+.mc-del-btn:hover { border-color: var(--brand-red); color: var(--brand-red); }
 </style>

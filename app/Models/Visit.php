@@ -46,4 +46,9 @@ class Visit extends Model
     {
         return $this->hasMany(VisitDiagnosis::class)->orderBy('type')->orderBy('id');
     }
+
+    public function medicalCertificates(): HasMany
+    {
+        return $this->hasMany(MedicalCertificate::class)->orderByDesc('id');
+    }
 }
