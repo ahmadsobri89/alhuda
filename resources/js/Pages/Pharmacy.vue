@@ -257,6 +257,12 @@ function doDispense() {
           <div><Badge :tone="STATUS_TONE[rx.status]">{{ STATUS_LABEL[rx.status] }}</Badge></div>
           <div class="row" style="gap:4px">
             <Btn variant="ghost" size="sm" @click="viewRx = rx">{{ t('rx_view') }}</Btn>
+            <a :href="`/pharmacy/prescriptions/${rx.id}/print`" target="_blank" class="rx-print-btn rx-print-btn--sm" :title="t('rx_print')">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            </a>
+            <a :href="`/pharmacy/prescriptions/${rx.id}/label`" target="_blank" class="rx-print-btn rx-print-btn--sm rx-print-btn--label" :title="t('rx_label')">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+            </a>
             <Btn variant="ghost" size="sm" style="color:var(--brand-red)" @click="deleteTarget = rx">⊗</Btn>
           </div>
         </div>
@@ -352,6 +358,14 @@ function doDispense() {
             <template v-if="viewRx.status === 'ready'">
               <Btn variant="primary" style="flex:1" @click="confirmDispense(viewRx);viewRx=null">{{ t('rx_dispense') }}</Btn>
             </template>
+            <a :href="`/pharmacy/prescriptions/${viewRx.id}/print`" target="_blank" class="rx-print-btn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              {{ t('rx_print') }}
+            </a>
+            <a :href="`/pharmacy/prescriptions/${viewRx.id}/label`" target="_blank" class="rx-print-btn rx-print-btn--label">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+              {{ t('rx_label') }}
+            </a>
           </div>
         </div>
       </div>
@@ -517,6 +531,20 @@ function doDispense() {
 </template>
 
 <style scoped>
+/* print button */
+.rx-print-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 12px; border-radius: 7px;
+  border: 1.5px solid var(--border);
+  background: #fff; color: var(--fg2);
+  font: 600 12px var(--font-sans);
+  text-decoration: none; cursor: pointer; transition: all .12s;
+}
+.rx-print-btn:hover { border-color: var(--brand-green); color: var(--brand-green); background: var(--brand-green-light); }
+.rx-print-btn--sm { padding: 4px 8px; }
+.rx-print-btn--label { border-color: #c7d2fe; color: #4338ca; }
+.rx-print-btn--label:hover { border-color: #4338ca; color: #4338ca; background: #eef2ff; }
+
 .flash-ok {
   background: var(--brand-green-light); border: 1px solid var(--brand-green);
   color: var(--brand-green-dark); padding: 10px 16px; border-radius: 8px;

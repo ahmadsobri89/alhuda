@@ -50,6 +50,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/pharmacy/prescriptions/{prescription}',       [PharmacyController::class, 'update'])->name('pharmacy.update');
     Route::patch('/pharmacy/prescriptions/{prescription}/status', [PharmacyController::class, 'updateStatus'])->name('pharmacy.status');
     Route::delete('/pharmacy/prescriptions/{prescription}',    [PharmacyController::class, 'destroy'])->name('pharmacy.destroy');
+    Route::get('/pharmacy/prescriptions/{prescription}/print', [PharmacyController::class, 'print'])->name('pharmacy.print');
+    Route::get('/pharmacy/prescriptions/{prescription}/label', [PharmacyController::class, 'label'])->name('pharmacy.label');
     // Inventory — CRUD
     Route::get('/inventory',                                      [InventoryController::class, 'index'])->name('inventory');
     Route::post('/inventory',                                     [InventoryController::class, 'store'])->name('inventory.store');

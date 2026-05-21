@@ -318,6 +318,8 @@
   "rx_dispense": "Dispens →",
   "rx_cancel": "Batal",
   "rx_view": "Lihat",
+  "rx_print": "Cetak",
+  "rx_label": "Label Ubat",
   "rx_new": "+ Preskripsi Baru",
   "rx_modal_create": "Preskripsi Baru",
   "rx_modal_edit": "Edit Preskripsi",

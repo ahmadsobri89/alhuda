@@ -158,4 +158,18 @@ class PharmacyController extends Controller
 
         return back()->with('success', "Preskripsi {$rxNum} dipadam.");
     }
+
+    public function print(Prescription $prescription)
+    {
+        $prescription->load(['patient', 'items']);
+        AuditLog::record('rx.print', "{$prescription->rx_number} · {$prescription->patient->name}");
+        return view('pharmacy.print', ['rx' => $prescription]);
+    }
+
+    public function label(Prescription $prescription)
+    {
+        $prescription->load(['patient', 'items']);
+        AuditLog::record('rx.label', "{$prescription->rx_number} · {$prescription->patient->name}");
+        return view('pharmacy.label', ['rx' => $prescription]);
+    }
 }

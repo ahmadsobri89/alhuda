@@ -318,6 +318,8 @@
   "rx_dispense": "Dispense →",
   "rx_cancel": "Cancel",
   "rx_view": "View",
+  "rx_print": "Print",
+  "rx_label": "Drug Label",
   "rx_new": "+ New Prescription",
   "rx_modal_create": "New Prescription",
   "rx_modal_edit": "Edit Prescription",
