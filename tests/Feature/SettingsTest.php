@@ -170,4 +170,105 @@ class SettingsTest extends TestCase
             ->put('/settings/policies', [])
             ->assertSessionHasErrors('policies');
     }
+
+    // ── Clinic Profile ────────────────────────────────────────────────────────
+
+    public function test_can_update_clinic_profile(): void
+    {
+        $this->actingAs($this->user)
+            ->post('/settings/clinic', [
+                'name'     => 'Klinik Al-Huda Baru',
+                'address'  => 'No. 5, Jalan Baru',
+                'postcode' => '50000',
+                'city'     => 'Kuala Lumpur',
+                'state'    => 'Wilayah Persekutuan',
+                'phone'    => '03-1234 5678',
+            ])
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('clinic_profiles', [
+            'name'  => 'Klinik Al-Huda Baru',
+            'phone' => '03-1234 5678',
+        ]);
+    }
+
+    public function test_clinic_name_is_required(): void
+    {
+        $this->actingAs($this->user)
+            ->post('/settings/clinic', [
+                'address'  => 'No. 1, Jalan Test',
+                'postcode' => '50000',
+                'city'     => 'KL',
+                'state'    => 'Selangor',
+                'phone'    => '03-0000 0000',
+            ])
+            ->assertSessionHasErrors('name');
+    }
+
+    public function test_clinic_address_is_required(): void
+    {
+        $this->actingAs($this->user)
+            ->post('/settings/clinic', [
+                'name'     => 'Klinik Test',
+                'postcode' => '50000',
+                'city'     => 'KL',
+                'state'    => 'Selangor',
+                'phone'    => '03-0000 0000',
+            ])
+            ->assertSessionHasErrors('address');
+    }
+
+    public function test_clinic_phone_is_required(): void
+    {
+        $this->actingAs($this->user)
+            ->post('/settings/clinic', [
+                'name'     => 'Klinik Test',
+                'address'  => 'No. 1, Jalan Test',
+                'postcode' => '50000',
+                'city'     => 'KL',
+                'state'    => 'Selangor',
+            ])
+            ->assertSessionHasErrors('phone');
+    }
+
+    public function test_clinic_email_must_be_valid_when_provided(): void
+    {
+        $this->actingAs($this->user)
+            ->post('/settings/clinic', [
+                'name'     => 'Klinik Test',
+                'address'  => 'No. 1, Jalan Test',
+                'postcode' => '50000',
+                'city'     => 'KL',
+                'state'    => 'Selangor',
+                'phone'    => '03-0000 0000',
+                'email'    => 'not-an-email',
+            ])
+            ->assertSessionHasErrors('email');
+    }
+
+    public function test_clinic_optional_fields_can_be_omitted(): void
+    {
+        $this->actingAs($this->user)
+            ->post('/settings/clinic', [
+                'name'     => 'Klinik Minimum',
+                'address'  => 'No. 1, Jalan Ujian',
+                'postcode' => '43000',
+                'city'     => 'Kajang',
+                'state'    => 'Selangor',
+                'phone'    => '03-8888 0000',
+            ])
+            ->assertSessionHas('success');
+    }
+
+    public function test_guests_cannot_update_clinic_profile(): void
+    {
+        $this->post('/settings/clinic', [
+            'name'     => 'Hack Klinik',
+            'address'  => 'Nowhere',
+            'postcode' => '00000',
+            'city'     => 'KL',
+            'state'    => 'Selangor',
+            'phone'    => '000',
+        ])->assertRedirect('/login');
+    }
 }

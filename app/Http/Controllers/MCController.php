@@ -31,8 +31,8 @@ class MCController extends Controller
             'start_date' => $start->toDateString(),
             'end_date'   => $end->toDateString(),
             'days'       => $data['days'],
-            'diagnosis'  => $data['diagnosis'],
-            'notes'      => $data['notes'],
+            'diagnosis'  => $data['diagnosis'] ?? null,
+            'notes'      => $data['notes'] ?? null,
         ]);
 
         AuditLog::record('mc.issue', "{$mc->mc_number} · {$visit->patient->name} · {$data['days']} hari");

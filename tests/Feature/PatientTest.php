@@ -144,7 +144,7 @@ class PatientTest extends TestCase
 
     public function test_cannot_update_patient_with_duplicate_ic_number(): void
     {
-        $patientA = Patient::factory()->create(['ic_number' => '800101-01-1111']);
+        Patient::factory()->create(['ic_number' => '800101-01-1111']);
         $patientB = Patient::factory()->create(['ic_number' => '800202-02-2222']);
 
         $this->actingAs($this->user)
@@ -155,6 +155,107 @@ class PatientTest extends TestCase
                 'gender'       => $patientB->gender,
             ])
             ->assertSessionHasErrors('ic_number');
+    }
+
+    // ── Race field ────────────────────────────────────────────────────────────
+
+    public function test_can_register_patient_with_race(): void
+    {
+        $this->actingAs($this->user)
+            ->post('/patients', [
+                'name'          => 'Lim Ah Kow',
+                'ic_number'     => '900303-10-2222',
+                'date_of_birth' => '1990-03-03',
+                'gender'        => 'male',
+                'race'          => 'cina',
+            ])
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('patients', [
+            'ic_number' => '900303-10-2222',
+            'race'      => 'cina',
+        ]);
+    }
+
+    public function test_race_field_is_optional(): void
+    {
+        $this->actingAs($this->user)
+            ->post('/patients', [
+                'name'          => 'No Race Patient',
+                'ic_number'     => '900404-10-3333',
+                'date_of_birth' => '1990-04-04',
+                'gender'        => 'female',
+            ])
+            ->assertSessionHas('success');
+
+        $patient = Patient::where('ic_number', '900404-10-3333')->first();
+        $this->assertNull($patient->race);
+    }
+
+    public function test_can_update_race_field(): void
+    {
+        $patient = Patient::factory()->create(['race' => null]);
+
+        $this->actingAs($this->user)
+            ->put("/patients/{$patient->id}", [
+                'name'          => $patient->name,
+                'ic_number'     => $patient->ic_number,
+                'date_of_birth' => $patient->date_of_birth->format('Y-m-d'),
+                'gender'        => $patient->gender,
+                'race'          => 'india',
+                'status'        => 'active',
+            ])
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('patients', ['id' => $patient->id, 'race' => 'india']);
+    }
+
+    // ── Optional contact fields ───────────────────────────────────────────────
+
+    public function test_can_register_patient_with_all_optional_fields(): void
+    {
+        $this->actingAs($this->user)
+            ->post('/patients', [
+                'name'                    => 'Penuh Maklumat',
+                'ic_number'               => '850606-06-6666',
+                'date_of_birth'           => '1985-06-06',
+                'gender'                  => 'female',
+                'race'                    => 'melayu',
+                'phone'                   => '012-3456789',
+                'email'                   => 'penuh@ujian.com',
+                'address'                 => 'No. 10, Jalan Bahagia',
+                'postcode'                => '43000',
+                'city'                    => 'Kajang',
+                'state'                   => 'Selangor',
+                'blood_type'              => 'O+',
+                'allergies'               => 'Penicillin',
+                'conditions'              => ['Diabetes', 'Hypertension'],
+                'emergency_contact_name'  => 'Suami Penuh',
+                'emergency_contact_phone' => '013-9876543',
+            ])
+            ->assertSessionHas('success');
+
+        $patient = Patient::where('ic_number', '850606-06-6666')->first();
+        $this->assertEquals('012-3456789', $patient->phone);
+        $this->assertEquals('Kajang', $patient->city);
+        $this->assertEquals('Penicillin', $patient->allergies);
+        $this->assertContains('Diabetes', $patient->conditions);
+    }
+
+    public function test_conditions_stored_as_array(): void
+    {
+        $this->actingAs($this->user)
+            ->post('/patients', [
+                'name'          => 'Kronik',
+                'ic_number'     => '700707-07-7777',
+                'date_of_birth' => '1970-07-07',
+                'gender'        => 'male',
+                'conditions'    => ['Diabetes', 'Hypertension', 'Asthma'],
+            ]);
+
+        $patient = Patient::where('ic_number', '700707-07-7777')->first();
+        $this->assertIsArray($patient->conditions);
+        $this->assertCount(3, $patient->conditions);
     }
 
     // ── Destroy ──────────────────────────────────────────────────────────────
