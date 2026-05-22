@@ -92,6 +92,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/settings/users/{user}',   [SettingsController::class, 'updateUser'])->name('settings.users.update');
     Route::delete('/settings/users/{user}',[SettingsController::class, 'destroyUser'])->name('settings.users.destroy');
     Route::put('/settings/policies',       [SettingsController::class, 'updatePolicies'])->name('settings.policies.update');
+    Route::post('/settings/clinic',        [SettingsController::class, 'updateClinic'])->name('settings.clinic.update');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

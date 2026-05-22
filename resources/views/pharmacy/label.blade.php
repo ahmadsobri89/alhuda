@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ $rx->rx_number }} · Label Ubat · Poliklinik Al-Huda</title>
+<title>{{ $rx->rx_number }} · Label Ubat · {{ $clinic->name }}</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -192,10 +192,10 @@ body {
 
         {{-- Clinic strip --}}
         <div class="lbl-clinic">
-            <img src="{{ url('/logo.png') }}" alt="" class="lbl-clinic__logo" />
+            <img src="{{ $clinic->logo_url }}" alt="" class="lbl-clinic__logo" />
             <div>
-                <div class="lbl-clinic__name">Poliklinik Al-Huda</div>
-                <div class="lbl-clinic__addr">No.1, Jalan Al-Huda, 47500 Subang Jaya · 03-8888 0000</div>
+                <div class="lbl-clinic__name">{{ $clinic->name }}</div>
+                <div class="lbl-clinic__addr">{{ $clinic->postcode }} {{ $clinic->city }} · {{ $clinic->phone }}</div>
             </div>
         </div>
 

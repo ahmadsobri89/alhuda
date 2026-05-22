@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ $invoice->invoice_number }} · Poliklinik Al-Huda</title>
+<title>{{ $invoice->invoice_number }} · {{ $clinic->name }}</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -201,18 +201,18 @@ body {
     {{-- ── Clinic header ── --}}
     <div class="hd">
         <div class="hd-brand">
-            <img src="{{ url('/logo.png') }}" alt="" class="hd-logo" />
+            <img src="{{ $clinic->logo_url }}" alt="" class="hd-logo" />
             <div>
-                <div class="hd-name">Poliklinik Al-Huda</div>
-                <div class="hd-sub">Sistem Pengurusan Klinik</div>
+                <div class="hd-name">{{ $clinic->name }}</div>
+                <div class="hd-sub">{{ $clinic->tagline }}</div>
             </div>
         </div>
         <div class="hd-addr">
-            <strong>{{ config('app.name') }}</strong>
-            No. 1, Jalan Al-Huda, Taman Harmoni<br>
-            47500 Subang Jaya, Selangor<br>
-            Tel: 03-8888 0000 · Faks: 03-8888 0001<br>
-            admin@alhudaklinik.my
+            <strong>{{ $clinic->name }}</strong>
+            {{ $clinic->address }}<br>
+            {{ $clinic->postcode }} {{ $clinic->city }}, {{ $clinic->state }}<br>
+            Tel: {{ $clinic->phone }}@if($clinic->fax) · Faks: {{ $clinic->fax }}@endif
+            @if($clinic->email)<br>{{ $clinic->email }}@endif
         </div>
     </div>
 
@@ -358,7 +358,7 @@ body {
     <div class="footer">
         <div class="footer-left">
             Dicetak pada {{ now()->format('d/m/Y H:i') }}<br>
-            Poliklinik Al-Huda · {{ config('app.url') }}<br>
+            {{ $clinic->name }}@if($clinic->website) · {{ $clinic->website }}@endif<br>
             Dokumen ini dijana secara automatik oleh sistem.
         </div>
         <div class="footer-sig">

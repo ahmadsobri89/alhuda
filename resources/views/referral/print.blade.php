@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ $referral->ref_number }} · Surat Rujukan · Poliklinik Al-Huda</title>
+<title>{{ $referral->ref_number }} · Surat Rujukan · {{ $clinic->name }}</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -265,17 +265,17 @@ body {
         {{-- Header --}}
         <div class="hd">
             <div class="hd-brand">
-                <img src="{{ url('/logo.png') }}" alt="" class="hd-logo" />
+                <img src="{{ $clinic->logo_url }}" alt="" class="hd-logo" />
                 <div>
-                    <div class="hd-name">Poliklinik Al-Huda</div>
-                    <div class="hd-sub">Klinik Perubatan Berdaftar</div>
+                    <div class="hd-name">{{ $clinic->name }}</div>
+                    <div class="hd-sub">{{ $clinic->tagline }}</div>
                 </div>
             </div>
             <div class="hd-right">
-                <strong>{{ config('app.name') }}</strong>
-                No. 1, Jalan Al-Huda, Taman Harmoni<br>
-                47500 Subang Jaya, Selangor<br>
-                Tel: 03-8888 0000
+                <strong>{{ $clinic->name }}</strong>
+                {{ $clinic->address }}<br>
+                {{ $clinic->postcode }} {{ $clinic->city }}, {{ $clinic->state }}<br>
+                Tel: {{ $clinic->phone }}@if($clinic->fax) · Faks: {{ $clinic->fax }}@endif
             </div>
         </div>
 

@@ -13,6 +13,7 @@ const props = defineProps({
   users:      { type: Array,  default: () => [] },
   policies:   { type: Array,  default: () => [] },
   auditLogs:  { type: Object, default: () => ({ data: [], links: [] }) },
+  clinic:     { type: Object, default: () => ({}) },
 })
 
 const { t } = useLocale()
@@ -105,6 +106,35 @@ function savePolicies() {
   policyForm.put(route('settings.policies.update'), { preserveScroll: true })
 }
 
+// ─── Clinic Profile ────────────────────────────────────────────────────────
+const clinicForm = useForm({
+  name:       props.clinic.name       ?? '',
+  tagline:    props.clinic.tagline    ?? '',
+  reg_number: props.clinic.reg_number ?? '',
+  address:    props.clinic.address    ?? '',
+  postcode:   props.clinic.postcode   ?? '',
+  city:       props.clinic.city       ?? '',
+  state:      props.clinic.state      ?? '',
+  phone:      props.clinic.phone      ?? '',
+  fax:        props.clinic.fax        ?? '',
+  email:      props.clinic.email      ?? '',
+  website:    props.clinic.website    ?? '',
+  logo:       null,
+})
+
+const logoPreview = ref(props.clinic.logo_url ?? null)
+
+function onLogoChange(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  clinicForm.logo = file
+  logoPreview.value = URL.createObjectURL(file)
+}
+
+function saveClinic() {
+  clinicForm.post(route('settings.clinic.update'), { preserveScroll: true })
+}
+
 // ─── Flash message ─────────────────────────────────────────────────────────
 const page = usePage()
 const flash = computed(() => page.props.flash?.success)
@@ -116,9 +146,123 @@ const flash = computed(() => page.props.flash?.success)
     <div v-if="flash" class="flash-success">{{ flash }}</div>
 
     <div class="tabs">
+      <button :class="['tab', tab==='clinic'   ? 'active':'']" @click="tab='clinic'">{{ t('set_tab_clinic') }}</button>
       <button :class="['tab', tab==='users'    ? 'active':'']" @click="tab='users'">{{ t('set_tab_users') }}</button>
       <button :class="['tab', tab==='security' ? 'active':'']" @click="tab='security'">{{ t('set_tab_security') }}</button>
       <button :class="['tab', tab==='audit'    ? 'active':'']" @click="tab='audit'">{{ t('set_tab_audit') }}</button>
+    </div>
+
+    <!-- ── Clinic Profile Tab ───────────────────────────────────────────── -->
+    <div v-if="tab==='clinic'">
+      <div class="card">
+        <div class="card__header">
+          <h3 class="card__title" style="flex:1">{{ t('clinic_title') }}</h3>
+        </div>
+        <div class="card__body">
+          <p style="font:400 12px var(--font-sans);color:var(--fg3);margin-bottom:20px">{{ t('clinic_subtitle') }}</p>
+
+          <!-- Logo section -->
+          <div class="clinic-logo-section">
+            <div class="clinic-logo-preview">
+              <img v-if="logoPreview" :src="logoPreview" alt="Logo" class="clinic-logo-img" />
+              <div v-else class="clinic-logo-empty">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--border)"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              </div>
+            </div>
+            <div>
+              <div style="font:600 12px var(--font-sans);color:var(--fg1);margin-bottom:4px">{{ t('clinic_lbl_logo') }}</div>
+              <div style="font:400 11px var(--font-sans);color:var(--fg3);margin-bottom:8px">{{ t('clinic_logo_hint') }}</div>
+              <label class="logo-upload-btn">
+                <input type="file" accept="image/png,image/jpeg,image/jpg" style="display:none" @change="onLogoChange" />
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                {{ logoPreview ? t('clinic_logo_change') : t('clinic_logo_upload') }}
+              </label>
+              <span v-if="clinicForm.errors.logo" class="field__error" style="display:block;margin-top:4px">{{ clinicForm.errors.logo }}</span>
+            </div>
+          </div>
+
+          <div class="clinic-form-grid">
+            <!-- Name + Tagline -->
+            <div class="field" style="grid-column:1/-1">
+              <label class="field__label">{{ t('clinic_lbl_name') }} *</label>
+              <input v-model="clinicForm.name" class="input" :placeholder="t('clinic_lbl_name')" />
+              <span v-if="clinicForm.errors.name" class="field__error">{{ clinicForm.errors.name }}</span>
+            </div>
+            <div class="field">
+              <label class="field__label">{{ t('clinic_lbl_tagline') }}</label>
+              <input v-model="clinicForm.tagline" class="input" placeholder="Klinik Perubatan Berdaftar" />
+            </div>
+            <div class="field">
+              <label class="field__label">{{ t('clinic_lbl_reg') }}</label>
+              <input v-model="clinicForm.reg_number" class="input" placeholder="KKM/PPMD/..." />
+            </div>
+
+            <!-- Address -->
+            <div class="field" style="grid-column:1/-1">
+              <label class="field__label">{{ t('clinic_lbl_address') }} *</label>
+              <input v-model="clinicForm.address" class="input" placeholder="No. 1, Jalan Al-Huda, Taman Harmoni" />
+              <span v-if="clinicForm.errors.address" class="field__error">{{ clinicForm.errors.address }}</span>
+            </div>
+            <div class="field">
+              <label class="field__label">{{ t('clinic_lbl_postcode') }} *</label>
+              <input v-model="clinicForm.postcode" class="input" placeholder="47500" maxlength="10" />
+              <span v-if="clinicForm.errors.postcode" class="field__error">{{ clinicForm.errors.postcode }}</span>
+            </div>
+            <div class="field">
+              <label class="field__label">{{ t('clinic_lbl_city') }} *</label>
+              <input v-model="clinicForm.city" class="input" placeholder="Subang Jaya" />
+              <span v-if="clinicForm.errors.city" class="field__error">{{ clinicForm.errors.city }}</span>
+            </div>
+            <div class="field">
+              <label class="field__label">{{ t('clinic_lbl_state') }} *</label>
+              <select v-model="clinicForm.state" class="select">
+                <option value="Johor">Johor</option>
+                <option value="Kedah">Kedah</option>
+                <option value="Kelantan">Kelantan</option>
+                <option value="Melaka">Melaka</option>
+                <option value="Negeri Sembilan">Negeri Sembilan</option>
+                <option value="Pahang">Pahang</option>
+                <option value="Perak">Perak</option>
+                <option value="Perlis">Perlis</option>
+                <option value="Pulau Pinang">Pulau Pinang</option>
+                <option value="Sabah">Sabah</option>
+                <option value="Sarawak">Sarawak</option>
+                <option value="Selangor">Selangor</option>
+                <option value="Terengganu">Terengganu</option>
+                <option value="W.P. Kuala Lumpur">W.P. Kuala Lumpur</option>
+                <option value="W.P. Labuan">W.P. Labuan</option>
+                <option value="W.P. Putrajaya">W.P. Putrajaya</option>
+              </select>
+            </div>
+
+            <!-- Contact -->
+            <div class="field">
+              <label class="field__label">{{ t('clinic_lbl_phone') }} *</label>
+              <input v-model="clinicForm.phone" class="input" placeholder="03-8888 0000" />
+              <span v-if="clinicForm.errors.phone" class="field__error">{{ clinicForm.errors.phone }}</span>
+            </div>
+            <div class="field">
+              <label class="field__label">{{ t('clinic_lbl_fax') }}</label>
+              <input v-model="clinicForm.fax" class="input" placeholder="03-8888 0001" />
+            </div>
+            <div class="field">
+              <label class="field__label">{{ t('clinic_lbl_email') }}</label>
+              <input v-model="clinicForm.email" type="email" class="input" placeholder="klinik@alhuda.my" />
+            </div>
+            <div class="field">
+              <label class="field__label">{{ t('clinic_lbl_website') }}</label>
+              <input v-model="clinicForm.website" class="input" placeholder="www.alhuda.my" />
+            </div>
+          </div>
+
+          <div style="margin-top:20px;display:flex;justify-content:flex-end">
+            <Btn variant="primary" :disabled="clinicForm.processing" @click="saveClinic">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              {{ clinicForm.processing ? t('clinic_saving') : t('clinic_save') }}
+            </Btn>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ── Users Tab ───────────────────────────────────────────────────── -->
@@ -408,4 +552,59 @@ const flash = computed(() => page.props.flash?.success)
 }
 
 .page-btn:disabled { opacity: .4; cursor: default; }
+
+/* ── Clinic Profile ── */
+.clinic-logo-section {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+.clinic-logo-preview {
+  width: 80px;
+  height: 80px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.clinic-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.clinic-logo-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.logo-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font: 600 12px var(--font-sans);
+  color: var(--fg2);
+  cursor: pointer;
+}
+.logo-upload-btn:hover {
+  border-color: var(--brand-green);
+  color: var(--brand-green-dark);
+}
+.clinic-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
 </style>

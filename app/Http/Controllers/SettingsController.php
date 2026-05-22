@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Models\AuditLog;
+use App\Models\ClinicProfile;
 use App\Models\SecurityPolicy;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class SettingsController extends Controller
@@ -31,11 +33,27 @@ class SettingsController extends Controller
                 'ok'         => $r->success,
             ]);
 
+        $cp = ClinicProfile::current();
+
         return Inertia::render('Settings', [
             'currentRoute' => 'settings',
             'users'        => $users,
             'policies'     => $policies,
             'auditLogs'    => $auditLogs,
+            'clinic'       => [
+                'name'       => $cp->name,
+                'tagline'    => $cp->tagline,
+                'reg_number' => $cp->reg_number,
+                'address'    => $cp->address,
+                'postcode'   => $cp->postcode,
+                'city'       => $cp->city,
+                'state'      => $cp->state,
+                'phone'      => $cp->phone,
+                'fax'        => $cp->fax,
+                'email'      => $cp->email,
+                'website'    => $cp->website,
+                'logo_url'   => $cp->logo_url,
+            ],
         ]);
     }
 
@@ -70,6 +88,40 @@ class SettingsController extends Controller
         AuditLog::record('user.delete', "User · {$name}");
 
         return back()->with('success', "Pengguna {$name} berjaya dipadam.");
+    }
+
+    public function updateClinic(Request $request)
+    {
+        $data = $request->validate([
+            'name'       => ['required', 'string', 'max:255'],
+            'tagline'    => ['nullable', 'string', 'max:255'],
+            'reg_number' => ['nullable', 'string', 'max:100'],
+            'address'    => ['required', 'string', 'max:500'],
+            'postcode'   => ['required', 'string', 'max:10'],
+            'city'       => ['required', 'string', 'max:100'],
+            'state'      => ['required', 'string', 'max:100'],
+            'phone'      => ['required', 'string', 'max:30'],
+            'fax'        => ['nullable', 'string', 'max:30'],
+            'email'      => ['nullable', 'email', 'max:255'],
+            'website'    => ['nullable', 'string', 'max:255'],
+            'logo'       => ['nullable', 'image', 'max:2048'],
+        ]);
+
+        $cp = ClinicProfile::firstOrCreate(['id' => 1]);
+
+        if ($request->hasFile('logo')) {
+            if ($cp->logo_path) {
+                Storage::disk('public')->delete($cp->logo_path);
+            }
+            $data['logo_path'] = $request->file('logo')->store('clinic', 'public');
+        }
+
+        unset($data['logo']);
+        $cp->update($data);
+
+        AuditLog::record('settings.clinic.update', "Profil klinik dikemaskini: {$cp->name}");
+
+        return back()->with('success', 'Profil klinik berjaya dikemaskini.');
     }
 
     public function updatePolicies(Request $request)
