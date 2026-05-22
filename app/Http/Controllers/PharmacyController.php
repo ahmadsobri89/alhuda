@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StorePrescriptionRequest;
 use App\Http\Requests\UpdatePrescriptionRequest;
 use App\Models\AuditLog;
+use App\Models\LookupCategory;
 use App\Models\Patient;
 use App\Models\Prescription;
 use Illuminate\Http\Request;
@@ -75,6 +76,8 @@ class PharmacyController extends Controller
         // Drug-check summary for queue
         $allergiesInQueue = $queue->pluck('patient_allergies')->filter()->unique()->values();
 
+        $lookups = LookupCategory::forSlugs(['kekerapan_dos', 'arahan_dos']);
+
         return Inertia::render('Pharmacy', [
             'currentRoute'      => 'pharmacy',
             'queue'             => $queue,
@@ -82,6 +85,7 @@ class PharmacyController extends Controller
             'patients'          => $patients,
             'filters'           => ['search' => $search],
             'allergiesInQueue'  => $allergiesInQueue,
+            'lookups'           => $lookups,
         ]);
     }
 

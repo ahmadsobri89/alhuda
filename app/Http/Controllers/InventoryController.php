@@ -6,6 +6,7 @@ use App\Http\Requests\StoreInventoryItemRequest;
 use App\Http\Requests\UpdateInventoryItemRequest;
 use App\Models\AuditLog;
 use App\Models\InventoryItem;
+use App\Models\LookupCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -91,11 +92,14 @@ class InventoryController extends Controller
             'total_value'   => 'RM ' . number_format((clone $allActive)->sum(DB::raw('stock_quantity * unit_cost')), 2),
         ];
 
+        $lookups = LookupCategory::forSlugs(['bentuk_ubat', 'kategori_ubat', 'klasifikasi_ubat']);
+
         return Inertia::render('Inventory', [
             'currentRoute' => 'inventory',
             'items'        => $items,
             'kpis'         => $kpis,
             'filters'      => ['search' => $search, 'filter' => $filter],
+            'lookups'      => $lookups,
         ]);
     }
 

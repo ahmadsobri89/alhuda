@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\LookupController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\QueueController;
@@ -26,7 +27,7 @@ Route::post('/locale', [\App\Http\Controllers\LocaleController::class, 'switch']
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/queue', [QueueController::class, 'index'])->name('queue');
-    Route::get('/register-patient', fn () => Inertia::render('Register', ['currentRoute' => 'register']))->name('register-patient');
+    Route::get('/register-patient', [\App\Http\Controllers\RegisterController::class, 'index'])->name('register-patient');
     // Patients — CRUD
     Route::get('/patients',            [PatientController::class, 'index'])->name('patients');
     Route::post('/patients',           [PatientController::class, 'store'])->name('patients.store');
@@ -93,6 +94,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/settings/users/{user}',[SettingsController::class, 'destroyUser'])->name('settings.users.destroy');
     Route::put('/settings/policies',       [SettingsController::class, 'updatePolicies'])->name('settings.policies.update');
     Route::post('/settings/clinic',        [SettingsController::class, 'updateClinic'])->name('settings.clinic.update');
+    // Lookup Parameters — CRUD
+    Route::post('/settings/lookup/{category}/values',              [LookupController::class, 'storeValue'])->name('lookup.values.store');
+    Route::put('/settings/lookup/{category}/values/{value}',       [LookupController::class, 'updateValue'])->name('lookup.values.update');
+    Route::delete('/settings/lookup/{category}/values/{value}',    [LookupController::class, 'destroyValue'])->name('lookup.values.destroy');
+    Route::patch('/settings/lookup/{category}/values/{value}/toggle', [LookupController::class, 'toggleValue'])->name('lookup.values.toggle');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

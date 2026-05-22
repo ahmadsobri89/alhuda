@@ -6,6 +6,7 @@ use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Models\AuditLog;
 use App\Models\ClinicProfile;
+use App\Models\LookupCategory;
 use App\Models\SecurityPolicy;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -14,7 +15,7 @@ use Inertia\Inertia;
 
 class SettingsController extends Controller
 {
-    public function index(Request $request)
+    public function index()
     {
         $users = User::orderBy('name')->get(['id', 'name', 'email', 'role', 'mmc_number', 'mfa_enabled', 'status']);
 
@@ -24,23 +25,47 @@ class SettingsController extends Controller
             ->orderByDesc('created_at')
             ->paginate(20)
             ->through(fn ($r) => [
-                'id'         => $r->id,
-                'ts'         => $r->created_at->format('d/m H:i:s'),
-                'user'       => $r->user_name,
-                'act'        => $r->action,
-                'res'        => $r->resource,
-                'ip'         => $r->ip_address,
-                'ok'         => $r->success,
+                'id'  => $r->id,
+                'ts'  => $r->created_at->format('d/m H:i:s'),
+                'user'=> $r->user_name,
+                'act' => $r->action,
+                'res' => $r->resource,
+                'ip'  => $r->ip_address,
+                'ok'  => $r->success,
             ]);
 
         $cp = ClinicProfile::current();
 
+        $lookupCategories = LookupCategory::orderBy('group')->orderBy('sort_order')
+            ->with(['values' => fn ($q) => $q->orderBy('sort_order')])
+            ->get()
+            ->map(fn ($cat) => [
+                'id'             => $cat->id,
+                'group'          => $cat->group,
+                'slug'           => $cat->slug,
+                'name_ms'        => $cat->name_ms,
+                'name_en'        => $cat->name_en,
+                'description_ms' => $cat->description_ms,
+                'description_en' => $cat->description_en,
+                'sort_order'     => $cat->sort_order,
+                'values'         => $cat->values->map(fn ($v) => [
+                    'id'         => $v->id,
+                    'code'       => $v->code,
+                    'label_ms'   => $v->label_ms,
+                    'label_en'   => $v->label_en,
+                    'sort_order' => $v->sort_order,
+                    'is_active'  => $v->is_active,
+                    'is_system'  => $v->is_system,
+                ]),
+            ]);
+
         return Inertia::render('Settings', [
-            'currentRoute' => 'settings',
-            'users'        => $users,
-            'policies'     => $policies,
-            'auditLogs'    => $auditLogs,
-            'clinic'       => [
+            'currentRoute'     => 'settings',
+            'users'            => $users,
+            'policies'         => $policies,
+            'auditLogs'        => $auditLogs,
+            'lookupCategories' => $lookupCategories,
+            'clinic'           => [
                 'name'       => $cp->name,
                 'tagline'    => $cp->tagline,
                 'reg_number' => $cp->reg_number,

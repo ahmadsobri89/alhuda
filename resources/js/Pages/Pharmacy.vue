@@ -16,6 +16,7 @@ const props = defineProps({
   patients:         { type: Array,  default: () => [] },
   filters:          { type: Object, default: () => ({}) },
   allergiesInQueue: { type: Array,  default: () => [] },
+  lookups:          { type: Object, default: () => ({}) },
 })
 
 const page  = usePage()
@@ -124,8 +125,8 @@ const COMMON_DRUGS = [
   'Cetirizine 10mg', 'Levothyroxine 50mcg', 'Montelukast 10mg',
 ]
 
-const FREQUENCIES = ['OD - 1x sehari','BD - 2x sehari','TDS - 3x sehari','QID - 4x sehari','ON - malam','PRN - bila perlu']
-const INSTRUCTIONS = ['Selepas makan','Sebelum makan','Waktu pagi','Sebelum tidur','Bila perlu','30 min sebelum sarapan']
+const FREQUENCIES  = computed(() => (props.lookups?.kekerapan_dos ?? []).map(v => v.label_ms))
+const INSTRUCTIONS = computed(() => (props.lookups?.arahan_dos    ?? []).map(v => v.label_ms))
 
 // ─── View Drawer ───────────────────────────────────────────────────────────
 const viewRx = ref(null)

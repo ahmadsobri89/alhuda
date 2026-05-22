@@ -10,10 +10,11 @@ import Btn from '@/Components/Clinic/Btn.vue'
 defineOptions({ layout: KlinikLayout })
 
 const props = defineProps({
-  users:      { type: Array,  default: () => [] },
-  policies:   { type: Array,  default: () => [] },
-  auditLogs:  { type: Object, default: () => ({ data: [], links: [] }) },
-  clinic:     { type: Object, default: () => ({}) },
+  users:            { type: Array,  default: () => [] },
+  policies:         { type: Array,  default: () => [] },
+  auditLogs:        { type: Object, default: () => ({ data: [], links: [] }) },
+  clinic:           { type: Object, default: () => ({}) },
+  lookupCategories: { type: Array,  default: () => [] },
 })
 
 const { t } = useLocale()
@@ -138,6 +139,101 @@ function saveClinic() {
 // ─── Flash message ─────────────────────────────────────────────────────────
 const page = usePage()
 const flash = computed(() => page.props.flash?.success)
+
+// ─── Lookup Parameters ─────────────────────────────────────────────────────
+const groupLabels = computed(() => ({
+  patient:     t('lkp_group_patient'),
+  appointment: t('lkp_group_appointment'),
+  pharmacy:    t('lkp_group_pharmacy'),
+  inventory:   t('lkp_group_inventory'),
+  billing:     t('lkp_group_billing'),
+  referral:    t('lkp_group_referral'),
+  user:        t('lkp_group_user'),
+}))
+
+const groupedCategories = computed(() => {
+  const groups = {}
+  for (const cat of props.lookupCategories) {
+    if (!groups[cat.group]) groups[cat.group] = []
+    groups[cat.group].push(cat)
+  }
+  return groups
+})
+
+const selectedCategoryId = ref(null)
+const selectedCategory = computed(() =>
+  props.lookupCategories.find(c => c.id === selectedCategoryId.value) ?? null
+)
+
+function selectCategory(cat) {
+  selectedCategoryId.value = cat.id
+  lkpValueForm.reset()
+  lkpEditingValue.value = null
+  lkpShowModal.value = false
+}
+
+// Lookup value modal
+const lkpShowModal   = ref(false)
+const lkpEditingValue = ref(null)
+const lkpDeleteTarget = ref(null)
+
+const lkpValueForm = useForm({
+  code:      '',
+  label_ms:  '',
+  label_en:  '',
+  sort_order: null,
+})
+
+function lkpOpenCreate() {
+  lkpEditingValue.value = null
+  lkpValueForm.reset()
+  lkpShowModal.value = true
+}
+
+function lkpOpenEdit(v) {
+  lkpEditingValue.value = v
+  lkpValueForm.code      = v.code
+  lkpValueForm.label_ms  = v.label_ms
+  lkpValueForm.label_en  = v.label_en
+  lkpValueForm.sort_order = v.sort_order
+  lkpShowModal.value = true
+}
+
+function lkpCloseModal() {
+  lkpShowModal.value = false
+  lkpValueForm.clearErrors()
+}
+
+function lkpSubmitValue() {
+  if (!selectedCategory.value) return
+  if (lkpEditingValue.value) {
+    lkpValueForm.put(
+      route('lookup.values.update', { category: selectedCategory.value.id, value: lkpEditingValue.value.id }),
+      { onSuccess: () => lkpCloseModal(), preserveScroll: true }
+    )
+  } else {
+    lkpValueForm.post(
+      route('lookup.values.store', { category: selectedCategory.value.id }),
+      { onSuccess: () => lkpCloseModal(), preserveScroll: true }
+    )
+  }
+}
+
+function lkpToggle(v) {
+  router.patch(
+    route('lookup.values.toggle', { category: selectedCategory.value.id, value: v.id }),
+    {}, { preserveScroll: true }
+  )
+}
+
+function lkpConfirmDelete(v) { lkpDeleteTarget.value = v }
+
+function lkpDoDelete() {
+  router.delete(
+    route('lookup.values.destroy', { category: selectedCategory.value.id, value: lkpDeleteTarget.value.id }),
+    { onSuccess: () => { lkpDeleteTarget.value = null }, preserveScroll: true }
+  )
+}
 </script>
 
 <template>
@@ -149,6 +245,7 @@ const flash = computed(() => page.props.flash?.success)
       <button :class="['tab', tab==='clinic'   ? 'active':'']" @click="tab='clinic'">{{ t('set_tab_clinic') }}</button>
       <button :class="['tab', tab==='users'    ? 'active':'']" @click="tab='users'">{{ t('set_tab_users') }}</button>
       <button :class="['tab', tab==='security' ? 'active':'']" @click="tab='security'">{{ t('set_tab_security') }}</button>
+      <button :class="['tab', tab==='lookup'   ? 'active':'']" @click="tab='lookup'">{{ t('set_tab_lookup') }}</button>
       <button :class="['tab', tab==='audit'    ? 'active':'']" @click="tab='audit'">{{ t('set_tab_audit') }}</button>
     </div>
 
@@ -320,6 +417,94 @@ const flash = computed(() => page.props.flash?.success)
       </div>
     </div>
 
+    <!-- ── Lookup Parameters Tab ─────────────────────────────────────── -->
+    <div v-if="tab==='lookup'" class="lookup-layout">
+      <!-- Left: Category list -->
+      <aside class="lookup-sidebar">
+        <div class="lookup-sidebar__header">{{ t('lkp_title') }}</div>
+        <template v-for="(cats, group) in groupedCategories" :key="group">
+          <div class="lookup-group-label">{{ groupLabels[group] ?? group }}</div>
+          <button
+            v-for="cat in cats" :key="cat.id"
+            :class="['lookup-cat-item', selectedCategoryId === cat.id ? 'active' : '']"
+            @click="selectCategory(cat)"
+          >
+            <span class="lookup-cat-name">{{ cat.name_ms }}</span>
+            <span class="lookup-cat-count">{{ cat.values.length }}</span>
+          </button>
+        </template>
+      </aside>
+
+      <!-- Right: Values panel -->
+      <div class="lookup-panel">
+        <!-- Empty state -->
+        <div v-if="!selectedCategory" class="lookup-empty">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--border)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <p>{{ t('lkp_select_category') }}</p>
+        </div>
+
+        <!-- Values table -->
+        <div v-else class="card" style="overflow:hidden">
+          <div class="card__header">
+            <div style="flex:1">
+              <h3 class="card__title">{{ selectedCategory.name_ms }}</h3>
+              <p v-if="selectedCategory.description_ms" style="font:400 11.5px var(--font-sans);color:var(--fg3);margin:2px 0 0">{{ selectedCategory.description_ms }}</p>
+            </div>
+            <Btn variant="primary" size="sm" @click="lkpOpenCreate">{{ t('lkp_add_value') }}</Btn>
+          </div>
+
+          <div class="table__head" style="grid-template-columns:130px 1fr 1fr 80px 110px">
+            <div>{{ t('lkp_col_code') }}</div>
+            <div>{{ t('lkp_col_label_ms') }}</div>
+            <div>{{ t('lkp_col_label_en') }}</div>
+            <div>{{ t('lkp_col_status') }}</div>
+            <div>{{ t('lkp_col_actions') }}</div>
+          </div>
+
+          <div
+            v-for="v in selectedCategory.values" :key="v.id"
+            class="table__row"
+            style="grid-template-columns:130px 1fr 1fr 80px 110px"
+            :style="{ opacity: v.is_active ? 1 : 0.5 }"
+          >
+            <div style="display:flex;align-items:center;gap:6px">
+              <span class="mono" style="font:600 12px var(--font-mono);color:var(--fg1)">{{ v.code }}</span>
+              <Badge v-if="v.is_system" tone="neutral" style="font-size:9px;padding:1px 5px">{{ t('lkp_system_badge') }}</Badge>
+            </div>
+            <div style="font:500 13px var(--font-sans)">{{ v.label_ms }}</div>
+            <div style="font:400 12.5px var(--font-sans);color:var(--fg3)">{{ v.label_en }}</div>
+            <div>
+              <Badge :tone="v.is_active ? 'green' : 'neutral'">
+                {{ v.is_active ? t('lkp_active') : t('lkp_inactive') }}
+              </Badge>
+            </div>
+            <div class="row" style="gap:4px">
+              <Btn variant="ghost" size="sm" @click="lkpOpenEdit(v)">{{ t('btn_edit') }}</Btn>
+              <button
+                class="lookup-toggle-btn"
+                :title="v.is_active ? t('lkp_inactive') : t('lkp_active')"
+                @click="lkpToggle(v)"
+              >
+                <svg v-if="v.is_active" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </button>
+              <button
+                v-if="!v.is_system"
+                class="lookup-delete-btn"
+                @click="lkpConfirmDelete(v)"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div v-if="!selectedCategory.values.length" style="padding:24px;text-align:center;color:var(--fg3);font:500 13px var(--font-sans)">
+            {{ t('lkp_no_values') }}
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ── Audit Tab ───────────────────────────────────────────────────── -->
     <div v-if="tab==='audit'" class="card" style="overflow:hidden">
       <div class="card__header"><h3 class="card__title">{{ t('set_audit_title') }}</h3></div>
@@ -432,6 +617,64 @@ const flash = computed(() => page.props.flash?.success)
           <div class="modal__footer">
             <Btn variant="secondary" @click="deleteTarget = null">{{ t('btn_cancel') }}</Btn>
             <Btn variant="primary" style="background:var(--brand-red)" @click="doDelete">{{ t('set_del_confirm') }}</Btn>
+          </div>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
+  <!-- ── Lookup Value Add/Edit Modal ───────────────────────────────────────── -->
+  <Teleport to="body">
+    <div v-if="lkpShowModal" class="modal-backdrop" @click.self="lkpCloseModal">
+      <div class="modal modal--sm">
+        <div class="modal__header">
+          <h3 class="modal__title">{{ lkpEditingValue ? t('lkp_edit_value') : t('lkp_new_value') }}</h3>
+          <button class="modal__close" @click="lkpCloseModal">✕</button>
+        </div>
+        <form @submit.prevent="lkpSubmitValue" class="modal__body">
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div class="field">
+              <label class="field__label">{{ t('lkp_lbl_code') }} *</label>
+              <input v-model="lkpValueForm.code" class="input" :placeholder="t('lkp_ph_code')" :disabled="!!lkpEditingValue?.is_system" />
+              <span v-if="lkpValueForm.errors.code" class="field__error">{{ lkpValueForm.errors.code }}</span>
+            </div>
+            <div class="field">
+              <label class="field__label">{{ t('lkp_lbl_label_ms') }} *</label>
+              <input v-model="lkpValueForm.label_ms" class="input" :placeholder="t('lkp_ph_label_ms')" />
+              <span v-if="lkpValueForm.errors.label_ms" class="field__error">{{ lkpValueForm.errors.label_ms }}</span>
+            </div>
+            <div class="field">
+              <label class="field__label">{{ t('lkp_lbl_label_en') }} *</label>
+              <input v-model="lkpValueForm.label_en" class="input" :placeholder="t('lkp_ph_label_en')" />
+              <span v-if="lkpValueForm.errors.label_en" class="field__error">{{ lkpValueForm.errors.label_en }}</span>
+            </div>
+          </div>
+          <div class="modal__footer">
+            <Btn type="button" variant="secondary" @click="lkpCloseModal">{{ t('btn_cancel') }}</Btn>
+            <Btn type="submit" variant="primary" :disabled="lkpValueForm.processing">
+              {{ lkpEditingValue ? t('btn_update') : t('btn_add') }}
+            </Btn>
+          </div>
+        </form>
+      </div>
+    </div>
+  </Teleport>
+
+  <!-- ── Lookup Value Delete Confirmation ──────────────────────────────────── -->
+  <Teleport to="body">
+    <div v-if="lkpDeleteTarget" class="modal-backdrop" @click.self="lkpDeleteTarget = null">
+      <div class="modal modal--sm">
+        <div class="modal__header">
+          <h3 class="modal__title" style="color:var(--brand-red)">{{ t('lkp_del_confirm') }}</h3>
+          <button class="modal__close" @click="lkpDeleteTarget = null">✕</button>
+        </div>
+        <div class="modal__body">
+          <p style="font:400 13.5px var(--font-sans);color:var(--fg2);line-height:1.6;margin:0 0 16px">
+            {{ t('lkp_del_body', { label: lkpDeleteTarget.label_ms }) }}
+          </p>
+          <div class="modal__footer">
+            <Btn variant="secondary" @click="lkpDeleteTarget = null">{{ t('btn_cancel') }}</Btn>
+            <Btn variant="primary" style="background:var(--brand-red)" @click="lkpDoDelete">{{ t('lkp_del_yes') }}</Btn>
           </div>
         </div>
       </div>
@@ -606,5 +849,117 @@ const flash = computed(() => page.props.flash?.success)
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
+}
+
+/* ── Lookup Parameters ── */
+.lookup-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.lookup-sidebar {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.lookup-sidebar__header {
+  font: 700 12px var(--font-sans);
+  color: var(--fg3);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  padding: 12px 14px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.lookup-group-label {
+  font: 700 10.5px var(--font-sans);
+  color: var(--fg3);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding: 10px 14px 4px;
+}
+
+.lookup-cat-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 7px 14px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font: 500 13px var(--font-sans);
+  color: var(--fg2);
+  transition: background .12s;
+}
+
+.lookup-cat-item:hover { background: var(--bg-soft); }
+
+.lookup-cat-item.active {
+  background: var(--brand-green-light);
+  color: var(--brand-green-dark);
+  font-weight: 600;
+}
+
+.lookup-cat-count {
+  font: 500 11px var(--font-mono);
+  color: var(--fg3);
+  background: var(--bg-muted);
+  border-radius: 10px;
+  padding: 1px 7px;
+  min-width: 20px;
+  text-align: center;
+}
+
+.lookup-cat-item.active .lookup-cat-count {
+  background: var(--brand-green);
+  color: #fff;
+}
+
+.lookup-panel {
+  min-height: 300px;
+}
+
+.lookup-empty {
+  height: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--fg3);
+  font: 500 13px var(--font-sans);
+}
+
+.lookup-toggle-btn,
+.lookup-delete-btn {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  color: var(--fg2);
+  transition: border-color .12s, color .12s;
+}
+
+.lookup-toggle-btn:hover {
+  border-color: var(--brand-green);
+  color: var(--brand-green-dark);
+}
+
+.lookup-delete-btn:hover {
+  border-color: var(--brand-red);
+  color: var(--brand-red);
 }
 </style>

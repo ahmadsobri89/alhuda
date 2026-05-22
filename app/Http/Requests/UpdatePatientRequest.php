@@ -17,6 +17,7 @@ class UpdatePatientRequest extends FormRequest
             'ic_number'               => ['required', 'string', 'max:20', "unique:patients,ic_number,{$patientId}"],
             'date_of_birth'           => ['required', 'date', 'before:today'],
             'gender'                  => ['required', 'in:male,female'],
+            'race'                    => ['nullable', 'string', 'max:80'],
             'phone'                   => ['nullable', 'string', 'max:20'],
             'email'                   => ['nullable', 'email', 'max:255'],
             'address'                 => ['nullable', 'string', 'max:500'],

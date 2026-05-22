@@ -15,6 +15,7 @@ const props = defineProps({
   stats:    Object,
   filters:  Object,
   today:    String,
+  lookups:  { type: Object, default: () => ({}) },
 })
 
 const page  = usePage()
@@ -58,10 +59,12 @@ const methodLabel = computed(() => ({
 function typeTone (tp) {
   return { consultation:'blue', procedure:'purple', drug:'green', lab:'yellow', other:'neutral' }[tp] ?? 'neutral'
 }
-const typeLabel = computed(() => ({
-  consultation: t('bill_item_cons'), procedure: t('bill_item_proc'),
-  drug: t('bill_item_drug'), lab: t('bill_item_lab'), other: t('bill_item_other'),
-}))
+const typeLabel = computed(() => {
+  const base = { consultation: t('bill_item_cons'), procedure: t('bill_item_proc'), drug: t('bill_item_drug'), lab: t('bill_item_lab'), other: t('bill_item_other') }
+  for (const v of (props.lookups?.jenis_item_bil ?? [])) base[v.code] = v.label_ms
+  return base
+})
+const itemTypes = computed(() => (props.lookups?.jenis_item_bil ?? []).map(v => ({ value: v.code, label: v.label_ms })))
 
 /* ── quick service presets ── */
 const quickServices = [
@@ -116,13 +119,9 @@ function finalize () { router.patch(`/billing/${props.selected.id}/finalize`, {}
 /* ── payment modal ── */
 const showPayModal = ref(false)
 const payMethod    = ref('cash')
-const payMethods = computed(() => [
-  { value:'cash',      label: t('method_cash') },
-  { value:'card',      label: t('method_card') },
-  { value:'duitnow',   label: t('method_duitnow') },
-  { value:'panel',     label: t('method_panel') },
-  { value:'insurance', label: t('method_insurance') },
-])
+const payMethods = computed(() =>
+  (props.lookups?.kaedah_bayaran ?? []).map(v => ({ value: v.code, label: v.label_ms }))
+)
 function submitPay () {
   router.patch(`/billing/${props.selected.id}/pay`,
     { payment_method: payMethod.value },
@@ -403,11 +402,7 @@ function submitNew () {
           <div class="field">
             <label class="field__label">{{ t('bill_lbl_type') }} *</label>
             <select v-model="itemForm.type" class="select">
-              <option value="consultation">{{ t('bill_item_cons') }}</option>
-              <option value="procedure">{{ t('bill_item_proc') }}</option>
-              <option value="drug">{{ t('bill_item_drug') }}</option>
-              <option value="lab">{{ t('bill_item_lab') }}</option>
-              <option value="other">{{ t('bill_item_other') }}</option>
+              <option v-for="it in itemTypes" :key="it.value" :value="it.value">{{ it.label }}</option>
             </select>
           </div>
 

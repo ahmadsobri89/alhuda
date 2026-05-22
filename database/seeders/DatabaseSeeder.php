@@ -21,6 +21,8 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->call(LookupSeeder::class);
+
         // Clinic staff
         $staff = [
             ['name' => 'Dr. Aiman Rashid', 'role' => 'doctor',       'mmc_number' => 'MMC-87231', 'email' => 'aiman@alhuda.my',   'mfa_enabled' => true,  'status' => 'active'],

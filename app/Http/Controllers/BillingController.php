@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AuditLog;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\LookupCategory;
 use App\Models\Patient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -64,6 +65,8 @@ class BillingController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'ic_number', 'patient_id']);
 
+        $lookups = LookupCategory::forSlugs(['kaedah_bayaran', 'jenis_item_bil']);
+
         return Inertia::render('Billing', [
             'currentRoute' => 'billing',
             'invoices'     => $invoices,
@@ -72,6 +75,7 @@ class BillingController extends Controller
             'stats'        => $stats,
             'filters'      => $request->only(['search', 'status', 'invoice']),
             'today'        => $today,
+            'lookups'      => $lookups,
         ]);
     }
 

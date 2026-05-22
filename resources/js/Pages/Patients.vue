@@ -13,6 +13,7 @@ defineOptions({ layout: KlinikLayout })
 const props = defineProps({
   patients: { type: Object, default: () => ({ data: [], links: [] }) },
   filters:  { type: Object, default: () => ({}) },
+  lookups:  { type: Object, default: () => ({}) },
 })
 
 const page = usePage()
@@ -29,20 +30,11 @@ watch(search, (val) => {
   }, 350)
 })
 
-// ─── Malaysian states ──────────────────────────────────────────────────────
-const states = [
-  'Johor','Kedah','Kelantan','Melaka','Negeri Sembilan',
-  'Pahang','Perak','Perlis','Pulau Pinang','Sabah','Sarawak',
-  'Selangor','Terengganu','Kuala Lumpur','Labuan','Putrajaya',
-]
-
-const bloodTypes = ['A+','A-','B+','B-','O+','O-','AB+','AB-','Unknown']
-
-const COMMON_CONDITIONS = [
-  'HTN','T2DM','CAD','Dyslipidemia','Asthma','COPD','CKD',
-  'Hypothyroid','Hyperthyroid','Gout','Osteoarthritis','Eczema',
-  'Depression','Anxiety','Pregnancy',
-]
+// ─── Lookups from DB ───────────────────────────────────────────────────────
+const states           = computed(() => (props.lookups?.negeri          ?? []).map(v => v.code))
+const bloodTypes       = computed(() => (props.lookups?.kumpulan_darah  ?? []).map(v => v.code))
+const COMMON_CONDITIONS = computed(() => (props.lookups?.penyakit_kronik ?? []).map(v => v.code))
+const bangsa           = computed(() => props.lookups?.bangsa ?? [])
 
 // ─── Add / Edit Modal ──────────────────────────────────────────────────────
 const showModal   = ref(false)
@@ -50,7 +42,7 @@ const editingPatient = ref(null)
 const conditionInput = ref('')
 
 const emptyForm = () => ({
-  name: '', ic_number: '', date_of_birth: '', gender: 'male',
+  name: '', ic_number: '', date_of_birth: '', gender: 'male', race: '',
   phone: '', email: '', address: '', postcode: '', city: '', state: '',
   blood_type: '', allergies: '', conditions: [],
   emergency_contact_name: '', emergency_contact_phone: '',
@@ -72,6 +64,7 @@ function openEdit(p) {
   patientForm.ic_number               = p.ic_number
   patientForm.date_of_birth           = p.date_of_birth
   patientForm.gender                  = p.gender
+  patientForm.race                    = p.race ?? ''
   patientForm.phone                   = p.phone ?? ''
   patientForm.email                   = p.email ?? ''
   patientForm.address                 = p.address ?? ''
@@ -285,6 +278,7 @@ function genderLabel(g) { return g === 'male' ? t('gender_male') : t('gender_fem
             <div class="info-row"><span class="info-label">No. IC</span><span class="info-val mono">{{ viewPatient.ic_number }}</span></div>
             <div class="info-row"><span class="info-label">Tarikh Lahir</span><span class="info-val">{{ viewPatient.date_of_birth }}</span></div>
             <div class="info-row"><span class="info-label">Jantina</span><span class="info-val">{{ genderLabel(viewPatient.gender) }}</span></div>
+            <div class="info-row"><span class="info-label">{{ t('pat_lbl_race') }}</span><span class="info-val">{{ bangsa.find(b => b.code === viewPatient.race)?.label_ms || viewPatient.race || '—' }}</span></div>
             <div class="info-row"><span class="info-label">Telefon</span><span class="info-val">{{ viewPatient.phone || '—' }}</span></div>
             <div class="info-row"><span class="info-label">Emel</span><span class="info-val">{{ viewPatient.email || '—' }}</span></div>
           </div>
@@ -352,6 +346,13 @@ function genderLabel(g) { return g === 'male' ? t('gender_male') : t('gender_fem
               <select v-model="patientForm.gender" class="select">
                 <option value="male">{{ t('gender_male') }}</option>
                 <option value="female">{{ t('gender_female') }}</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="field__label">{{ t('pat_lbl_race') }}</label>
+              <select v-model="patientForm.race" class="select">
+                <option value="">{{ t('pat_select_race') }}</option>
+                <option v-for="b in bangsa" :key="b.code" :value="b.code">{{ b.label_ms }}</option>
               </select>
             </div>
           </div>

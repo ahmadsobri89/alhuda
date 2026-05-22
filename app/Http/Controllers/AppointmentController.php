@@ -6,6 +6,7 @@ use App\Http\Requests\StoreAppointmentRequest;
 use App\Http\Requests\UpdateAppointmentRequest;
 use App\Models\AuditLog;
 use App\Models\Appointment;
+use App\Models\LookupCategory;
 use App\Models\Patient;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -104,6 +105,8 @@ class AppointmentController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'ic_number', 'patient_id', 'allergies', 'conditions']);
 
+        $lookups = LookupCategory::forSlugs(['jenis_temujanji', 'status_temujanji', 'tempoh_temujanji']);
+
         return Inertia::render('Appointments', [
             'currentRoute' => 'appointments',
             'weekStart'    => $weekStart->format('Y-m-d'),
@@ -115,6 +118,7 @@ class AppointmentController extends Controller
             'stats'        => $stats,
             'patients'     => $patients,
             'today'        => now()->format('Y-m-d'),
+            'lookups'      => $lookups,
         ]);
     }
 

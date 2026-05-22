@@ -20,6 +20,7 @@ const props = defineProps({
   stats:        Object,
   patients:     Array,
   today:        String,
+  lookups:      { type: Object, default: () => ({}) },
 })
 
 const flash = computed(() => usePage().props.flash?.success)
@@ -451,16 +452,26 @@ const weekLabel = computed(() => {
               <div class="field">
                 <label class="field__label">{{ t('appt_lbl_duration') }}</label>
                 <select v-model="form.duration_minutes" class="select">
-                  <option :value="15">{{ t('appt_duration_15') }}</option>
-                  <option :value="30">{{ t('appt_duration_30') }}</option>
-                  <option :value="45">{{ t('appt_duration_45') }}</option>
-                  <option :value="60">{{ t('appt_duration_60') }}</option>
+                  <template v-if="(lookups?.tempoh_temujanji ?? []).length">
+                    <option v-for="d in lookups.tempoh_temujanji" :key="d.code" :value="Number(d.code)">{{ d.label_ms }}</option>
+                  </template>
+                  <template v-else>
+                    <option :value="15">{{ t('appt_duration_15') }}</option>
+                    <option :value="30">{{ t('appt_duration_30') }}</option>
+                    <option :value="45">{{ t('appt_duration_45') }}</option>
+                    <option :value="60">{{ t('appt_duration_60') }}</option>
+                  </template>
                 </select>
               </div>
               <div class="field">
                 <label class="field__label">{{ t('appt_lbl_type') }}</label>
                 <select v-model="form.type" class="select">
-                  <option v-for="(lbl, val) in TYPE_LABELS" :key="val" :value="val">{{ lbl }}</option>
+                  <template v-if="(lookups?.jenis_temujanji ?? []).length">
+                    <option v-for="jt in lookups.jenis_temujanji" :key="jt.code" :value="jt.code">{{ jt.label_ms }}</option>
+                  </template>
+                  <template v-else>
+                    <option v-for="(lbl, val) in TYPE_LABELS" :key="val" :value="val">{{ lbl }}</option>
+                  </template>
                 </select>
               </div>
               <div class="field" style="grid-column:2/-1">

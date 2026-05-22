@@ -16,6 +16,7 @@ const props = defineProps({
   patients:     Array,
   filters:      Object,
   today:        String,
+  lookups:      { type: Object, default: () => ({}) },
 })
 
 const flash = computed(() => usePage().props.flash?.success)
@@ -659,9 +660,14 @@ const soapHints = computed(() => ({
                 <div class="field" style="margin-bottom:8px">
                   <label class="field__label">{{ t('ref_lbl_urgency') }}</label>
                   <select v-model="refForm.urgency" class="select">
-                    <option value="routine">{{ t('ref_urgency_routine') }}</option>
-                    <option value="urgent">{{ t('ref_urgency_urgent') }}</option>
-                    <option value="emergency">{{ t('ref_urgency_emergency') }}</option>
+                    <template v-if="(lookups?.keutamaan_rujukan ?? []).length">
+                      <option v-for="u in lookups.keutamaan_rujukan" :key="u.code" :value="u.code">{{ u.label_ms }}</option>
+                    </template>
+                    <template v-else>
+                      <option value="routine">{{ t('ref_urgency_routine') }}</option>
+                      <option value="urgent">{{ t('ref_urgency_urgent') }}</option>
+                      <option value="emergency">{{ t('ref_urgency_emergency') }}</option>
+                    </template>
                   </select>
                 </div>
                 <div class="field" style="margin-bottom:8px">

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
+use App\Models\LookupCategory;
 use App\Models\Patient;
 use App\Models\Visit;
 use App\Models\VisitDiagnosis;
@@ -51,6 +52,8 @@ class EMRController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'ic_number', 'patient_id', 'date_of_birth', 'gender', 'blood_type', 'allergies', 'conditions']);
 
+        $lookups = LookupCategory::forSlugs(['keutamaan_rujukan']);
+
         return Inertia::render('EMR', [
             'currentRoute' => 'emr',
             'visits'       => $visits,
@@ -58,6 +61,7 @@ class EMRController extends Controller
             'patients'     => $patients,
             'filters'      => $request->only(['search', 'status', 'visit']),
             'today'        => now()->format('Y-m-d'),
+            'lookups'      => $lookups,
         ]);
     }
 

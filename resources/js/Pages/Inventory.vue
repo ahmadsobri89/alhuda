@@ -14,6 +14,7 @@ const props = defineProps({
   items:   { type: Object, default: () => ({ data: [], links: [] }) },
   kpis:    { type: Object, default: () => ({}) },
   filters: { type: Object, default: () => ({}) },
+  lookups: { type: Object, default: () => ({}) },
 })
 
 const page  = usePage()
@@ -57,15 +58,10 @@ const CLASSIFICATION_LABEL = computed(() => ({
   poison_c: t('inv_class_poison_c'), controlled: t('inv_class_controlled'),
 }))
 
-// ─── Forms ─────────────────────────────────────────────────────────────────
-const DRUG_FORMS     = ['Tablet','Kapsul','MDI (Inhaler)','Sirup','Serbuk','Titis','Suntikan','Krim','Gel','Patch','Supositari']
-const CATEGORIES     = ['Antibiotik','Analgesik','Antidiabetik','Antihipertensi','Kardiologi','Pernafasan','Hormon','Antihistamin','Gastroenterologi','Saraf','Ortopedik','Lain-lain']
-const CLASSIFICATIONS = [
-  { value:'general',   label:'Umum (Tiada Kawalan)' },
-  { value:'poison_b',  label:'Akta Racun B' },
-  { value:'poison_c',  label:'Akta Racun C' },
-  { value:'controlled',label:'Ubat Kawalan (Opioid/Psikotropik)' },
-]
+// ─── Lookups from DB ───────────────────────────────────────────────────────
+const DRUG_FORMS     = computed(() => (props.lookups?.bentuk_ubat    ?? []).map(v => v.code))
+const CATEGORIES     = computed(() => (props.lookups?.kategori_ubat  ?? []).map(v => v.code))
+const CLASSIFICATIONS = computed(() => (props.lookups?.klasifikasi_ubat ?? []).map(v => ({ value: v.code, label: v.label_ms })))
 
 // ─── Add/Edit Item Modal ───────────────────────────────────────────────────
 const showItemModal = ref(false)

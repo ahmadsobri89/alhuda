@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StorePatientRequest;
 use App\Http\Requests\UpdatePatientRequest;
 use App\Models\AuditLog;
+use App\Models\LookupCategory;
 use App\Models\Patient;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -41,6 +42,7 @@ class PatientController extends Controller
                 'blood_type'              => $p->blood_type,
                 'allergies'               => $p->allergies,
                 'conditions'              => $p->conditions ?? [],
+                'race'                    => $p->race,
                 'emergency_contact_name'  => $p->emergency_contact_name,
                 'emergency_contact_phone' => $p->emergency_contact_phone,
                 'visit_count'             => $p->visit_count,
@@ -48,10 +50,15 @@ class PatientController extends Controller
                 'status'                  => $p->status,
             ]);
 
+        $lookups = LookupCategory::forSlugs([
+            'bangsa', 'jantina', 'kumpulan_darah', 'negeri', 'penyakit_kronik',
+        ]);
+
         return Inertia::render('Patients', [
             'currentRoute' => 'patients',
             'patients'     => $patients,
             'filters'      => ['search' => $search],
+            'lookups'      => $lookups,
         ]);
     }
 
