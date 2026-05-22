@@ -56,4 +56,9 @@ class Visit extends Model
     {
         return $this->hasMany(ReferralLetter::class)->orderByDesc('id');
     }
+
+    public function timeSlips(): HasMany
+    {
+        return $this->hasMany(TimeSlip::class)->orderByDesc('id');
+    }
 }

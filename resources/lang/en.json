@@ -633,5 +633,21 @@
   "ref_cancel": "Cancel",
   "ref_del_confirm": "Delete this referral letter?",
   "ref_del_body": "Referral :ref_number will be permanently deleted.",
-  "ref_del_yes": "Yes, Delete"
+  "ref_del_yes": "Yes, Delete",
+  "ts_section": "Time Slip",
+  "ts_issue_btn": "Issue Slip",
+  "ts_no_records": "No time slips issued.",
+  "ts_print": "Print Slip",
+  "ts_delete": "Delete",
+  "ts_lbl_arrival": "Arrival Time",
+  "ts_lbl_departure": "Departure Time",
+  "ts_lbl_purpose": "Purpose of Visit",
+  "ts_lbl_notes": "Notes",
+  "ts_ph_purpose": "e.g. General check-up, Medication collection",
+  "ts_ph_notes": "Additional information (optional)",
+  "ts_submitting": "Issuing…",
+  "ts_cancel": "Cancel",
+  "ts_del_confirm": "Delete this time slip?",
+  "ts_del_body": "Slip :slip_number will be permanently deleted.",
+  "ts_del_yes": "Yes, Delete"
 }

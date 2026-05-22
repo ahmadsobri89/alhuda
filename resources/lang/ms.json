@@ -633,5 +633,21 @@
   "ref_cancel": "Batal",
   "ref_del_confirm": "Padam surat rujukan ini?",
   "ref_del_body": "Rujukan :ref_number akan dipadam secara kekal.",
-  "ref_del_yes": "Ya, Padam"
+  "ref_del_yes": "Ya, Padam",
+  "ts_section": "Slip Masa",
+  "ts_issue_btn": "Terbitkan Slip",
+  "ts_no_records": "Tiada slip masa diterbitkan.",
+  "ts_print": "Cetak Slip",
+  "ts_delete": "Padam",
+  "ts_lbl_arrival": "Masa Tiba",
+  "ts_lbl_departure": "Masa Keluar",
+  "ts_lbl_purpose": "Tujuan Kunjungan",
+  "ts_lbl_notes": "Nota",
+  "ts_ph_purpose": "cth. Pemeriksaan am, Pengambilan ubat",
+  "ts_ph_notes": "Maklumat tambahan (pilihan)",
+  "ts_submitting": "Menerbitkan…",
+  "ts_cancel": "Batal",
+  "ts_del_confirm": "Padam slip masa ini?",
+  "ts_del_body": "Slip :slip_number akan dipadam secara kekal.",
+  "ts_del_yes": "Ya, Padam"
 }

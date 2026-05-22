@@ -188,6 +188,26 @@ function deleteMc(mcId) {
   router.delete(`/mc/${mcId}`, { preserveScroll: true, onSuccess: () => { showMcDelId.value = null } })
 }
 
+/* ── Time Slip ────────────────────────────────────── */
+const showTsForm  = ref(false)
+const showTsDelId = ref(null)
+const tsForm      = useForm({
+  arrival_time:   '',
+  departure_time: '',
+  purpose:        '',
+  notes:          '',
+})
+
+function issueTsSlip() {
+  tsForm.post(`/emr/${props.selected.id}/timeslip`, {
+    preserveScroll: true,
+    onSuccess: () => { tsForm.reset(); showTsForm.value = false },
+  })
+}
+function deleteTs(tsId) {
+  router.delete(`/timeslip/${tsId}`, { preserveScroll: true, onSuccess: () => { showTsDelId.value = null } })
+}
+
 /* ── Referral Letter ──────────────────────────────── */
 const showRefForm  = ref(false)
 const showRefDelId = ref(null)
@@ -401,7 +421,7 @@ const soapHints = computed(() => ({
           <div class="detail-left">
 
             <!-- SOAP notes -->
-            <div class="card">
+            <div class="card soap-card">
               <div class="card__header">
                 <h3 class="card__title">{{ t('emr_soap') }}</h3>
                 <p v-if="selected.status === 'closed'" class="card__sub" style="color:var(--brand-green)">
@@ -414,17 +434,15 @@ const soapHints = computed(() => ({
                           @click="soapTab = key">{{ label }}</button>
                 </div>
               </div>
-              <div class="card__body">
+              <div class="card__body soap-body">
                 <textarea
                   v-model="soapForm[SOAP_FIELDS[soapTab]]"
-                  class="input"
-                  :rows="8"
+                  class="input soap-textarea"
                   :placeholder="soapHints[soapTab]"
                   :disabled="selected.status === 'closed'"
-                  style="resize:vertical;width:100%"
                   @input="soapDirty = true"
                 ></textarea>
-                <div class="row" style="margin-top:8px;gap:6px">
+                <div class="row" style="margin-top:8px;gap:6px;flex-shrink:0">
                   <Btn v-if="selected.status === 'open'" variant="primary" size="sm"
                        :disabled="soapForm.processing || !soapDirty" @click="saveSoap">
                     {{ soapForm.processing ? t('emr_saving') : t('emr_save_soap') }}
@@ -549,6 +567,71 @@ const soapHints = computed(() => ({
                 <Btn variant="ghost" style="width:100%;justify-content:center;color:var(--brand-red)" @click="showDeleteConfirm = true">
                   {{ t('emr_delete_record') }}
                 </Btn>
+              </div>
+            </div>
+
+            <!-- Time Slip -->
+            <div class="card">
+              <div class="card__header">
+                <h3 class="card__title">{{ t('ts_section') }}</h3>
+                <div class="spacer"></div>
+                <Btn variant="ghost" size="sm" @click="showTsForm = !showTsForm">
+                  {{ showTsForm ? t('ts_cancel') : t('ts_issue_btn') }}
+                </Btn>
+              </div>
+
+              <!-- Issue form -->
+              <div v-if="showTsForm" class="card__body" style="border-bottom:1px solid var(--border)">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+                  <div class="field">
+                    <label class="field__label">{{ t('ts_lbl_arrival') }} *</label>
+                    <input v-model="tsForm.arrival_time" type="time" class="input" required />
+                    <span v-if="tsForm.errors.arrival_time" class="field__error">{{ tsForm.errors.arrival_time }}</span>
+                  </div>
+                  <div class="field">
+                    <label class="field__label">{{ t('ts_lbl_departure') }} *</label>
+                    <input v-model="tsForm.departure_time" type="time" class="input" required />
+                    <span v-if="tsForm.errors.departure_time" class="field__error">{{ tsForm.errors.departure_time }}</span>
+                  </div>
+                </div>
+                <div class="field" style="margin-bottom:8px">
+                  <label class="field__label">{{ t('ts_lbl_purpose') }}</label>
+                  <input v-model="tsForm.purpose" type="text" class="input" :placeholder="t('ts_ph_purpose')" maxlength="255" />
+                </div>
+                <div class="field" style="margin-bottom:10px">
+                  <label class="field__label">{{ t('ts_lbl_notes') }}</label>
+                  <input v-model="tsForm.notes" type="text" class="input" :placeholder="t('ts_ph_notes')" maxlength="500" />
+                </div>
+                <Btn variant="primary" size="sm" style="width:100%;justify-content:center"
+                     :disabled="tsForm.processing || !tsForm.arrival_time || !tsForm.departure_time"
+                     @click="issueTsSlip">
+                  {{ tsForm.processing ? t('ts_submitting') : t('ts_issue_btn') }}
+                </Btn>
+              </div>
+
+              <!-- Slip list -->
+              <div v-if="selected.time_slips?.length">
+                <div v-for="ts in selected.time_slips" :key="ts.id"
+                     style="padding:10px 14px;border-top:1px solid var(--border)">
+                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                    <span style="font:700 11px var(--font-mono);color:#7c3aed">{{ ts.slip_number }}</span>
+                    <span style="font:500 10px var(--font-sans);color:var(--fg3);margin-left:auto">{{ ts.slip_date }}</span>
+                  </div>
+                  <div style="font:600 13px var(--font-mono);color:var(--fg1);margin-bottom:2px;letter-spacing:.03em">
+                    {{ ts.arrival_time }} → {{ ts.departure_time }}
+                  </div>
+                  <div v-if="ts.purpose" style="font:400 11px var(--font-sans);color:var(--fg2);margin-bottom:6px">{{ ts.purpose }}</div>
+                  <div style="display:flex;gap:6px">
+                    <a :href="`/timeslip/${ts.id}/print`" target="_blank" class="mc-print-btn" style="color:#7c3aed;border-color:#c4b5fd;background:#f5f3ff">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                      {{ t('ts_print') }}
+                    </a>
+                    <button class="mc-del-btn" @click="showTsDelId = ts.id">{{ t('ts_delete') }}</button>
+                  </div>
+                </div>
+              </div>
+              <div v-else style="padding:16px 14px;font:500 12px var(--font-sans);color:var(--fg3)">
+                {{ t('ts_no_records') }}
               </div>
             </div>
 
@@ -769,6 +852,27 @@ const soapHints = computed(() => ({
       </div>
     </Teleport>
 
+    <!-- ── Time Slip Delete confirm ──────────────────────── -->
+    <Teleport to="body">
+      <div v-if="showTsDelId !== null" class="modal-backdrop" @click.self="showTsDelId = null">
+        <div class="modal modal--sm">
+          <div class="modal__header">
+            <h3 class="modal__title" style="color:var(--brand-red)">{{ t('ts_del_confirm') }}</h3>
+            <button class="modal__close" @click="showTsDelId = null">✕</button>
+          </div>
+          <div class="modal__body">
+            <p style="font:400 14px var(--font-sans);color:var(--fg2);margin:0 0 16px">
+              {{ t('ts_del_body', { slip_number: selected?.time_slips?.find(s => s.id === showTsDelId)?.slip_number }) }}
+            </p>
+            <div class="modal__footer">
+              <Btn variant="secondary" @click="showTsDelId = null">{{ t('btn_cancel') }}</Btn>
+              <Btn variant="primary" style="background:var(--brand-red)" @click="deleteTs(showTsDelId)">{{ t('ts_del_yes') }}</Btn>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- ── Referral Delete confirm ───────────────────────── -->
     <Teleport to="body">
       <div v-if="showRefDelId !== null" class="modal-backdrop" @click.self="showRefDelId = null">
@@ -903,10 +1007,30 @@ const soapHints = computed(() => ({
   grid-template-columns: 1fr 240px;
   gap: 14px;
   padding: 14px 16px 24px;
-  align-items: flex-start;
+  align-items: stretch;
 }
-.detail-left  { display: flex; flex-direction: column; gap: 14px; }
+.detail-left  { display: flex; flex-direction: column; gap: 14px; height: 100%; }
 .detail-right { display: flex; flex-direction: column; gap: 14px; }
+
+/* SOAP card — stretches to fill left column height */
+.soap-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.soap-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.soap-textarea {
+  flex: 1;
+  resize: vertical;
+  width: 100%;
+  min-height: 160px;
+}
 
 /* Vitals edit form */
 .vitals-form {
