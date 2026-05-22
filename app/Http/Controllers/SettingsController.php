@@ -66,9 +66,10 @@ class SettingsController extends Controller
             'auditLogs'        => $auditLogs,
             'lookupCategories' => $lookupCategories,
             'clinic'           => [
-                'name'       => $cp->name,
-                'tagline'    => $cp->tagline,
-                'reg_number' => $cp->reg_number,
+                'name'         => $cp->name,
+                'tagline'      => $cp->tagline,
+                'reg_number'   => $cp->reg_number,
+                'ckaps_number' => $cp->ckaps_number,
                 'address'    => $cp->address,
                 'postcode'   => $cp->postcode,
                 'city'       => $cp->city,
@@ -120,7 +121,8 @@ class SettingsController extends Controller
         $data = $request->validate([
             'name'       => ['required', 'string', 'max:255'],
             'tagline'    => ['nullable', 'string', 'max:255'],
-            'reg_number' => ['nullable', 'string', 'max:100'],
+            'reg_number'   => ['nullable', 'string', 'max:100'],
+            'ckaps_number' => ['nullable', 'string', 'max:100'],
             'address'    => ['required', 'string', 'max:500'],
             'postcode'   => ['required', 'string', 'max:10'],
             'city'       => ['required', 'string', 'max:100'],

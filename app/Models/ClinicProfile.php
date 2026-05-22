@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class ClinicProfile extends Model
 {
     protected $fillable = [
-        'name', 'tagline', 'reg_number',
+        'name', 'tagline', 'reg_number', 'ckaps_number',
         'address', 'postcode', 'city', 'state',
         'phone', 'fax', 'email', 'website', 'logo_path',
     ];

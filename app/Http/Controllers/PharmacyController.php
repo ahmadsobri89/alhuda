@@ -34,13 +34,17 @@ class PharmacyController extends Controller
             'wait_time'          => $rx->created_at->diffForHumans(),
             'created_at'         => $rx->created_at->format('d/m/Y H:i'),
             'items'              => $rx->items->map(fn ($item) => [
-                'id'           => $item->id,
-                'drug_name'    => $item->drug_name,
-                'dosage'       => $item->dosage,
-                'frequency'    => $item->frequency,
-                'duration'     => $item->duration,
-                'quantity'     => $item->quantity,
-                'instructions' => $item->instructions,
+                'id'              => $item->id,
+                'drug_name'       => $item->drug_name,
+                'kegunaan'        => $item->kegunaan,
+                'drug_unit'       => $item->drug_unit,
+                'dosage'          => $item->dosage,
+                'frequency'       => $item->frequency,
+                'duration'        => $item->duration,
+                'quantity'        => $item->quantity,
+                'instructions'    => $item->instructions,
+                'is_prn'          => $item->is_prn,
+                'complete_course' => $item->complete_course,
             ])->all(),
         ];
     }
@@ -76,7 +80,7 @@ class PharmacyController extends Controller
         // Drug-check summary for queue
         $allergiesInQueue = $queue->pluck('patient_allergies')->filter()->unique()->values();
 
-        $lookups = LookupCategory::forSlugs(['kekerapan_dos', 'arahan_dos']);
+        $lookups = LookupCategory::forSlugs(['kekerapan_dos', 'arahan_dos', 'bentuk_ubat']);
 
         return Inertia::render('Pharmacy', [
             'currentRoute'      => 'pharmacy',
@@ -174,6 +178,12 @@ class PharmacyController extends Controller
     {
         $prescription->load(['patient', 'items']);
         AuditLog::record('rx.label', "{$prescription->rx_number} · {$prescription->patient->name}");
-        return view('pharmacy.label', ['rx' => $prescription]);
+
+        $lookups = LookupCategory::forSlugs(['kekerapan_dos', 'arahan_dos', 'bentuk_ubat']);
+
+        return view('pharmacy.label', [
+            'rx'      => $prescription,
+            'lookups' => $lookups,
+        ]);
     }
 }

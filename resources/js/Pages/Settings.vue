@@ -110,8 +110,9 @@ function savePolicies() {
 // ─── Clinic Profile ────────────────────────────────────────────────────────
 const clinicForm = useForm({
   name:       props.clinic.name       ?? '',
-  tagline:    props.clinic.tagline    ?? '',
-  reg_number: props.clinic.reg_number ?? '',
+  tagline:      props.clinic.tagline      ?? '',
+  reg_number:   props.clinic.reg_number   ?? '',
+  ckaps_number: props.clinic.ckaps_number ?? '',
   address:    props.clinic.address    ?? '',
   postcode:   props.clinic.postcode   ?? '',
   city:       props.clinic.city       ?? '',
@@ -291,7 +292,11 @@ function lkpDoDelete() {
             </div>
             <div class="field">
               <label class="field__label">{{ t('clinic_lbl_reg') }}</label>
-              <input v-model="clinicForm.reg_number" class="input" placeholder="KKM/PPMD/..." />
+              <input v-model="clinicForm.reg_number" class="input" placeholder="KKM/PPMD/SSM..." />
+            </div>
+            <div class="field">
+              <label class="field__label">No. CKAPS</label>
+              <input v-model="clinicForm.ckaps_number" class="input" placeholder="230202-14619-11" />
             </div>
 
             <!-- Address -->

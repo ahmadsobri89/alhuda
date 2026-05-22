@@ -2,142 +2,168 @@
 <html lang="ms">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ $rx->rx_number }} · Label Ubat · {{ $clinic->name }}</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ── Print page size (applies at print time regardless of media query) ── */
+@page { size: 80mm 50mm; margin: 0; }
+
 body {
-    font-family: 'Segoe UI', Arial, sans-serif;
-    font-size: 10px;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 7px;
     color: #000;
     background: #fff;
 }
 
-/* ── Label grid — 2 cols × N rows on A4 ── */
-/* Each label: 90mm × 45mm, gap 5mm, margin 10mm */
-.label-sheet {
-    width: 210mm;
-    margin: 0 auto;
-    padding: 8mm 10mm;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 5mm;
-    align-content: start;
-}
-
-/* ── Single label ── */
+/* ════════════════════════════
+   Label: exactly 80 × 50 mm
+   ════════════════════════════ */
 .label {
-    width: 90mm;
-    height: 45mm;
+    width: 80mm;
+    height: 50mm;
     border: 1px solid #000;
-    border-radius: 3px;
-    padding: 3mm 3.5mm;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    page-break-inside: avoid;
 }
 
-/* Clinic strip */
-.lbl-clinic {
+/* ── HEADER (3 columns) ── */
+.lbl-header {
+    display: flex;
+    border-bottom: 1px solid #000;
+    flex-shrink: 0;
+}
+.lbl-header-logo {
+    width: 16mm;
+    flex-shrink: 0;
+    padding: 1mm 1mm;
+    border-right: 1px solid #000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+.lbl-header-info {
+    flex: 1;
+    min-width: 0;
+    padding: 1mm 1.5mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.lbl-header-qr {
+    width: 14mm;
+    flex-shrink: 0;
+    padding: 1mm;
+    border-left: 1px solid #000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.lbl-logo        { width: 11mm; height: 9mm; object-fit: contain; }
+.lbl-ckaps       { font-size: 5px; margin-top: 0.5mm; line-height: 1.2; }
+
+.lbl-clinic-name { font-size: 9px; font-weight: 900; letter-spacing: 1.5px; line-height: 1.1; }
+.lbl-company     { font-size: 5.5px; font-weight: 600; margin-top: 0.5mm; line-height: 1.3; }
+.lbl-address     { font-size: 5.5px; line-height: 1.3; margin-top: 0.3mm; }
+.lbl-contact     { font-size: 5.5px; font-weight: 700; margin-top: 0.5mm; line-height: 1.3; }
+
+.lbl-qr-img      { width: 10mm; height: 10mm; display: block; }
+.lbl-scan        { font-size: 5px; margin-top: 0.5mm; }
+
+/* ── PATIENT ── */
+.lbl-patient {
+    padding: 0.8mm 2mm;
+    border-bottom: 1px solid #000;
+    flex-shrink: 0;
+}
+.lbl-pt-row { font-size: 7px; line-height: 1.7; }
+.lbl-pt-row b { font-weight: 700; }
+
+/* ── DOSAGE TABLE ── */
+.lbl-dose-wrap {
+    border-bottom: 1px solid #000;
+    padding: 0.5mm 2mm;
+    flex-shrink: 0;
+}
+.dose-tbl { width: 100%; border-collapse: collapse; }
+.dose-tbl td {
+    padding: 0.4mm 0.5mm;
+    font-size: 7px;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+.td-lang  { width: 9mm; }
+.td-num   { width: 9mm; text-align: center; padding: 0; }
+.dose-num-box {
+    width: 7mm;
+    height: 7mm;
+    border: 1.5px solid #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 900;
+    margin: 0 auto;
+}
+tr.dose-row-bm td { border-top: 0.5px solid #ccc; }
+
+/* ── CHECKBOXES ── */
+.lbl-checks {
     display: flex;
     align-items: center;
     gap: 3mm;
-    padding-bottom: 2mm;
+    padding: 0.8mm 2mm;
     border-bottom: 1px solid #000;
-    margin-bottom: 2mm;
     flex-shrink: 0;
 }
-.lbl-clinic__logo {
-    width: 10mm; height: 10mm;
-    object-fit: contain;
-    border-radius: 2px;
-}
-.lbl-clinic__name  { font: 700 8.5px 'Segoe UI', Arial, sans-serif; color: #000; line-height: 1.2; }
-.lbl-clinic__addr  { font: 400 7px 'Segoe UI', Arial, sans-serif; color: #555; line-height: 1.4; margin-top: 1px; }
-
-/* Patient row */
-.lbl-patient {
+.lbl-check-item {
     display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: 1.5mm;
-    flex-shrink: 0;
+    align-items: center;
+    gap: 1.2mm;
+    font-size: 6.5px;
 }
-.lbl-patient__name { font: 700 9px 'Segoe UI', Arial, sans-serif; color: #000; }
-.lbl-patient__ic   { font: 400 7.5px 'Segoe UI', Arial, sans-serif; color: #555; }
-
-/* Drug name */
-.lbl-drug {
-    font: 800 10.5px 'Segoe UI', Arial, sans-serif;
-    color: #000;
-    margin-bottom: 1.5mm;
+.check-sq {
+    width: 5mm;
+    height: 5mm;
+    border: 1.5px solid #000;
     flex-shrink: 0;
-    line-height: 1.2;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
+.check-tick { font-size: 10px; font-weight: 900; line-height: 1; }
 
-/* Dosage grid */
-.lbl-dose {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1.5mm;
-    margin-bottom: 1.5mm;
-    flex-shrink: 0;
-}
-.dose-cell__lbl { font: 500 6.5px 'Segoe UI', Arial, sans-serif; color: #777; text-transform: uppercase; letter-spacing: .03em; }
-.dose-cell__val { font: 700 8.5px 'Segoe UI', Arial, sans-serif; color: #000; line-height: 1.2; }
-.dose-cell__qty { font: 800 11px 'Segoe UI', Arial, sans-serif; color: #1b8a4a; }
-
-/* Instructions */
-.lbl-instr {
-    font: 600 8px 'Segoe UI', Arial, sans-serif;
-    color: #1d4ed8;
-    background: #eff6ff;
-    border-radius: 2px;
-    padding: 1mm 2mm;
-    flex-shrink: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* Footer */
+/* ── FOOTER ── */
 .lbl-footer {
-    margin-top: auto;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    padding-top: 1.5mm;
-    border-top: 0.5px solid #ccc;
-    flex-shrink: 0;
-}
-.lbl-footer__rx   { font: 500 7px 'Courier New', monospace; color: #555; }
-.lbl-footer__date { font: 400 7px 'Segoe UI', Arial, sans-serif; color: #555; }
-
-/* Allergy warning — shown only if patient has allergies */
-.lbl-allergy {
-    background: #fff3e0;
-    border: 1px solid #f97316;
-    border-radius: 2px;
+    background: #000;
+    color: #fff;
+    text-align: center;
+    font-size: 7px;
+    font-weight: 900;
     padding: 1mm 2mm;
-    font: 700 7.5px 'Segoe UI', Arial, sans-serif;
-    color: #9a3412;
-    margin-bottom: 1.5mm;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex-shrink: 0;
+    letter-spacing: 1px;
+    margin-top: auto;
 }
 
-/* ── Screen preview bar ── */
+/* ════════════════════════════════════
+   Screen preview  (2× scale)
+   ════════════════════════════════════ */
 @media screen {
-    body { background: #d1d5db; padding: 20px 0 40px; }
-    .label-sheet { background: #fff; box-shadow: 0 4px 20px rgba(0,0,0,.15); }
-
+    body {
+        background: #d1d5db;
+        padding: 60px 0 40px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8mm;
+    }
+    /* print-bar */
     .print-bar {
         position: fixed; top: 0; left: 0; right: 0; z-index: 100;
         background: #1b8a4a; padding: 9px 20px;
@@ -154,22 +180,100 @@ body {
         background: rgba(255,255,255,.15); color: #fff; border: none;
         padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;
     }
-    body { padding-top: 50px; }
-
-    /* dashed cut guide on screen */
-    .label { border-style: dashed; }
+    /* Print settings reminder */
+    .print-hint {
+        background: #fffbe6; border: 1px solid #f0c040;
+        border-radius: 6px; padding: 7px 16px;
+        font-size: 12px; color: #7a5a00;
+        display: flex; align-items: center; gap: 8px;
+    }
+    .print-hint b { font-weight: 700; }
+    /* wrapper provides the 2× footprint so the page scrolls correctly */
+    .label-wrap {
+        width: 160mm;
+        height: 100mm;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+    .label {
+        transform: scale(2);
+        transform-origin: top left;
+    }
 }
 
+/* ════════════════════════════════════
+   Print
+   ════════════════════════════════════ */
 @media print {
-    .print-bar { display: none !important; }
-    body { background: #fff; }
-    .label-sheet { box-shadow: none; padding: 8mm 10mm; width: 210mm; }
-    .label { border: 1px solid #000; border-style: solid; }
-    @page { margin: 0; size: A4 portrait; }
+    .print-bar  { display: none !important; }
+    .print-hint { display: none !important; }
+
+    html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: block !important;
+        background: #fff !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* Each wrapper = one page. Do NOT use display:contents — it breaks :last-child. */
+    .label-wrap {
+        display: block;
+        width: 80mm;
+        height: 50mm;
+        overflow: hidden;
+        page-break-after: always;
+        break-after: page;
+    }
+    .label-wrap:last-child {
+        page-break-after: avoid;
+        break-after: avoid;
+    }
+
+    .label {
+        transform: none !important;
+        width: 80mm !important;
+        height: 50mm !important;
+    }
 }
 </style>
 </head>
 <body>
+
+@php
+$unitMap = [
+    'Tablet'     => ['en' => 'Tablet',  'bm' => 'Biji'],
+    'Kapsul'     => ['en' => 'Capsule', 'bm' => 'Kapsul'],
+    'Sirup'      => ['en' => 'ML',      'bm' => 'ML'],
+    'MDI'        => ['en' => 'Spray',   'bm' => 'Semburan'],
+    'Titis'      => ['en' => 'Drop',    'bm' => 'Titik'],
+    'Serbuk'     => ['en' => 'Sachet',  'bm' => 'Sachet'],
+    'Suntikan'   => ['en' => 'ml',      'bm' => 'ml'],
+    'Supositari' => ['en' => 'pc',      'bm' => 'biji'],
+    'Krim'       => ['en' => 'g',       'bm' => 'g'],
+    'Gel'        => ['en' => 'g',       'bm' => 'g'],
+    'Patch'      => ['en' => 'patch',   'bm' => 'patch'],
+];
+
+$freqMap = [
+    'OD'  => 1, 'OD — 1× sehari'  => 1,
+    'BD'  => 2, 'BD — 2× sehari'  => 2,
+    'TDS' => 3, 'TDS — 3× sehari' => 3,
+    'QID' => 4, 'QID — 4× sehari' => 4,
+    'ON'  => 1, 'ON — Malam'      => 1,
+    'PRN' => null, 'PRN — Bila perlu' => null,
+];
+
+$mealMap = [
+    'Selepas makan'          => ['en' => 'After Food',              'bm' => 'Selepas Makan'],
+    'Sebelum makan'          => ['en' => 'Before Food',             'bm' => 'Sebelum Makan'],
+    'Waktu pagi'             => ['en' => 'Morning',                 'bm' => 'Waktu Pagi'],
+    'Sebelum tidur'          => ['en' => 'Before Bed',              'bm' => 'Sebelum Tidur'],
+    'Bila perlu'             => ['en' => 'When Necessary',          'bm' => 'Bila Perlu'],
+    '30 min sebelum sarapan' => ['en' => '30 min Before Breakfast', 'bm' => '30 min Sblm Sarapan'],
+];
+@endphp
 
 <div class="print-bar">
     <span class="print-bar__title">
@@ -178,81 +282,160 @@ body {
     </span>
     <div class="print-bar__actions">
         <button class="print-bar__btn" onclick="window.print()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 6 2 18 2 18 9"/>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                <rect x="6" y="14" width="12" height="8"/>
+            </svg>
             Cetak Label
         </button>
         <button class="print-bar__close" onclick="window.close()">✕</button>
     </div>
 </div>
 
-<div class="label-sheet">
-
-    @foreach($rx->items as $item)
-    <div class="label">
-
-        {{-- Clinic strip --}}
-        <div class="lbl-clinic">
-            <img src="{{ $clinic->logo_url }}" alt="" class="lbl-clinic__logo" />
-            <div>
-                <div class="lbl-clinic__name">{{ $clinic->name }}</div>
-                <div class="lbl-clinic__addr">{{ $clinic->postcode }} {{ $clinic->city }} · {{ $clinic->phone }}</div>
-            </div>
-        </div>
-
-        {{-- Patient --}}
-        <div class="lbl-patient">
-            <span class="lbl-patient__name">{{ $rx->patient->name }}</span>
-            <span class="lbl-patient__ic">{{ $rx->patient->ic_number }}</span>
-        </div>
-
-        {{-- Allergy warning --}}
-        @if($rx->patient->allergies)
-        <div class="lbl-allergy">⚠ ALAHAN: {{ $rx->patient->allergies }}</div>
-        @endif
-
-        {{-- Drug name --}}
-        <div class="lbl-drug">{{ $item->drug_name }}</div>
-
-        {{-- Dose grid --}}
-        <div class="lbl-dose">
-            @if($item->dosage)
-            <div>
-                <div class="dose-cell__lbl">Dos</div>
-                <div class="dose-cell__val">{{ $item->dosage }}</div>
-            </div>
-            @endif
-            @if($item->frequency)
-            <div>
-                <div class="dose-cell__lbl">Kekerapan</div>
-                <div class="dose-cell__val">{{ $item->frequency }}</div>
-            </div>
-            @endif
-            @if($item->duration)
-            <div>
-                <div class="dose-cell__lbl">Tempoh</div>
-                <div class="dose-cell__val">{{ $item->duration }}</div>
-            </div>
-            @endif
-            <div>
-                <div class="dose-cell__lbl">Kuantiti</div>
-                <div class="dose-cell__qty">{{ $item->quantity }}</div>
-            </div>
-        </div>
-
-        {{-- Instructions --}}
-        @if($item->instructions)
-        <div class="lbl-instr">⚕ {{ $item->instructions }}</div>
-        @endif
-
-        {{-- Footer --}}
-        <div class="lbl-footer">
-            <span class="lbl-footer__rx">{{ $rx->rx_number }} · Dr. {{ $rx->prescribing_doctor }}</span>
-            <span class="lbl-footer__date">{{ $rx->created_at->format('d/m/Y') }}</span>
-        </div>
-
-    </div>
-    @endforeach
-
+<div class="print-hint">
+    ⚙️ <span>Tetapan cetak yang betul:
+    <b>Saiz kertas → 80 × 50 mm</b> &nbsp;·&nbsp;
+    <b>Jidar → Tiada (None)</b> &nbsp;·&nbsp;
+    <b>Skala → 100%</b> &nbsp;·&nbsp;
+    Nyahpilih "Header and footers"</span>
 </div>
+
+@foreach($rx->items as $item)
+@php
+    /* ── Drug unit ── */
+    $dosageLower = strtolower($item->dosage ?? '');
+    if ($item->drug_unit && isset($unitMap[$item->drug_unit])) {
+        $unit = $unitMap[$item->drug_unit];
+    } elseif (str_contains($dosageLower, 'tablet'))  {
+        $unit = $unitMap['Tablet'];
+    } elseif (str_contains($dosageLower, 'kapsul') || str_contains($dosageLower, 'capsule')) {
+        $unit = $unitMap['Kapsul'];
+    } elseif (str_contains($dosageLower, 'ml') || str_contains($dosageLower, 'sirup')) {
+        $unit = $unitMap['Sirup'];
+    } elseif (str_contains($dosageLower, 'titik') || str_contains($dosageLower, 'titis') || str_contains($dosageLower, 'drop')) {
+        $unit = $unitMap['Titis'];
+    } elseif (str_contains($dosageLower, 'semburan') || str_contains($dosageLower, 'spray') || str_contains($dosageLower, 'mdi')) {
+        $unit = $unitMap['MDI'];
+    } elseif (str_contains($dosageLower, 'sachet') || str_contains($dosageLower, 'serbuk')) {
+        $unit = $unitMap['Serbuk'];
+    } else {
+        $unit = null;
+    }
+    $unitEn = $unit['en'] ?? '';
+    $unitBm = $unit['bm'] ?? '';
+
+    /* ── Dose number (first number in dosage string) ── */
+    preg_match('/^\d+(\.\d+)?/', trim($item->dosage ?? ''), $dm);
+    $doseNum = $dm[0] ?? '—';
+
+    /* ── Frequency number ── */
+    $freqNum = $freqMap[$item->frequency] ?? null;
+    if ($freqNum === null) {
+        preg_match('/(\d+)\s*[xX×]\s*sehari/i', $item->frequency ?? '', $fm);
+        $freqNum = isset($fm[1]) ? (int)$fm[1] : null;
+    }
+    $freqDisp = $freqNum !== null ? $freqNum : '—';
+
+    /* ── Meal timing ── */
+    $meal   = $mealMap[$item->instructions] ?? null;
+    $mealEn = $meal ? $meal['en'] : ($item->instructions ?: '');
+    $mealBm = $meal ? $meal['bm'] : ($item->instructions ?: '');
+
+    /* ── Checkboxes ── */
+    $isPrn = $item->is_prn
+        || str_contains(strtolower($item->frequency ?? ''), 'prn')
+        || str_contains(strtolower($item->frequency ?? ''), 'bila perlu')
+        || str_contains(strtolower($item->instructions ?? ''), 'bila perlu');
+
+    $completeCourse = $item->complete_course
+        || str_contains(strtolower($item->instructions ?? ''), 'habiskan');
+@endphp
+
+<div class="label-wrap">
+<div class="label">
+
+    {{-- ══ HEADER ══ --}}
+    <div class="lbl-header">
+        <div class="lbl-header-logo">
+            <img src="{{ $clinic->logo_url }}" alt="" class="lbl-logo" />
+            @if($clinic->ckaps_number)
+            <div class="lbl-ckaps">CKAPS:<br>{{ $clinic->ckaps_number }}</div>
+            @endif
+        </div>
+
+        <div class="lbl-header-info">
+            <div class="lbl-clinic-name">{{ strtoupper($clinic->name) }}</div>
+            <div class="lbl-company">
+                {{ $clinic->tagline }}@if($clinic->reg_number) (SSM: {{ $clinic->reg_number }})@endif
+            </div>
+            <div class="lbl-address">
+                {{ $clinic->address }}, {{ $clinic->postcode }} {{ $clinic->city }}, {{ $clinic->state }}
+            </div>
+            <div class="lbl-contact">
+                {{ $clinic->phone }}@if($clinic->email) · {{ $clinic->email }}@endif
+            </div>
+        </div>
+
+        <div class="lbl-header-qr">
+            <img class="lbl-qr-img"
+                 src="https://api.qrserver.com/v1/create-qr-code/?size=40x40&data={{ urlencode($clinic->email ?? $clinic->phone) }}"
+                 alt="QR" />
+            <div class="lbl-scan">scan me</div>
+        </div>
+    </div>
+
+    {{-- ══ PATIENT ══ --}}
+    <div class="lbl-patient">
+        <div class="lbl-pt-row"><b>Nama:</b> {{ $rx->patient->name }}</div>
+        <div class="lbl-pt-row"><b>Tarikh:</b> {{ $rx->created_at->format('d/m/Y') }}</div>
+        <div class="lbl-pt-row">
+            <b>Nama Ubat / Kegunaan:</b>
+            {{ $item->drug_name }}@if($item->kegunaan) / {{ $item->kegunaan }}@endif
+        </div>
+    </div>
+
+    {{-- ══ DOSAGE ══ --}}
+    <div class="lbl-dose-wrap">
+        <table class="dose-tbl">
+            <tr class="dose-row-en">
+                <td class="td-lang">Take</td>
+                <td class="td-num" rowspan="2">
+                    <div class="dose-num-box">{{ $doseNum }}</div>
+                </td>
+                <td class="td-unit">{{ $unitEn }}</td>
+                <td class="td-num" rowspan="2">
+                    <div class="dose-num-box">{{ $freqDisp }}</div>
+                </td>
+                <td class="td-right">Times Daily{{ $mealEn ? ' · ' . $mealEn : '' }}</td>
+            </tr>
+            <tr class="dose-row-bm">
+                <td class="td-lang">Makan</td>
+                <td class="td-unit">{{ $unitBm }}</td>
+                <td class="td-right">Kali Sehari{{ $mealBm ? ' · ' . $mealBm : '' }}</td>
+            </tr>
+        </table>
+    </div>
+
+    {{-- ══ CHECKBOXES ══ --}}
+    <div class="lbl-checks">
+        <div class="lbl-check-item">
+            <div class="check-sq">@if($isPrn)<span class="check-tick">✓</span>@endif</div>
+            <span>Bila Perlu / When Necessary</span>
+        </div>
+        <div class="lbl-check-item">
+            <div class="check-sq">@if($completeCourse)<span class="check-tick">✓</span>@endif</div>
+            <span>Habiskan Ubat / To Complete Medicine</span>
+        </div>
+    </div>
+
+    {{-- ══ FOOTER ══ --}}
+    <div class="lbl-footer">UBAT TERKAWAL / CONTROLLED MEDICINE</div>
+
+</div>{{-- .label --}}
+</div>{{-- .label-wrap --}}
+@endforeach
+
 </body>
 </html>

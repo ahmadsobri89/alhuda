@@ -67,7 +67,7 @@ const showModal    = ref(false)
 const editingRx    = ref(null)
 
 function emptyItem() {
-  return { drug_name: '', dosage: '', frequency: '', duration: '', quantity: 1, instructions: '' }
+  return { drug_name: '', kegunaan: '', drug_unit: '', dosage: '', frequency: '', duration: '', quantity: 1, instructions: '', is_prn: false, complete_course: false }
 }
 
 const rxForm = useForm({
@@ -97,8 +97,10 @@ function openEdit(rx) {
   rxForm.prescribing_doctor = rx.prescribing_doctor
   rxForm.notes              = rx.notes ?? ''
   rxForm.items              = rx.items.map(i => ({
-    drug_name: i.drug_name, dosage: i.dosage ?? '', frequency: i.frequency ?? '',
-    duration: i.duration ?? '', quantity: i.quantity, instructions: i.instructions ?? '',
+    drug_name: i.drug_name, kegunaan: i.kegunaan ?? '', drug_unit: i.drug_unit ?? '',
+    dosage: i.dosage ?? '', frequency: i.frequency ?? '', duration: i.duration ?? '',
+    quantity: i.quantity, instructions: i.instructions ?? '',
+    is_prn: i.is_prn ?? false, complete_course: i.complete_course ?? false,
   }))
   rxForm.clearErrors()
   showModal.value = true
@@ -127,6 +129,7 @@ const COMMON_DRUGS = [
 
 const FREQUENCIES  = computed(() => (props.lookups?.kekerapan_dos ?? []).map(v => v.label_ms))
 const INSTRUCTIONS = computed(() => (props.lookups?.arahan_dos    ?? []).map(v => v.label_ms))
+const DRUG_UNITS   = computed(() => (props.lookups?.bentuk_ubat   ?? []).map(v => ({ code: v.code, label: v.label_ms })))
 
 // ─── View Drawer ───────────────────────────────────────────────────────────
 const viewRx = ref(null)
@@ -423,22 +426,30 @@ function doDispense() {
           <div class="modal-section-title">{{ t('rx_sec_drugs') }}</div>
           <div class="drug-items-header">
             <span style="flex:2">{{ t('rx_lbl_drug') }}</span>
+            <span style="flex:1.2">Bentuk Ubat</span>
             <span style="flex:1">{{ t('rx_lbl_dose') }}</span>
             <span style="flex:1.5">{{ t('rx_lbl_freq') }}</span>
             <span style="flex:1">{{ t('rx_lbl_duration') }}</span>
             <span style="width:60px">{{ t('rx_lbl_qty') }}</span>
             <span style="flex:1.2">{{ t('rx_lbl_instruction') }}</span>
+            <span style="width:44px">PRN</span>
+            <span style="width:52px">Habis</span>
             <span style="width:32px"></span>
           </div>
           <div v-for="(item, i) in rxForm.items" :key="i" class="drug-item-row">
-            <div style="flex:2;position:relative">
+            <div style="flex:2;position:relative;display:flex;flex-direction:column;gap:4px">
               <input v-model="item.drug_name" class="input input--sm" placeholder="Nama ubat" list="drug-list" />
               <datalist id="drug-list">
                 <option v-for="d in COMMON_DRUGS" :key="d" :value="d" />
               </datalist>
+              <input v-model="item.kegunaan" class="input input--sm" placeholder="Kegunaan (cth: Demam, Sakit)" />
               <span v-if="rxForm.errors[`items.${i}.drug_name`]" class="field__error">Wajib diisi</span>
             </div>
-            <input v-model="item.dosage"       class="input input--sm" style="flex:1"   placeholder="500mg" />
+            <select v-model="item.drug_unit" class="input input--sm" style="flex:1.2">
+              <option value="">— Pilih —</option>
+              <option v-for="u in DRUG_UNITS" :key="u.code" :value="u.code">{{ u.label }}</option>
+            </select>
+            <input v-model="item.dosage"       class="input input--sm" style="flex:1"   placeholder="1" />
             <div style="flex:1.5">
               <input v-model="item.frequency" class="input input--sm" placeholder="OD / BD / TDS" list="freq-list" />
               <datalist id="freq-list">
@@ -453,6 +464,14 @@ function doDispense() {
                 <option v-for="ins in INSTRUCTIONS" :key="ins" :value="ins" />
               </datalist>
             </div>
+            <label class="check-toggle" title="Bila Perlu">
+              <input type="checkbox" v-model="item.is_prn" />
+              <span>PRN</span>
+            </label>
+            <label class="check-toggle" title="Habiskan Ubat">
+              <input type="checkbox" v-model="item.complete_course" />
+              <span>Habis</span>
+            </label>
             <button type="button" class="remove-btn" @click="removeItem(i)" :disabled="rxForm.items.length===1">×</button>
           </div>
           <span v-if="rxForm.errors.items" class="field__error">{{ rxForm.errors.items }}</span>
@@ -609,6 +628,12 @@ function doDispense() {
 }
 .remove-btn:hover:not(:disabled) { background:var(--bg-muted); color:var(--brand-red); }
 .remove-btn:disabled { opacity:.3; cursor:default; }
+.check-toggle {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:2px; cursor:pointer; flex-shrink:0;
+}
+.check-toggle input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:var(--brand-green); }
+.check-toggle span { font:500 9px var(--font-sans); color:var(--fg3); text-transform:uppercase; letter-spacing:.04em; }
 .add-item-btn {
   margin-top: 10px; padding: 7px 14px; border: 1px dashed var(--border);
   border-radius: 8px; background: transparent; color: var(--brand-green-dark);
