@@ -106,9 +106,10 @@ body {
 /* ── Unit highlight (EN row) ── */
 .t-unit-en {
     position: absolute;
-    top: 58%;
-    left: 17.5%;
+    top: 59%;
+    left: 20%;
     font-size: 23px;
+    font-weight: bold;
     line-height: 1;
     display: flex;
     gap: 1px;
@@ -118,15 +119,14 @@ body {
 .t-unit-bm {
     position: absolute;
     top: 67%;
-    left: 17.5%;
+    left: 20%;
     font-size: 23px;
+    font-weight: bold;
     line-height: 1;
     display: flex;
     gap: 1px;
     align-items: center;
 }
-.unit-part        { color: #aaa; }
-.unit-part.active { color: #000; font-weight: 700; }
 
 /* ── Meal timing ── */
 .t-meal-en {
@@ -146,6 +146,19 @@ body {
     font-size: 26px;
     line-height: 1;
     white-space: nowrap;
+}
+
+/* ── Item note ── */
+.t-note {
+    position: absolute;
+    top: 81.5%;
+    left: 3%;
+    right: 3%;
+    font-size: 20px;
+    line-height: 1.3;
+    color: #333;
+    white-space: pre-wrap;
+    word-break: break-word;
 }
 
 /* ── Checkboxes ticks ── */
@@ -397,20 +410,14 @@ $mealMap = [
         {{-- Frequency number (right box) --}}
         <div class="t-freq-num">{{ $freqDisp }}</div>
 
-        {{-- Unit EN row: Tablet / ML / Drop / Spray --}}
+        {{-- Unit EN row: show selected only --}}
         <div class="t-unit-en">
-            <span class="unit-part {{ $unitKey === 'tablet'  ? 'active' : '' }}">Tablet</span>&nbsp;/&nbsp;
-            <span class="unit-part {{ $unitKey === 'ml'      ? 'active' : '' }}">ML</span>&nbsp;/&nbsp;
-            <span class="unit-part {{ $unitKey === 'drop'    ? 'active' : '' }}">Drop</span>&nbsp;/&nbsp;
-            <span class="unit-part {{ $unitKey === 'spray'   ? 'active' : '' }}">Spray</span>
+            @if($unit){{ $unit['en'] }}@endif
         </div>
 
-        {{-- Unit BM row: Biji / ML / Titik / Semburan --}}
+        {{-- Unit BM row: show selected only --}}
         <div class="t-unit-bm">
-            <span class="unit-part {{ $unitKey === 'tablet'  ? 'active' : '' }}">Biji</span>&nbsp;/&nbsp;
-            <span class="unit-part {{ $unitKey === 'ml'      ? 'active' : '' }}">ML</span>&nbsp;/&nbsp;
-            <span class="unit-part {{ $unitKey === 'drop'    ? 'active' : '' }}">Titik</span>&nbsp;/&nbsp;
-            <span class="unit-part {{ $unitKey === 'spray'   ? 'active' : '' }}">Semburan</span>
+            @if($unit){{ $unit['bm'] }}@endif
         </div>
 
         {{-- Meal timing EN --}}
@@ -423,16 +430,13 @@ $mealMap = [
         <div class="t-meal-bm">{{ $mealBm }}</div>
         @endif
 
-        {{-- Bila Perlu tick --}}
-        @if($isPrn)
-        <div class="t-prn-tick">✓</div>
+        {{-- Item note (strip PRN/Habiskan tags — already shown via tick marks) --}}
+        @php
+            $printNote = $item->item_note;
+        @endphp
+        @if($printNote)
+        <div class="t-note">{{ $printNote }}</div>
         @endif
-
-        {{-- Habiskan Ubat tick --}}
-        @if($completeCourse)
-        <div class="t-complete-tick">✓</div>
-        @endif
-
     </div>{{-- .label-text --}}
 
 </div>{{-- .label-wrap-inner --}}

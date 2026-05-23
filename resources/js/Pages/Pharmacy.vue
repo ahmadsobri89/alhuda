@@ -67,7 +67,7 @@ const showModal    = ref(false)
 const editingRx    = ref(null)
 
 function emptyItem() {
-  return { drug_name: '', kegunaan: '', drug_unit: '', dosage: '', frequency: '', duration: '', quantity: 1, instructions: '', is_prn: false, complete_course: false }
+  return { drug_name: '', kegunaan: '', drug_unit: '', dosage: '', frequency: '', duration: '', quantity: 1, instructions: '', item_note: '', is_prn: false, complete_course: false }
 }
 
 const rxForm = useForm({
@@ -99,7 +99,7 @@ function openEdit(rx) {
   rxForm.items              = rx.items.map(i => ({
     drug_name: i.drug_name, kegunaan: i.kegunaan ?? '', drug_unit: i.drug_unit ?? '',
     dosage: i.dosage ?? '', frequency: i.frequency ?? '', duration: i.duration ?? '',
-    quantity: i.quantity, instructions: i.instructions ?? '',
+    quantity: i.quantity, instructions: i.instructions ?? '', item_note: i.item_note ?? '',
     is_prn: i.is_prn ?? false, complete_course: i.complete_course ?? false,
   }))
   rxForm.clearErrors()
@@ -118,6 +118,30 @@ function submitRx() {
 
 function addItem()     { rxForm.items.push(emptyItem()) }
 function removeItem(i) { rxForm.items.splice(i, 1) }
+
+const PRN_TAGS = ['Bila Perlu', 'Habiskan ubat']
+
+function updatePrnLine(note, tag, active) {
+  const lines = (note ?? '').split('\n')
+  const prnIdx = lines.findIndex(l => PRN_TAGS.some(t => l.includes(t)))
+  let prnTags = prnIdx >= 0 ? PRN_TAGS.filter(t => lines[prnIdx].includes(t)) : []
+  if (prnIdx >= 0) lines.splice(prnIdx, 1)
+  prnTags = active ? [...new Set([...prnTags, tag])] : prnTags.filter(t => t !== tag)
+  const other = lines.filter(l => l.trim())
+  return [...other, ...(prnTags.length ? [prnTags.join(', ')] : [])].join('\n').trim()
+}
+
+function onPrnChange(item) {
+  item.item_note = updatePrnLine(item.item_note, 'Bila Perlu', item.is_prn)
+}
+function onCompleteChange(item) {
+  item.item_note = updatePrnLine(item.item_note, 'Habiskan ubat', item.complete_course)
+}
+
+function limitNoteLines(item) {
+  const lines = item.item_note.split('\n')
+  if (lines.length > 2) item.item_note = lines.slice(0, 2).join('\n')
+}
 
 // Common drugs for quick-fill
 const COMMON_DRUGS = [
@@ -340,6 +364,10 @@ function doDispense() {
                 <span class="drug-card__qty">{{ t('rx_draw_qty', { n: item.quantity }) }}</span>
                 <span v-if="item.instructions" class="drug-card__instr">{{ item.instructions }}</span>
               </div>
+              <div v-if="item.item_note" class="drug-card__note">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                {{ item.item_note }}
+              </div>
             </div>
           </div>
 
@@ -508,19 +536,34 @@ function doDispense() {
                   </datalist>
                 </div>
                 <label class="rx-toggle">
-                  <input type="checkbox" v-model="item.is_prn" />
+                  <input type="checkbox" v-model="item.is_prn" @change="onPrnChange(item)" />
                   <span class="rx-toggle__txt">
                     <strong>PRN</strong>
                     <small>Bila Perlu</small>
                   </span>
                 </label>
                 <label class="rx-toggle">
-                  <input type="checkbox" v-model="item.complete_course" />
+                  <input type="checkbox" v-model="item.complete_course" @change="onCompleteChange(item)" />
                   <span class="rx-toggle__txt">
                     <strong>Habis</strong>
                     <small>Habiskan</small>
                   </span>
                 </label>
+              </div>
+
+              <!-- Row 4: Nota ubat (optional) -->
+              <div class="rx-row rx-row--note">
+                <div class="rx-field">
+                  <label class="rx-field__lbl rx-field__lbl--note">Nota Ubat</label>
+                  <textarea
+                    v-model="item.item_note"
+                    class="input input--sm rx-item-note"
+                    rows="2"
+                    placeholder="cth: Simpan dalam peti sejuk, elakkan cahaya matahari..."
+                    style="resize:none"
+                    @input="limitNoteLines(item)"
+                  ></textarea>
+                </div>
               </div>
 
             </div><!-- /v-for -->
@@ -686,6 +729,7 @@ function doDispense() {
 .req { color: var(--brand-red); }
 .rx-field { display:flex; flex-direction:column; gap:4px; }
 .rx-field__lbl { font:600 10.5px var(--font-sans); letter-spacing:.04em; text-transform:uppercase; color:var(--fg3); }
+.rx-field__lbl--note::after { content:' (pilihan)'; font:400 10px var(--font-sans); text-transform:none; letter-spacing:0; color:var(--fg3); }
 .rx-field__err { font:500 11px var(--font-sans); color:var(--brand-red); }
 
 /* ── Drug Card ── */
@@ -717,6 +761,9 @@ function doDispense() {
 .rx-row--2      { grid-template-columns: 1fr 1fr; }
 .rx-row--4      { grid-template-columns: 1.4fr 0.8fr 1.5fr 1fr; }
 .rx-row--footer { grid-template-columns: 80px 1fr auto auto; align-items:end; }
+.rx-row--note   { grid-template-columns: 1fr; }
+.rx-item-note   { background:#FFFDF0; border-color:#E8D48A; }
+.rx-item-note:focus { border-color:#B08000; box-shadow:0 0 0 3px rgba(176,128,0,.12); }
 
 /* ── Qty/Instr in footer row ── */
 .rx-field--qty   { min-width:0; }
@@ -798,6 +845,13 @@ function doDispense() {
 .drug-card__footer { display:flex; justify-content:space-between; margin-top:6px; }
 .drug-card__qty    { font:700 12px var(--font-mono); color:var(--brand-green-dark); background:var(--brand-green-light); padding:2px 8px; border-radius:999px; }
 .drug-card__instr  { font:500 11.5px var(--font-sans); color:var(--fg2); font-style:italic; }
+.drug-card__note   {
+  display:flex; align-items:flex-start; gap:5px; margin-top:7px;
+  padding:6px 8px; background:#FFF9E6; border:1px solid #F0C040;
+  border-radius:6px; font:400 11.5px var(--font-sans); color:#7A5A00;
+  line-height:1.5; white-space: pre-wrap; word-break: break-word;
+}
+.drug-card__note svg { flex-shrink:0; margin-top:1px; color:#B08000; }
 
 /* Allergy alert */
 .allergy-alert {

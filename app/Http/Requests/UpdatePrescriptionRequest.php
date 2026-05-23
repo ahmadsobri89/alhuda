@@ -23,6 +23,7 @@ class UpdatePrescriptionRequest extends FormRequest
             'items.*.duration'    => ['nullable', 'string', 'max:100'],
             'items.*.quantity'        => ['required', 'integer', 'min:1', 'max:9999'],
             'items.*.instructions'    => ['nullable', 'string', 'max:255'],
+            'items.*.item_note'       => ['nullable', 'string', 'max:1000'],
             'items.*.is_prn'          => ['boolean'],
             'items.*.complete_course' => ['boolean'],
         ];

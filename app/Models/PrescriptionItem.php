@@ -9,7 +9,7 @@ class PrescriptionItem extends Model
 {
     protected $fillable = [
         'prescription_id', 'drug_name', 'kegunaan', 'drug_unit', 'dosage',
-        'frequency', 'duration', 'quantity', 'instructions',
+        'frequency', 'duration', 'quantity', 'instructions', 'item_note',
         'is_prn', 'complete_course',
     ];
 
