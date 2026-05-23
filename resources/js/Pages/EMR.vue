@@ -597,37 +597,8 @@ const soapHints = computed(() => ({
               <div class="card__header">
                 <h3 class="card__title">{{ t('ts_section') }}</h3>
                 <div class="spacer"></div>
-                <Btn variant="ghost" size="sm" @click="showTsForm = !showTsForm">
-                  {{ showTsForm ? t('ts_cancel') : t('ts_issue_btn') }}
-                </Btn>
-              </div>
-
-              <!-- Issue form -->
-              <div v-if="showTsForm" class="card__body" style="border-bottom:1px solid var(--border)">
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-                  <div class="field">
-                    <label class="field__label">{{ t('ts_lbl_arrival') }} *</label>
-                    <input v-model="tsForm.arrival_time" type="time" class="input" required />
-                    <span v-if="tsForm.errors.arrival_time" class="field__error">{{ tsForm.errors.arrival_time }}</span>
-                  </div>
-                  <div class="field">
-                    <label class="field__label">{{ t('ts_lbl_departure') }} *</label>
-                    <input v-model="tsForm.departure_time" type="time" class="input" required />
-                    <span v-if="tsForm.errors.departure_time" class="field__error">{{ tsForm.errors.departure_time }}</span>
-                  </div>
-                </div>
-                <div class="field" style="margin-bottom:8px">
-                  <label class="field__label">{{ t('ts_lbl_purpose') }}</label>
-                  <input v-model="tsForm.purpose" type="text" class="input" :placeholder="t('ts_ph_purpose')" maxlength="255" />
-                </div>
-                <div class="field" style="margin-bottom:10px">
-                  <label class="field__label">{{ t('ts_lbl_notes') }}</label>
-                  <input v-model="tsForm.notes" type="text" class="input" :placeholder="t('ts_ph_notes')" maxlength="500" />
-                </div>
-                <Btn variant="primary" size="sm" style="width:100%;justify-content:center"
-                     :disabled="tsForm.processing || !tsForm.arrival_time || !tsForm.departure_time"
-                     @click="issueTsSlip">
-                  {{ tsForm.processing ? t('ts_submitting') : t('ts_issue_btn') }}
+                <Btn variant="ghost" size="sm" @click="showTsForm = true">
+                  {{ t('ts_issue_btn') }}
                 </Btn>
               </div>
 
@@ -662,52 +633,8 @@ const soapHints = computed(() => ({
               <div class="card__header">
                 <h3 class="card__title">{{ t('ref_section') }}</h3>
                 <div class="spacer"></div>
-                <Btn variant="ghost" size="sm" @click="showRefForm = !showRefForm">
-                  {{ showRefForm ? t('ref_cancel') : t('ref_issue_btn') }}
-                </Btn>
-              </div>
-
-              <!-- Issue Referral form -->
-              <div v-if="showRefForm" class="card__body" style="border-bottom:1px solid var(--border)">
-                <div class="field" style="margin-bottom:8px">
-                  <label class="field__label">{{ t('ref_lbl_to') }} *</label>
-                  <input v-model="refForm.referred_to" type="text" class="input" :placeholder="t('ref_ph_to')" maxlength="255" />
-                  <span v-if="refForm.errors.referred_to" class="field__error">{{ refForm.errors.referred_to }}</span>
-                </div>
-                <div class="field" style="margin-bottom:8px">
-                  <label class="field__label">{{ t('ref_lbl_dept') }}</label>
-                  <input v-model="refForm.referred_to_dept" type="text" class="input" :placeholder="t('ref_ph_dept')" maxlength="255" />
-                </div>
-                <div class="field" style="margin-bottom:8px">
-                  <label class="field__label">{{ t('ref_lbl_urgency') }}</label>
-                  <select v-model="refForm.urgency" class="select">
-                    <template v-if="(lookups?.keutamaan_rujukan ?? []).length">
-                      <option v-for="u in lookups.keutamaan_rujukan" :key="u.code" :value="u.code">{{ u.label_ms }}</option>
-                    </template>
-                    <template v-else>
-                      <option value="routine">{{ t('ref_urgency_routine') }}</option>
-                      <option value="urgent">{{ t('ref_urgency_urgent') }}</option>
-                      <option value="emergency">{{ t('ref_urgency_emergency') }}</option>
-                    </template>
-                  </select>
-                </div>
-                <div class="field" style="margin-bottom:8px">
-                  <label class="field__label">{{ t('ref_lbl_reason') }} *</label>
-                  <textarea v-model="refForm.reason" class="input" rows="3" :placeholder="t('ref_ph_reason')" maxlength="1000" style="resize:vertical"></textarea>
-                  <span v-if="refForm.errors.reason" class="field__error">{{ refForm.errors.reason }}</span>
-                </div>
-                <div class="field" style="margin-bottom:8px">
-                  <label class="field__label">{{ t('ref_lbl_summary') }}</label>
-                  <textarea v-model="refForm.clinical_summary" class="input" rows="3" :placeholder="t('ref_ph_summary')" maxlength="2000" style="resize:vertical"></textarea>
-                </div>
-                <div class="field" style="margin-bottom:10px">
-                  <label class="field__label">{{ t('ref_lbl_history') }}</label>
-                  <textarea v-model="refForm.relevant_history" class="input" rows="2" :placeholder="t('ref_ph_history')" maxlength="2000" style="resize:vertical"></textarea>
-                </div>
-                <Btn variant="primary" size="sm" style="width:100%;justify-content:center"
-                     :disabled="refForm.processing || !refForm.referred_to || !refForm.reason"
-                     @click="issueReferral">
-                  {{ refForm.processing ? t('ref_submitting') : t('ref_issue_btn') }}
+                <Btn variant="ghost" size="sm" @click="showRefForm = true">
+                  {{ t('ref_issue_btn') }}
                 </Btn>
               </div>
 
@@ -742,39 +669,8 @@ const soapHints = computed(() => ({
               <div class="card__header">
                 <h3 class="card__title">{{ t('qn_section') }}</h3>
                 <div class="spacer"></div>
-                <Btn variant="ghost" size="sm" @click="showQnForm = !showQnForm">
-                  {{ showQnForm ? t('qn_cancel') : t('qn_issue_btn') }}
-                </Btn>
-              </div>
-
-              <!-- Issue Quarantine form -->
-              <div v-if="showQnForm" class="card__body" style="border-bottom:1px solid var(--border)">
-                <div class="field" style="margin-bottom:8px">
-                  <label class="field__label">{{ t('qn_lbl_start') }}</label>
-                  <input v-model="qnForm.quarantine_start" type="date" class="input" required />
-                  <span v-if="qnForm.errors.quarantine_start" class="field__error">{{ qnForm.errors.quarantine_start }}</span>
-                </div>
-                <div class="field" style="margin-bottom:8px">
-                  <label class="field__label">{{ t('qn_lbl_days') }}</label>
-                  <input v-model="qnForm.days" type="number" min="1" max="365" class="input" />
-                  <span v-if="qnForm.errors.days" class="field__error">{{ qnForm.errors.days }}</span>
-                </div>
-                <div class="field" style="margin-bottom:8px">
-                  <label class="field__label">{{ t('qn_lbl_diagnosis') }}</label>
-                  <input v-model="qnForm.diagnosis" type="text" class="input" :placeholder="t('qn_ph_diagnosis')" maxlength="255" />
-                </div>
-                <div class="field" style="margin-bottom:8px">
-                  <label class="field__label">{{ t('qn_lbl_reason') }}</label>
-                  <input v-model="qnForm.reason" type="text" class="input" :placeholder="t('qn_ph_reason')" maxlength="255" />
-                </div>
-                <div class="field" style="margin-bottom:10px">
-                  <label class="field__label">{{ t('qn_lbl_notes') }}</label>
-                  <input v-model="qnForm.notes" type="text" class="input" :placeholder="t('qn_ph_notes')" maxlength="500" />
-                </div>
-                <Btn variant="primary" size="sm" style="width:100%;justify-content:center"
-                     :disabled="qnForm.processing || !qnForm.quarantine_start || qnForm.days < 1"
-                     @click="issueQuarantine">
-                  {{ qnForm.processing ? t('qn_submitting') : t('qn_issue_btn') }}
+                <Btn variant="ghost" size="sm" @click="showQnForm = true">
+                  {{ t('qn_issue_btn') }}
                 </Btn>
               </div>
 
@@ -810,35 +706,8 @@ const soapHints = computed(() => ({
               <div class="card__header">
                 <h3 class="card__title">{{ t('mc_section') }}</h3>
                 <div class="spacer"></div>
-                <Btn variant="ghost" size="sm" @click="showMcForm = !showMcForm">
-                  {{ showMcForm ? t('mc_cancel') : t('mc_issue_btn') }}
-                </Btn>
-              </div>
-
-              <!-- Issue MC form -->
-              <div v-if="showMcForm" class="card__body" style="border-bottom:1px solid var(--border)">
-                <div class="field" style="margin-bottom:8px">
-                  <label class="field__label">{{ t('mc_lbl_start') }}</label>
-                  <input v-model="mcForm.start_date" type="date" class="input" required />
-                  <span v-if="mcForm.errors.start_date" class="field__error">{{ mcForm.errors.start_date }}</span>
-                </div>
-                <div class="field" style="margin-bottom:8px">
-                  <label class="field__label">{{ t('mc_lbl_days') }}</label>
-                  <input v-model="mcForm.days" type="number" min="1" max="365" class="input" />
-                  <span v-if="mcForm.errors.days" class="field__error">{{ mcForm.errors.days }}</span>
-                </div>
-                <div class="field" style="margin-bottom:8px">
-                  <label class="field__label">{{ t('mc_lbl_diagnosis') }}</label>
-                  <input v-model="mcForm.diagnosis" type="text" class="input" :placeholder="t('mc_ph_diagnosis')" maxlength="255" />
-                </div>
-                <div class="field" style="margin-bottom:10px">
-                  <label class="field__label">{{ t('mc_lbl_notes') }}</label>
-                  <input v-model="mcForm.notes" type="text" class="input" :placeholder="t('mc_ph_notes')" maxlength="500" />
-                </div>
-                <Btn variant="primary" size="sm" style="width:100%;justify-content:center"
-                     :disabled="mcForm.processing || !mcForm.start_date || mcForm.days < 1"
-                     @click="issueMc">
-                  {{ mcForm.processing ? t('mc_submitting') : t('mc_issue_btn') }}
+                <Btn variant="ghost" size="sm" @click="showMcForm = true">
+                  {{ t('mc_issue_btn') }}
                 </Btn>
               </div>
 
@@ -872,6 +741,181 @@ const soapHints = computed(() => ({
         </div>
       </template>
     </div>
+
+    <!-- ── Issue MC Modal ────────────────────────────────── -->
+    <Teleport to="body">
+      <div v-if="showMcForm" class="modal-backdrop" @click.self="showMcForm = false; mcForm.clearErrors()">
+        <div class="modal">
+          <div class="modal__header">
+            <h3 class="modal__title">{{ t('mc_issue_btn') }}</h3>
+            <button class="modal__close" @click="showMcForm = false; mcForm.clearErrors()">✕</button>
+          </div>
+          <div class="modal__body">
+            <div class="field" style="margin-bottom:12px">
+              <label class="field__label">{{ t('mc_lbl_start') }}</label>
+              <input v-model="mcForm.start_date" type="date" class="input" required />
+              <span v-if="mcForm.errors.start_date" class="field__error">{{ mcForm.errors.start_date }}</span>
+            </div>
+            <div class="field" style="margin-bottom:12px">
+              <label class="field__label">{{ t('mc_lbl_days') }}</label>
+              <input v-model="mcForm.days" type="number" min="1" max="365" class="input" />
+              <span v-if="mcForm.errors.days" class="field__error">{{ mcForm.errors.days }}</span>
+            </div>
+            <div class="field" style="margin-bottom:12px">
+              <label class="field__label">{{ t('mc_lbl_diagnosis') }}</label>
+              <input v-model="mcForm.diagnosis" type="text" class="input" :placeholder="t('mc_ph_diagnosis')" maxlength="255" />
+            </div>
+            <div class="field" style="margin-bottom:16px">
+              <label class="field__label">{{ t('mc_lbl_notes') }}</label>
+              <input v-model="mcForm.notes" type="text" class="input" :placeholder="t('mc_ph_notes')" maxlength="500" />
+            </div>
+            <div class="modal__footer">
+              <Btn variant="secondary" type="button" @click="showMcForm = false; mcForm.clearErrors()">{{ t('btn_cancel') }}</Btn>
+              <Btn variant="primary" :disabled="mcForm.processing || !mcForm.start_date || mcForm.days < 1" @click="issueMc">
+                {{ mcForm.processing ? t('mc_submitting') : t('mc_issue_btn') }}
+              </Btn>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- ── Issue Timeslip Modal ───────────────────────────── -->
+    <Teleport to="body">
+      <div v-if="showTsForm" class="modal-backdrop" @click.self="showTsForm = false; tsForm.clearErrors()">
+        <div class="modal">
+          <div class="modal__header">
+            <h3 class="modal__title">{{ t('ts_issue_btn') }}</h3>
+            <button class="modal__close" @click="showTsForm = false; tsForm.clearErrors()">✕</button>
+          </div>
+          <div class="modal__body">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+              <div class="field">
+                <label class="field__label">{{ t('ts_lbl_arrival') }} *</label>
+                <input v-model="tsForm.arrival_time" type="time" class="input" required />
+                <span v-if="tsForm.errors.arrival_time" class="field__error">{{ tsForm.errors.arrival_time }}</span>
+              </div>
+              <div class="field">
+                <label class="field__label">{{ t('ts_lbl_departure') }} *</label>
+                <input v-model="tsForm.departure_time" type="time" class="input" required />
+                <span v-if="tsForm.errors.departure_time" class="field__error">{{ tsForm.errors.departure_time }}</span>
+              </div>
+            </div>
+            <div class="field" style="margin-bottom:12px">
+              <label class="field__label">{{ t('ts_lbl_purpose') }}</label>
+              <input v-model="tsForm.purpose" type="text" class="input" :placeholder="t('ts_ph_purpose')" maxlength="255" />
+            </div>
+            <div class="field" style="margin-bottom:16px">
+              <label class="field__label">{{ t('ts_lbl_notes') }}</label>
+              <input v-model="tsForm.notes" type="text" class="input" :placeholder="t('ts_ph_notes')" maxlength="500" />
+            </div>
+            <div class="modal__footer">
+              <Btn variant="secondary" type="button" @click="showTsForm = false; tsForm.clearErrors()">{{ t('btn_cancel') }}</Btn>
+              <Btn variant="primary" :disabled="tsForm.processing || !tsForm.arrival_time || !tsForm.departure_time" @click="issueTsSlip">
+                {{ tsForm.processing ? t('ts_submitting') : t('ts_issue_btn') }}
+              </Btn>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- ── Issue Referral Modal ───────────────────────────── -->
+    <Teleport to="body">
+      <div v-if="showRefForm" class="modal-backdrop" @click.self="showRefForm = false; refForm.clearErrors()">
+        <div class="modal">
+          <div class="modal__header">
+            <h3 class="modal__title">{{ t('ref_issue_btn') }}</h3>
+            <button class="modal__close" @click="showRefForm = false; refForm.clearErrors()">✕</button>
+          </div>
+          <div class="modal__body">
+            <div class="field" style="margin-bottom:12px">
+              <label class="field__label">{{ t('ref_lbl_to') }} *</label>
+              <input v-model="refForm.referred_to" type="text" class="input" :placeholder="t('ref_ph_to')" maxlength="255" />
+              <span v-if="refForm.errors.referred_to" class="field__error">{{ refForm.errors.referred_to }}</span>
+            </div>
+            <div class="field" style="margin-bottom:12px">
+              <label class="field__label">{{ t('ref_lbl_dept') }}</label>
+              <input v-model="refForm.referred_to_dept" type="text" class="input" :placeholder="t('ref_ph_dept')" maxlength="255" />
+            </div>
+            <div class="field" style="margin-bottom:12px">
+              <label class="field__label">{{ t('ref_lbl_urgency') }}</label>
+              <select v-model="refForm.urgency" class="select">
+                <template v-if="(lookups?.keutamaan_rujukan ?? []).length">
+                  <option v-for="u in lookups.keutamaan_rujukan" :key="u.code" :value="u.code">{{ u.label_ms }}</option>
+                </template>
+                <template v-else>
+                  <option value="routine">{{ t('ref_urgency_routine') }}</option>
+                  <option value="urgent">{{ t('ref_urgency_urgent') }}</option>
+                  <option value="emergency">{{ t('ref_urgency_emergency') }}</option>
+                </template>
+              </select>
+            </div>
+            <div class="field" style="margin-bottom:12px">
+              <label class="field__label">{{ t('ref_lbl_reason') }} *</label>
+              <textarea v-model="refForm.reason" class="input" rows="3" :placeholder="t('ref_ph_reason')" maxlength="1000" style="resize:vertical"></textarea>
+              <span v-if="refForm.errors.reason" class="field__error">{{ refForm.errors.reason }}</span>
+            </div>
+            <div class="field" style="margin-bottom:12px">
+              <label class="field__label">{{ t('ref_lbl_summary') }}</label>
+              <textarea v-model="refForm.clinical_summary" class="input" rows="3" :placeholder="t('ref_ph_summary')" maxlength="2000" style="resize:vertical"></textarea>
+            </div>
+            <div class="field" style="margin-bottom:16px">
+              <label class="field__label">{{ t('ref_lbl_history') }}</label>
+              <textarea v-model="refForm.relevant_history" class="input" rows="2" :placeholder="t('ref_ph_history')" maxlength="2000" style="resize:vertical"></textarea>
+            </div>
+            <div class="modal__footer">
+              <Btn variant="secondary" type="button" @click="showRefForm = false; refForm.clearErrors()">{{ t('btn_cancel') }}</Btn>
+              <Btn variant="primary" :disabled="refForm.processing || !refForm.referred_to || !refForm.reason" @click="issueReferral">
+                {{ refForm.processing ? t('ref_submitting') : t('ref_issue_btn') }}
+              </Btn>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- ── Issue Quarantine Modal ─────────────────────────── -->
+    <Teleport to="body">
+      <div v-if="showQnForm" class="modal-backdrop" @click.self="showQnForm = false; qnForm.clearErrors()">
+        <div class="modal">
+          <div class="modal__header">
+            <h3 class="modal__title">{{ t('qn_issue_btn') }}</h3>
+            <button class="modal__close" @click="showQnForm = false; qnForm.clearErrors()">✕</button>
+          </div>
+          <div class="modal__body">
+            <div class="field" style="margin-bottom:12px">
+              <label class="field__label">{{ t('qn_lbl_start') }}</label>
+              <input v-model="qnForm.quarantine_start" type="date" class="input" required />
+              <span v-if="qnForm.errors.quarantine_start" class="field__error">{{ qnForm.errors.quarantine_start }}</span>
+            </div>
+            <div class="field" style="margin-bottom:12px">
+              <label class="field__label">{{ t('qn_lbl_days') }}</label>
+              <input v-model="qnForm.days" type="number" min="1" max="365" class="input" />
+              <span v-if="qnForm.errors.days" class="field__error">{{ qnForm.errors.days }}</span>
+            </div>
+            <div class="field" style="margin-bottom:12px">
+              <label class="field__label">{{ t('qn_lbl_diagnosis') }}</label>
+              <input v-model="qnForm.diagnosis" type="text" class="input" :placeholder="t('qn_ph_diagnosis')" maxlength="255" />
+            </div>
+            <div class="field" style="margin-bottom:12px">
+              <label class="field__label">{{ t('qn_lbl_reason') }}</label>
+              <input v-model="qnForm.reason" type="text" class="input" :placeholder="t('qn_ph_reason')" maxlength="255" />
+            </div>
+            <div class="field" style="margin-bottom:16px">
+              <label class="field__label">{{ t('qn_lbl_notes') }}</label>
+              <input v-model="qnForm.notes" type="text" class="input" :placeholder="t('qn_ph_notes')" maxlength="500" />
+            </div>
+            <div class="modal__footer">
+              <Btn variant="secondary" type="button" @click="showQnForm = false; qnForm.clearErrors()">{{ t('btn_cancel') }}</Btn>
+              <Btn variant="primary" :disabled="qnForm.processing || !qnForm.quarantine_start || qnForm.days < 1" @click="issueQuarantine">
+                {{ qnForm.processing ? t('qn_submitting') : t('qn_issue_btn') }}
+              </Btn>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
 
     <!-- ── MC Delete confirm ───────────────────────────── -->
     <Teleport to="body">
