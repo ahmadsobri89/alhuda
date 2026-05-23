@@ -9,13 +9,14 @@ import Btn from '@/Components/Clinic/Btn.vue'
 defineOptions({ layout: KlinikLayout })
 
 const props = defineProps({
-  invoices: Object,
-  selected: Object,
-  patients: Array,
-  stats:    Object,
-  filters:  Object,
-  today:    String,
-  lookups:  { type: Object, default: () => ({}) },
+  invoices:  Object,
+  selected:  Object,
+  patients:  Array,
+  stats:     Object,
+  filters:   Object,
+  today:     String,
+  lookups:   { type: Object, default: () => ({}) },
+  drugItems: { type: Array, default: () => [] },
 })
 
 const page  = usePage()
@@ -66,7 +67,7 @@ const typeLabel = computed(() => {
 })
 const itemTypes = computed(() => (props.lookups?.jenis_item_bil ?? []).map(v => ({ value: v.code, label: v.label_ms })))
 
-/* ── quick service presets ── */
+/* ── quick service presets (non-drug) ── */
 const quickServices = [
   { code:'CONS-001', description:'Konsultasi GP',           type:'consultation', unit_price:35 },
   { code:'CONS-002', description:'Konsultasi Pakar',        type:'consultation', unit_price:80 },
@@ -77,10 +78,20 @@ const quickServices = [
   { code:'LAB-001',  description:'Darah Lengkap (FBC)',     type:'lab',          unit_price:30 },
   { code:'LAB-002',  description:'Gula Darah (HbA1c)',      type:'lab',          unit_price:45 },
   { code:'LAB-003',  description:'Ujian Air Kencing',       type:'lab',          unit_price:15 },
-  { code:'DRUG-PCM', description:'Paracetamol 1g',          type:'drug',         unit_price:0.20 },
-  { code:'DRUG-AMX', description:'Amoxicillin 500mg',       type:'drug',         unit_price:0.40 },
-  { code:'DRUG-IBU', description:'Ibuprofen 400mg',         type:'drug',         unit_price:0.30 },
 ]
+
+/* ── drug quick-select from inventory ── */
+const quickDrugs = computed(() =>
+  props.drugItems.map(d => ({
+    id:          d.id,
+    code:        'INV-' + d.id,
+    description: d.name + (d.form ? ' (' + d.form + ')' : ''),
+    type:        'drug',
+    unit_price:  parseFloat(d.selling_price),
+    unit:        d.unit,
+    stock:       d.stock_quantity,
+  }))
+)
 
 /* ── add-item drawer ── */
 const showAddDrawer = ref(false)
@@ -382,7 +393,7 @@ function submitNew () {
 
         <div class="add-drawer__body">
 
-          <!-- quick chips -->
+          <!-- quick chips — services -->
           <div class="qsec">
             <div class="qsec__label">{{ t('bill_quick_items') }}</div>
             <div class="qsec__grid">
@@ -392,6 +403,22 @@ function submitNew () {
                 @click="fillQuick(q)">
                 <span class="qchip__name">{{ q.description }}</span>
                 <span class="qchip__price">RM {{ q.unit_price.toFixed(2) }}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- quick chips — inventory drugs -->
+          <div v-if="quickDrugs.length" class="qsec" style="margin-top:8px">
+            <div class="qsec__label" style="color:#059669">{{ t('bill_quick_drugs') }}</div>
+            <div class="qsec__grid">
+              <button v-for="q in quickDrugs" :key="q.code"
+                class="qchip qchip--drug"
+                :class="{ active: itemForm.code===q.code }"
+                :disabled="q.stock <= 0"
+                @click="fillQuick(q)">
+                <span class="qchip__name">{{ q.description }}</span>
+                <span class="qchip__price">RM {{ q.unit_price.toFixed(2) }}/{{ q.unit }}</span>
+                <span v-if="q.stock <= 0" class="qchip__stock-out">Stok Habis</span>
               </button>
             </div>
           </div>
@@ -694,8 +721,12 @@ function submitNew () {
   background: #fff; cursor: pointer; text-align: left; transition: all .12s;
 }
 .qchip:hover, .qchip.active { background: var(--brand-green-light); border-color: var(--brand-green); }
-.qchip__name  { font: 500 11.5px var(--font-sans); color: var(--fg1); }
-.qchip__price { font: 600 11px var(--font-mono); color: var(--fg3); }
+.qchip--drug { border-color: #A7F3D0; }
+.qchip--drug:hover, .qchip--drug.active { background: #ECFDF5; border-color: #059669; }
+.qchip:disabled { opacity: .45; cursor: not-allowed; }
+.qchip__name      { font: 500 11.5px var(--font-sans); color: var(--fg1); }
+.qchip__price     { font: 600 11px var(--font-mono); color: var(--fg3); }
+.qchip__stock-out { font: 500 10px var(--font-sans); color: #DC2626; }
 .qchip.active .qchip__price { color: var(--brand-green); }
 
 /* live total in drawer */

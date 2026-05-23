@@ -22,6 +22,7 @@ class StoreInventoryItemRequest extends FormRequest
             'stock_quantity' => ['required', 'integer', 'min:0'],
             'reorder_level'  => ['required', 'integer', 'min:0'],
             'unit_cost'      => ['required', 'numeric', 'min:0'],
+            'selling_price'  => ['required', 'numeric', 'min:0'],
             'unit'           => ['required', 'string', 'max:50'],
             'notes'          => ['nullable', 'string', 'max:1000'],
         ];

@@ -14,7 +14,7 @@ class InventoryItem extends Model
     protected $fillable = [
         'name', 'generic_name', 'form', 'category', 'classification',
         'lot_number', 'expiry_date', 'supplier',
-        'stock_quantity', 'reorder_level', 'unit_cost', 'unit',
+        'stock_quantity', 'reorder_level', 'unit_cost', 'selling_price', 'unit',
         'notes', 'status',
     ];
 
@@ -23,6 +23,7 @@ class InventoryItem extends Model
         return [
             'expiry_date'    => 'date',
             'unit_cost'      => 'decimal:2',
+            'selling_price'  => 'decimal:2',
             'stock_quantity' => 'integer',
             'reorder_level'  => 'integer',
         ];

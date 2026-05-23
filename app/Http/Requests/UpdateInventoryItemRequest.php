@@ -21,6 +21,7 @@ class UpdateInventoryItemRequest extends FormRequest
             'supplier'       => ['nullable', 'string', 'max:255'],
             'reorder_level'  => ['required', 'integer', 'min:0'],
             'unit_cost'      => ['required', 'numeric', 'min:0'],
+            'selling_price'  => ['required', 'numeric', 'min:0'],
             'unit'           => ['required', 'string', 'max:50'],
             'notes'          => ['nullable', 'string', 'max:1000'],
             'status'         => ['required', 'in:active,discontinued'],

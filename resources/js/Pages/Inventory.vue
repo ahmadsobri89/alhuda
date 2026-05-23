@@ -71,7 +71,7 @@ const itemForm = useForm({
   name: '', generic_name: '', form: 'Tablet', category: '',
   classification: 'general', lot_number: '', expiry_date: '',
   supplier: '', stock_quantity: 0, reorder_level: 50,
-  unit_cost: 0, unit: 'tablet', notes: '', status: 'active',
+  unit_cost: 0, selling_price: 0, unit: 'tablet', notes: '', status: 'active',
 })
 
 function openCreate() {
@@ -99,6 +99,7 @@ function openEdit(item) {
   itemForm.stock_quantity = item.stock_quantity
   itemForm.reorder_level  = item.reorder_level
   itemForm.unit_cost      = item.unit_cost
+  itemForm.selling_price  = item.selling_price
   itemForm.unit           = item.unit
   itemForm.notes          = item.notes ?? ''
   itemForm.status         = item.status
@@ -222,14 +223,14 @@ function doDiscontinue() {
 
     <!-- Table -->
     <div class="card" style="overflow:hidden">
-      <div class="table__head" style="grid-template-columns:2.2fr 1fr 80px 80px 100px 120px 90px 1fr 110px">
-        <div>{{ t('inv_col_drug') }}</div><div>{{ t('inv_col_form') }}</div><div>{{ t('inv_col_stock') }}</div><div>{{ t('inv_col_reorder') }}</div><div>{{ t('inv_col_expiry') }}</div><div>{{ t('inv_col_lot') }}</div><div>{{ t('inv_col_cost') }}</div><div>{{ t('inv_col_flags') }}</div><div></div>
+      <div class="table__head" style="grid-template-columns:2.2fr 1fr 80px 80px 100px 120px 90px 90px 1fr 110px">
+        <div>{{ t('inv_col_drug') }}</div><div>{{ t('inv_col_form') }}</div><div>{{ t('inv_col_stock') }}</div><div>{{ t('inv_col_reorder') }}</div><div>{{ t('inv_col_expiry') }}</div><div>{{ t('inv_col_lot') }}</div><div>{{ t('inv_col_cost') }}</div><div>{{ t('inv_col_selling') }}</div><div>{{ t('inv_col_flags') }}</div><div></div>
       </div>
 
       <div
         v-for="item in items.data" :key="item.id"
         class="table__row"
-        style="grid-template-columns:2.2fr 1fr 80px 80px 100px 120px 90px 1fr 110px"
+        style="grid-template-columns:2.2fr 1fr 80px 80px 100px 120px 90px 90px 1fr 110px"
         :class="{ 'row--dim': item.status === 'discontinued' }"
       >
         <div>
@@ -251,6 +252,9 @@ function doDiscontinue() {
         >{{ item.expiry_date ?? '—' }}</div>
         <div class="mono" style="font:500 11.5px var(--font-mono);color:var(--fg3)">{{ item.lot_number ?? '—' }}</div>
         <div class="mono" style="font:600 12.5px var(--font-mono);color:var(--fg2)">RM {{ item.unit_cost.toFixed(2) }}</div>
+        <div class="mono" style="font:700 12.5px var(--font-mono);color:var(--brand-green-dark)">
+          {{ item.selling_price > 0 ? 'RM ' + item.selling_price.toFixed(2) : '—' }}
+        </div>
         <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
           <Badge v-for="f in item.flags" :key="f" :tone="FLAG_CONFIG[f]?.tone">{{ FLAG_CONFIG[f]?.label }}</Badge>
           <span v-if="!item.flags.length" style="font:400 11.5px var(--font-sans);color:var(--fg3)">—</span>
@@ -330,6 +334,7 @@ function doDiscontinue() {
             </div>
             <div class="info-row"><span class="info-label">{{ t('inv_lbl_supplier') }}</span><span class="info-val">{{ viewItem.supplier ?? '—' }}</span></div>
             <div class="info-row"><span class="info-label">{{ t('inv_lbl_cost') }}</span><span class="info-val mono">RM {{ viewItem.unit_cost.toFixed(2) }}</span></div>
+            <div class="info-row"><span class="info-label">{{ t('inv_lbl_selling_price') }}</span><span class="info-val mono" style="color:var(--brand-green-dark)">RM {{ viewItem.selling_price.toFixed(2) }}</span></div>
             <div class="info-row"><span class="info-label">{{ t('inv_lbl_value') }}</span><span class="info-val mono">RM {{ viewItem.stock_value?.toFixed(2) }}</span></div>
           </div>
 
@@ -395,7 +400,7 @@ function doDiscontinue() {
           </div>
 
           <div class="modal-section-title">{{ t('inv_sec_stock') }}</div>
-          <div class="form-grid-3" style="margin-bottom:14px">
+          <div class="form-grid-4" style="margin-bottom:14px">
             <div class="field">
               <label class="field__label">{{ editingItem ? t('inv_stock_current') : t('inv_stock_initial') }} <span class="req">*</span></label>
               <input v-model.number="itemForm.stock_quantity" type="number" min="0" class="input" :disabled="!!editingItem" />
@@ -408,6 +413,11 @@ function doDiscontinue() {
             <div class="field">
               <label class="field__label">{{ t('inv_lbl_unit_cost') }} <span class="req">*</span></label>
               <input v-model.number="itemForm.unit_cost" type="number" min="0" step="0.01" class="input" />
+            </div>
+            <div class="field">
+              <label class="field__label">{{ t('inv_lbl_selling_price') }} <span class="req">*</span></label>
+              <input v-model.number="itemForm.selling_price" type="number" min="0" step="0.01" class="input" />
+              <span v-if="itemForm.errors.selling_price" class="field__error">{{ itemForm.errors.selling_price }}</span>
             </div>
           </div>
 
@@ -592,6 +602,7 @@ function doDiscontinue() {
 .req { color: var(--brand-red); }
 
 .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.form-grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }
 .field { display:flex; flex-direction:column; gap:5px; }
 .field__label { font:600 11px var(--font-sans); color:var(--fg2); }
 .field__error { font:500 11px var(--font-sans); color:var(--brand-red); }

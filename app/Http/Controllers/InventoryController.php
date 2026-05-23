@@ -30,6 +30,7 @@ class InventoryController extends Controller
             'stock_quantity' => $item->stock_quantity,
             'reorder_level'  => $item->reorder_level,
             'unit_cost'      => (float) $item->unit_cost,
+            'selling_price'  => (float) $item->selling_price,
             'unit'           => $item->unit,
             'stock_value'    => $item->stock_value,
             'notes'          => $item->notes,

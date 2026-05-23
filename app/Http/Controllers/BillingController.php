@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
+use App\Models\InventoryItem;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\LookupCategory;
@@ -67,6 +68,11 @@ class BillingController extends Controller
 
         $lookups = LookupCategory::forSlugs(['kaedah_bayaran', 'jenis_item_bil']);
 
+        $drugItems = InventoryItem::where('status', 'active')
+            ->where('selling_price', '>', 0)
+            ->orderBy('name')
+            ->get(['id', 'name', 'generic_name', 'form', 'unit', 'selling_price', 'stock_quantity']);
+
         return Inertia::render('Billing', [
             'currentRoute' => 'billing',
             'invoices'     => $invoices,
@@ -76,6 +82,7 @@ class BillingController extends Controller
             'filters'      => $request->only(['search', 'status', 'invoice']),
             'today'        => $today,
             'lookups'      => $lookups,
+            'drugItems'    => $drugItems,
         ]);
     }
 
