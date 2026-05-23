@@ -6,6 +6,7 @@ import KlinikLayout from '@/Layouts/KlinikLayout.vue'
 import Avatar from '@/Components/Clinic/Avatar.vue'
 import Badge from '@/Components/Clinic/Badge.vue'
 import Btn from '@/Components/Clinic/Btn.vue'
+import MedicineLabelDesigner from '@/Components/MedicineLabelDesigner/MedicineLabelDesigner.vue'
 
 defineOptions({ layout: KlinikLayout })
 
@@ -19,6 +20,26 @@ const props = defineProps({
 
 const { t } = useLocale()
 const tab = ref('users')
+
+// ─── Label Designer — data contoh untuk demo/proposal ─────────────────────
+const labelPreviewData = computed(() => ({
+  logo:           props.clinic.logo_url ?? '',
+  medicine_name:  'Amoxicillin 500mg',
+  medicine_usage: 'Rawatan Jangkitan Bakteria',
+  dosage:         '1 kapsul',
+  frequency:      '3 kali sehari',
+  food_timing:    'after',
+  patient_name:   'Ahmad bin Abu Bakar',
+  dispense_date:  new Date().toISOString().slice(0, 10),
+  notes:          'Habiskan semua ubat walaupun sudah rasa sihat.',
+  address_line1:  props.clinic.address  ?? 'No. 12, Jalan Al-Huda',
+  address_line2:  '',
+  city:           props.clinic.city     ?? 'Shah Alam',
+  postcode:       props.clinic.postcode ?? '40150',
+  state:          props.clinic.state    ?? 'Selangor',
+  phone:          props.clinic.phone    ?? '0123456789',
+  email:          props.clinic.email    ?? 'klinik@alhuda.my',
+}))
 
 // ─── Role helpers ──────────────────────────────────────────────────────────
 const roleLabels = computed(() => ({
@@ -248,6 +269,7 @@ function lkpDoDelete() {
       <button :class="['tab', tab==='security' ? 'active':'']" @click="tab='security'">{{ t('set_tab_security') }}</button>
       <button :class="['tab', tab==='lookup'   ? 'active':'']" @click="tab='lookup'">{{ t('set_tab_lookup') }}</button>
       <button :class="['tab', tab==='audit'    ? 'active':'']" @click="tab='audit'">{{ t('set_tab_audit') }}</button>
+      <button :class="['tab', tab==='label'    ? 'active':'']" @click="tab='label'">Reka Bentuk Label Ubat</button>
     </div>
 
     <!-- ── Clinic Profile Tab ───────────────────────────────────────────── -->
@@ -508,6 +530,14 @@ function lkpDoDelete() {
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- ── Reka Bentuk Label Ubat Tab ───────────────────────────────────── -->
+    <div v-if="tab==='label'" class="label-designer-wrap">
+      <MedicineLabelDesigner
+        :data="labelPreviewData"
+        :clinic-id="clinic.id"
+      />
     </div>
 
     <!-- ── Audit Tab ───────────────────────────────────────────────────── -->
@@ -966,5 +996,14 @@ function lkpDoDelete() {
 .lookup-delete-btn:hover {
   border-color: var(--brand-red);
   color: var(--brand-red);
+}
+
+/* ── Label Designer ── */
+.label-designer-wrap {
+  height: calc(100vh - 130px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
 }
 </style>
