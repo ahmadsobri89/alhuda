@@ -3,12 +3,17 @@
 namespace Database\Seeders;
 
 use App\Models\Appointment;
+use App\Models\ClinicProfile;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\InventoryItem;
+use App\Models\MedicalCertificate;
 use App\Models\Patient;
 use App\Models\Prescription;
+use App\Models\QuarantineLetter;
+use App\Models\ReferralLetter;
 use App\Models\SecurityPolicy;
+use App\Models\TimeSlip;
 use App\Models\User;
 use App\Models\Visit;
 use App\Models\VisitVital;
@@ -456,27 +461,32 @@ class DatabaseSeeder extends Seeder
         // Inventory items
         if (InventoryItem::count() === 0) {
             $inventory = [
-                ['name'=>'Amoxicillin 500mg',         'generic_name'=>'Amoxicillin',       'form'=>'Kapsul',    'category'=>'Antibiotik',    'classification'=>'general',   'lot_number'=>'AMX-2403', 'expiry_date'=>'2027-08-31', 'supplier'=>'Pharmaniaga', 'stock_quantity'=>240,  'reorder_level'=>200, 'unit_cost'=>0.30,  'unit'=>'kapsul'],
-                ['name'=>'Paracetamol 1g',             'generic_name'=>'Paracetamol',        'form'=>'Tablet',    'category'=>'Analgesik',     'classification'=>'general',   'lot_number'=>'PCM-2502', 'expiry_date'=>'2028-03-31', 'supplier'=>'Duopharma',   'stock_quantity'=>1840, 'reorder_level'=>500, 'unit_cost'=>0.20,  'unit'=>'tablet'],
-                ['name'=>'Salbutamol Inhaler 100mcg',  'generic_name'=>'Salbutamol',         'form'=>'MDI',       'category'=>'Pernafasan',    'classification'=>'general',   'lot_number'=>'SAL-2511', 'expiry_date'=>'2027-11-30', 'supplier'=>'GSK',         'stock_quantity'=>8,    'reorder_level'=>25,  'unit_cost'=>18.00, 'unit'=>'inhaler'],
-                ['name'=>'Metformin 500mg',            'generic_name'=>'Metformin HCl',      'form'=>'Tablet',    'category'=>'Antidiabetik',  'classification'=>'general',   'lot_number'=>'MET-2402', 'expiry_date'=>'2027-02-28', 'supplier'=>'Pharmaniaga', 'stock_quantity'=>32,   'reorder_level'=>200, 'unit_cost'=>0.18,  'unit'=>'tablet'],
-                ['name'=>'Codeine Phosphate 30mg',     'generic_name'=>'Codeine Phosphate',  'form'=>'Tablet',    'category'=>'Analgesik',     'classification'=>'poison_c',  'lot_number'=>'COD-2509', 'expiry_date'=>'2026-09-30', 'supplier'=>'Hovid',       'stock_quantity'=>120,  'reorder_level'=>50,  'unit_cost'=>0.85,  'unit'=>'tablet'],
-                ['name'=>'Diazepam 5mg',               'generic_name'=>'Diazepam',           'form'=>'Tablet',    'category'=>'Saraf',         'classification'=>'poison_b',  'lot_number'=>'DIZ-2412', 'expiry_date'=>'2026-12-31', 'supplier'=>'Duopharma',   'stock_quantity'=>60,   'reorder_level'=>30,  'unit_cost'=>0.95,  'unit'=>'tablet'],
-                ['name'=>'Ciprofloxacin 500mg',        'generic_name'=>'Ciprofloxacin',      'form'=>'Tablet',    'category'=>'Antibiotik',    'classification'=>'general',   'lot_number'=>'CIP-2206', 'expiry_date'=>'2026-06-30', 'supplier'=>'Hexpharm',    'stock_quantity'=>28,   'reorder_level'=>100, 'unit_cost'=>0.65,  'unit'=>'tablet'],
-                ['name'=>'Amlodipine 5mg',             'generic_name'=>'Amlodipine',         'form'=>'Tablet',    'category'=>'Antihipertensi','classification'=>'general',   'lot_number'=>'AML-2501', 'expiry_date'=>'2027-06-30', 'supplier'=>'Pharmaniaga', 'stock_quantity'=>350,  'reorder_level'=>100, 'unit_cost'=>0.22,  'unit'=>'tablet'],
-                ['name'=>'Atorvastatin 20mg',          'generic_name'=>'Atorvastatin',       'form'=>'Tablet',    'category'=>'Kardiologi',    'classification'=>'general',   'lot_number'=>'ATV-2503', 'expiry_date'=>'2028-01-31', 'supplier'=>'Pfizer',      'stock_quantity'=>420,  'reorder_level'=>100, 'unit_cost'=>0.45,  'unit'=>'tablet'],
-                ['name'=>'Losartan 50mg',              'generic_name'=>'Losartan Potassium', 'form'=>'Tablet',    'category'=>'Antihipertensi','classification'=>'general',   'lot_number'=>'LOS-2504', 'expiry_date'=>'2027-09-30', 'supplier'=>'Duopharma',   'stock_quantity'=>280,  'reorder_level'=>100, 'unit_cost'=>0.35,  'unit'=>'tablet'],
-                ['name'=>'Omeprazole 20mg',            'generic_name'=>'Omeprazole',         'form'=>'Kapsul',    'category'=>'Gastroenterologi','classification'=>'general', 'lot_number'=>'OMP-2505', 'expiry_date'=>'2027-12-31', 'supplier'=>'Hovid',       'stock_quantity'=>560,  'reorder_level'=>150, 'unit_cost'=>0.28,  'unit'=>'kapsul'],
-                ['name'=>'Levothyroxine 50mcg',        'generic_name'=>'Levothyroxine',      'form'=>'Tablet',    'category'=>'Hormon',        'classification'=>'general',   'lot_number'=>'LEV-2506', 'expiry_date'=>'2027-04-30', 'supplier'=>'Merck',       'stock_quantity'=>180,  'reorder_level'=>60,  'unit_cost'=>0.55,  'unit'=>'tablet'],
-                ['name'=>'Azithromycin 500mg',         'generic_name'=>'Azithromycin',       'form'=>'Tablet',    'category'=>'Antibiotik',    'classification'=>'general',   'lot_number'=>'AZT-2507', 'expiry_date'=>'2027-10-31', 'supplier'=>'Pharmaniaga', 'stock_quantity'=>75,   'reorder_level'=>50,  'unit_cost'=>1.20,  'unit'=>'tablet'],
-                ['name'=>'Budesonide Inhaler 200mcg',  'generic_name'=>'Budesonide',         'form'=>'MDI',       'category'=>'Pernafasan',    'classification'=>'general',   'lot_number'=>'BUD-2508', 'expiry_date'=>'2027-07-31', 'supplier'=>'AstraZeneca', 'stock_quantity'=>14,   'reorder_level'=>20,  'unit_cost'=>32.50, 'unit'=>'inhaler'],
-                ['name'=>'Cetirizine 10mg',            'generic_name'=>'Cetirizine HCl',     'form'=>'Tablet',    'category'=>'Antihistamin',  'classification'=>'general',   'lot_number'=>'CET-2510', 'expiry_date'=>'2028-05-31', 'supplier'=>'Duopharma',   'stock_quantity'=>320,  'reorder_level'=>100, 'unit_cost'=>0.15,  'unit'=>'tablet'],
-                ['name'=>'Morphine Sulphate 10mg',     'generic_name'=>'Morphine Sulphate',  'form'=>'Tablet',    'category'=>'Analgesik',     'classification'=>'controlled','lot_number'=>'MOR-2501', 'expiry_date'=>'2026-08-31', 'supplier'=>'Hospira',     'stock_quantity'=>30,   'reorder_level'=>20,  'unit_cost'=>4.50,  'unit'=>'tablet', 'notes'=>'Stok kawalan — rekod wajib'],
+                // name, generic_name, form, category, classification, lot, expiry, supplier, stock, reorder, cost, sell, unit, notes?
+                ['name'=>'Amoxicillin 500mg',         'generic_name'=>'Amoxicillin',        'form'=>'Kapsul',  'category'=>'Antibiotik',       'classification'=>'general',   'lot_number'=>'AMX-2403', 'expiry_date'=>'2027-08-31', 'supplier'=>'Pharmaniaga', 'stock_quantity'=>240,  'reorder_level'=>200, 'unit_cost'=>0.30,  'selling_price'=>0.90,  'unit'=>'kapsul'],
+                ['name'=>'Paracetamol 1g',            'generic_name'=>'Paracetamol',         'form'=>'Tablet',  'category'=>'Analgesik',        'classification'=>'general',   'lot_number'=>'PCM-2502', 'expiry_date'=>'2028-03-31', 'supplier'=>'Duopharma',   'stock_quantity'=>1840, 'reorder_level'=>500, 'unit_cost'=>0.20,  'selling_price'=>0.50,  'unit'=>'tablet'],
+                ['name'=>'Salbutamol Inhaler 100mcg', 'generic_name'=>'Salbutamol',          'form'=>'MDI',     'category'=>'Pernafasan',       'classification'=>'general',   'lot_number'=>'SAL-2511', 'expiry_date'=>'2027-11-30', 'supplier'=>'GSK',         'stock_quantity'=>8,    'reorder_level'=>25,  'unit_cost'=>18.00, 'selling_price'=>28.00, 'unit'=>'inhaler'],
+                ['name'=>'Metformin 500mg',           'generic_name'=>'Metformin HCl',       'form'=>'Tablet',  'category'=>'Antidiabetik',     'classification'=>'general',   'lot_number'=>'MET-2402', 'expiry_date'=>'2027-02-28', 'supplier'=>'Pharmaniaga', 'stock_quantity'=>32,   'reorder_level'=>200, 'unit_cost'=>0.18,  'selling_price'=>0.40,  'unit'=>'tablet'],
+                ['name'=>'Codeine Phosphate 30mg',    'generic_name'=>'Codeine Phosphate',   'form'=>'Tablet',  'category'=>'Analgesik',        'classification'=>'poison_c',  'lot_number'=>'COD-2509', 'expiry_date'=>'2026-09-30', 'supplier'=>'Hovid',       'stock_quantity'=>120,  'reorder_level'=>50,  'unit_cost'=>0.85,  'selling_price'=>2.50,  'unit'=>'tablet'],
+                ['name'=>'Diazepam 5mg',              'generic_name'=>'Diazepam',            'form'=>'Tablet',  'category'=>'Saraf',            'classification'=>'poison_b',  'lot_number'=>'DIZ-2412', 'expiry_date'=>'2026-12-31', 'supplier'=>'Duopharma',   'stock_quantity'=>60,   'reorder_level'=>30,  'unit_cost'=>0.95,  'selling_price'=>2.80,  'unit'=>'tablet'],
+                ['name'=>'Ciprofloxacin 500mg',       'generic_name'=>'Ciprofloxacin',       'form'=>'Tablet',  'category'=>'Antibiotik',       'classification'=>'general',   'lot_number'=>'CIP-2206', 'expiry_date'=>'2026-06-30', 'supplier'=>'Hexpharm',    'stock_quantity'=>28,   'reorder_level'=>100, 'unit_cost'=>0.65,  'selling_price'=>1.80,  'unit'=>'tablet'],
+                ['name'=>'Amlodipine 5mg',            'generic_name'=>'Amlodipine',          'form'=>'Tablet',  'category'=>'Antihipertensi',   'classification'=>'general',   'lot_number'=>'AML-2501', 'expiry_date'=>'2027-06-30', 'supplier'=>'Pharmaniaga', 'stock_quantity'=>350,  'reorder_level'=>100, 'unit_cost'=>0.22,  'selling_price'=>0.65,  'unit'=>'tablet'],
+                ['name'=>'Atorvastatin 20mg',         'generic_name'=>'Atorvastatin',        'form'=>'Tablet',  'category'=>'Kardiologi',       'classification'=>'general',   'lot_number'=>'ATV-2503', 'expiry_date'=>'2028-01-31', 'supplier'=>'Pfizer',      'stock_quantity'=>420,  'reorder_level'=>100, 'unit_cost'=>0.45,  'selling_price'=>1.20,  'unit'=>'tablet'],
+                ['name'=>'Losartan 50mg',             'generic_name'=>'Losartan Potassium',  'form'=>'Tablet',  'category'=>'Antihipertensi',   'classification'=>'general',   'lot_number'=>'LOS-2504', 'expiry_date'=>'2027-09-30', 'supplier'=>'Duopharma',   'stock_quantity'=>280,  'reorder_level'=>100, 'unit_cost'=>0.35,  'selling_price'=>0.90,  'unit'=>'tablet'],
+                ['name'=>'Omeprazole 20mg',           'generic_name'=>'Omeprazole',          'form'=>'Kapsul',  'category'=>'Gastroenterologi', 'classification'=>'general',   'lot_number'=>'OMP-2505', 'expiry_date'=>'2027-12-31', 'supplier'=>'Hovid',       'stock_quantity'=>560,  'reorder_level'=>150, 'unit_cost'=>0.28,  'selling_price'=>0.80,  'unit'=>'kapsul'],
+                ['name'=>'Levothyroxine 50mcg',       'generic_name'=>'Levothyroxine',       'form'=>'Tablet',  'category'=>'Hormon',           'classification'=>'general',   'lot_number'=>'LEV-2506', 'expiry_date'=>'2027-04-30', 'supplier'=>'Merck',       'stock_quantity'=>180,  'reorder_level'=>60,  'unit_cost'=>0.55,  'selling_price'=>1.50,  'unit'=>'tablet'],
+                ['name'=>'Azithromycin 500mg',        'generic_name'=>'Azithromycin',        'form'=>'Tablet',  'category'=>'Antibiotik',       'classification'=>'general',   'lot_number'=>'AZT-2507', 'expiry_date'=>'2027-10-31', 'supplier'=>'Pharmaniaga', 'stock_quantity'=>75,   'reorder_level'=>50,  'unit_cost'=>1.20,  'selling_price'=>3.00,  'unit'=>'tablet'],
+                ['name'=>'Budesonide Inhaler 200mcg', 'generic_name'=>'Budesonide',          'form'=>'MDI',     'category'=>'Pernafasan',       'classification'=>'general',   'lot_number'=>'BUD-2508', 'expiry_date'=>'2027-07-31', 'supplier'=>'AstraZeneca', 'stock_quantity'=>14,   'reorder_level'=>20,  'unit_cost'=>32.50, 'selling_price'=>48.00, 'unit'=>'inhaler'],
+                ['name'=>'Cetirizine 10mg',           'generic_name'=>'Cetirizine HCl',      'form'=>'Tablet',  'category'=>'Antihistamin',     'classification'=>'general',   'lot_number'=>'CET-2510', 'expiry_date'=>'2028-05-31', 'supplier'=>'Duopharma',   'stock_quantity'=>320,  'reorder_level'=>100, 'unit_cost'=>0.15,  'selling_price'=>0.45,  'unit'=>'tablet'],
+                ['name'=>'Morphine Sulphate 10mg',    'generic_name'=>'Morphine Sulphate',   'form'=>'Tablet',  'category'=>'Analgesik',        'classification'=>'controlled','lot_number'=>'MOR-2501', 'expiry_date'=>'2026-08-31', 'supplier'=>'Hospira',     'stock_quantity'=>30,   'reorder_level'=>20,  'unit_cost'=>4.50,  'selling_price'=>12.00, 'unit'=>'tablet', 'notes'=>'Stok kawalan — rekod wajib'],
+                ['name'=>'Ibuprofen 400mg',           'generic_name'=>'Ibuprofen',           'form'=>'Tablet',  'category'=>'Analgesik',        'classification'=>'general',   'lot_number'=>'IBU-2506', 'expiry_date'=>'2027-05-31', 'supplier'=>'Duopharma',   'stock_quantity'=>480,  'reorder_level'=>200, 'unit_cost'=>0.25,  'selling_price'=>0.70,  'unit'=>'tablet'],
+                ['name'=>'Montelukast 10mg',          'generic_name'=>'Montelukast Sodium',  'form'=>'Tablet',  'category'=>'Pernafasan',       'classification'=>'general',   'lot_number'=>'MON-2508', 'expiry_date'=>'2027-08-31', 'supplier'=>'Merck',       'stock_quantity'=>150,  'reorder_level'=>60,  'unit_cost'=>0.80,  'selling_price'=>2.20,  'unit'=>'tablet'],
+                ['name'=>'Aspirin 75mg',              'generic_name'=>'Acetylsalicylic Acid','form'=>'Tablet',  'category'=>'Kardiologi',       'classification'=>'general',   'lot_number'=>'ASP-2501', 'expiry_date'=>'2027-03-31', 'supplier'=>'Bayer',       'stock_quantity'=>600,  'reorder_level'=>200, 'unit_cost'=>0.08,  'selling_price'=>0.25,  'unit'=>'tablet'],
+                ['name'=>'Folic Acid 5mg',            'generic_name'=>'Folic Acid',          'form'=>'Tablet',  'category'=>'Vitamin',          'classification'=>'general',   'lot_number'=>'FOL-2503', 'expiry_date'=>'2028-02-28', 'supplier'=>'Pharmaniaga', 'stock_quantity'=>900,  'reorder_level'=>300, 'unit_cost'=>0.12,  'selling_price'=>0.35,  'unit'=>'tablet'],
+                ['name'=>'Ferrous Fumarate 200mg',    'generic_name'=>'Ferrous Fumarate',    'form'=>'Tablet',  'category'=>'Vitamin',          'classification'=>'general',   'lot_number'=>'FER-2504', 'expiry_date'=>'2027-10-31', 'supplier'=>'Duopharma',   'stock_quantity'=>720,  'reorder_level'=>300, 'unit_cost'=>0.10,  'selling_price'=>0.30,  'unit'=>'tablet'],
             ];
 
             foreach ($inventory as $data) {
                 $item = InventoryItem::create(array_merge($data, ['status' => 'active']));
-                // Opening stock transaction
                 $item->transactions()->create([
                     'type'           => 'in',
                     'quantity_delta' => $item->stock_quantity,
@@ -485,6 +495,194 @@ class DatabaseSeeder extends Seeder
                     'performed_by'   => 'System',
                 ]);
             }
+        } else {
+            // Ensure selling_price is populated if items already exist without it
+            InventoryItem::where('selling_price', 0)->orWhereNull('selling_price')->each(function ($item) {
+                $item->update(['selling_price' => round($item->unit_cost * 2.5, 2)]);
+            });
+        }
+
+        // Link prescription items to inventory items (by drug name)
+        \App\Models\PrescriptionItem::whereNull('inventory_item_id')->each(function ($pi) {
+            $inv = InventoryItem::whereRaw('LOWER(name) = ?', [strtolower($pi->drug_name)])->first()
+                ?? InventoryItem::whereRaw('LOWER(generic_name) = ?', [strtolower($pi->drug_name)])->first();
+            if ($inv) $pi->update(['inventory_item_id' => $inv->id]);
+        });
+
+        // Clinic profile
+        ClinicProfile::updateOrCreate(['id' => 1], [
+            'name'         => 'Poliklinik Al-Huda',
+            'tagline'      => 'Klinik Perubatan Berdaftar',
+            'reg_number'   => 'KKLIU 1234/2025',
+            'ckaps_number' => 'CKAPS-12345-P',
+            'address'      => 'No. 12, Jalan Cempaka, Taman Harmoni',
+            'postcode'     => '43000',
+            'city'         => 'Kajang',
+            'state'        => 'Selangor',
+            'phone'        => '03-8888 1234',
+            'fax'          => '03-8888 1235',
+            'email'        => 'admin@poliklinikalhuda.com',
+            'website'      => 'www.poliklinikalhuda.com',
+        ]);
+
+        // Letters & slips — only seed if empty
+        $doc = 'Dr. Aiman Rashid';
+
+        if (MedicalCertificate::count() === 0) {
+            $p1 = Patient::where('ic_number', '780229-08-5234')->first(); // Aminah
+            $p3 = Patient::where('ic_number', '920815-10-7733')->first(); // Tan Wei Ming
+            $p4 = Patient::where('ic_number', '010322-08-1145')->first(); // Rajesh
+            $p5 = Patient::where('ic_number', '010322-08-1145')->first(); // Rajesh (quarantine)
+
+            $v1 = $p1 ? Visit::where('patient_id', $p1->id)->latest()->first() : null;
+            $v2 = $p3 ? Visit::where('patient_id', $p3->id)->latest()->first() : null;
+            $v4 = $p4 ? Visit::where('patient_id', $p4->id)->latest()->first() : null;
+
+            if ($p1) MedicalCertificate::create([
+                'patient_id' => $p1->id,
+                'visit_id'   => $v1?->id,
+                'issued_by'  => $doc,
+                'issue_date' => now()->subDays(2)->format('Y-m-d'),
+                'start_date' => now()->subDays(2)->format('Y-m-d'),
+                'end_date'   => now()->subDays(1)->format('Y-m-d'),
+                'days'       => 2,
+                'diagnosis'  => 'Hipertensi Penting; Diabetes Mellitus Jenis 2',
+                'notes'      => 'Pesakit perlu berehat dan memantau tekanan darah di rumah.',
+            ]);
+
+            if ($p3) MedicalCertificate::create([
+                'patient_id' => $p3->id,
+                'visit_id'   => $v2?->id,
+                'issued_by'  => $doc,
+                'issue_date' => now()->subDays(3)->format('Y-m-d'),
+                'start_date' => now()->subDays(3)->format('Y-m-d'),
+                'end_date'   => now()->subDays(1)->format('Y-m-d'),
+                'days'       => 3,
+                'diagnosis'  => 'Asma Bronkial — tidak terkawal',
+                'notes'      => 'Elak pendedahan kepada asap dan habuk. Gunakan inhaler seperti ditetapkan.',
+            ]);
+
+            if ($p4) MedicalCertificate::create([
+                'patient_id' => $p4->id,
+                'visit_id'   => $v4?->id,
+                'issued_by'  => $doc,
+                'issue_date' => now()->format('Y-m-d'),
+                'start_date' => now()->format('Y-m-d'),
+                'end_date'   => now()->addDays(2)->format('Y-m-d'),
+                'days'       => 3,
+                'diagnosis'  => 'Faringitis Streptokokal Akut',
+                'notes'      => 'Pesakit perlu berehat sepenuhnya dan habiskan kos antibiotik.',
+            ]);
+        }
+
+        if (ReferralLetter::count() === 0) {
+            $p2 = Patient::where('ic_number', '650412-14-8821')->first(); // Lim Kok Wing
+            $p3 = Patient::where('ic_number', '920815-10-7733')->first(); // Tan Wei Ming
+
+            $v3 = $p2 ? Visit::where('patient_id', $p2->id)->latest()->first() : null;
+            $v2 = $p3 ? Visit::where('patient_id', $p3->id)->latest()->first() : null;
+
+            if ($p2) ReferralLetter::create([
+                'patient_id'       => $p2->id,
+                'visit_id'         => $v3?->id,
+                'issued_by'        => $doc,
+                'issue_date'       => now()->format('Y-m-d'),
+                'referred_to'      => 'Hospital Universiti Kebangsaan Malaysia (HUKM)',
+                'referred_to_dept' => 'Jabatan Kardiologi',
+                'urgency'          => 'urgent',
+                'reason'           => 'Sakit dada tekanan dengan menjalar ke lengan kiri. ST depression V4-V6 pada ECG. Riwayat CAD.',
+                'clinical_summary' => "Pesakit lelaki, 60 tahun, riwayat CAD dan dyslipidemia. Hadir dengan sakit dada tekanan sejak 2 jam, menjalar ke lengan kiri. ECG menunjukkan ST depression di V4-V6. BP: 156/94 mmHg, HR: 96 bpm, SpO2: 97%.",
+                'relevant_history' => "HTN, CAD, Dyslipidemia. Ubat semasa: Aspirin 75mg OD, Rosuvastatin 10mg ON.",
+            ]);
+
+            if ($p3) ReferralLetter::create([
+                'patient_id'       => $p3->id,
+                'visit_id'         => $v2?->id,
+                'issued_by'        => $doc,
+                'issue_date'       => now()->subDays(3)->format('Y-m-d'),
+                'referred_to'      => 'Hospital Kajang',
+                'referred_to_dept' => 'Jabatan Pulmologi',
+                'urgency'          => 'routine',
+                'reason'           => 'Asma bronkial kurang terkawal. Memerlukan penilaian lanjut dan ujian fungsi paru-paru terperinci.',
+                'clinical_summary' => "Pesakit lelaki, 33 tahun, asma bronkial sejak kecil. Simptom memburuk — menggunakan salbutamol 2-3x seminggu. SpO2: 96%, wheeze bilateral. Spirometry awal menunjukkan pola obstruktif.",
+                'relevant_history' => "Asma sejak usia 10 tahun. Tiada hospitalisasi sebelum ini. Terdedah kepada asap rokok di tempat kerja.",
+            ]);
+        }
+
+        if (QuarantineLetter::count() === 0) {
+            $p4 = Patient::where('ic_number', '010322-08-1145')->first(); // Rajesh
+            $p3 = Patient::where('ic_number', '920815-10-7733')->first(); // Tan Wei Ming
+
+            $v4 = $p4 ? Visit::where('patient_id', $p4->id)->latest()->first() : null;
+
+            if ($p4) QuarantineLetter::create([
+                'patient_id'       => $p4->id,
+                'visit_id'         => $v4?->id,
+                'issued_by'        => $doc,
+                'issue_date'       => now()->format('Y-m-d'),
+                'quarantine_start' => now()->format('Y-m-d'),
+                'quarantine_end'   => now()->addDays(4)->format('Y-m-d'),
+                'days'             => 5,
+                'diagnosis'        => 'Faringitis Streptokokal Akut',
+                'reason'           => 'Penyakit berjangkit — risiko penularan kepada orang lain. Pesakit perlu diasingkan sehingga simptom hilang dan kos antibiotik selesai.',
+                'notes'            => 'Elak perhimpunan awam. Pakai pelitup muka jika perlu keluar. Minum air banyak dan rehat cukup.',
+            ]);
+
+            if ($p3) QuarantineLetter::create([
+                'patient_id'       => $p3->id,
+                'visit_id'         => null,
+                'issued_by'        => $doc,
+                'issue_date'       => now()->subDays(10)->format('Y-m-d'),
+                'quarantine_start' => now()->subDays(10)->format('Y-m-d'),
+                'quarantine_end'   => now()->subDays(5)->format('Y-m-d'),
+                'days'             => 5,
+                'diagnosis'        => 'Influenza A',
+                'reason'           => 'Penyakit berjangkit. Karantina di rumah untuk mencegah penularan.',
+                'notes'            => null,
+            ]);
+        }
+
+        if (TimeSlip::count() === 0) {
+            $p1 = Patient::where('ic_number', '780229-08-5234')->first(); // Aminah
+            $p4 = Patient::where('ic_number', '010322-08-1145')->first(); // Rajesh
+            $p6 = Patient::where('ic_number', '950707-03-9988')->first(); // Nurul Ain
+
+            $v1 = $p1 ? Visit::where('patient_id', $p1->id)->latest()->first() : null;
+            $v4 = $p4 ? Visit::where('patient_id', $p4->id)->latest()->first() : null;
+            $v5 = $p6 ? Visit::where('patient_id', $p6->id)->latest()->first() : null;
+
+            if ($p1) TimeSlip::create([
+                'patient_id'     => $p1->id,
+                'visit_id'       => $v1?->id,
+                'issued_by'      => $doc,
+                'slip_date'      => now()->subDays(2)->format('Y-m-d'),
+                'arrival_time'   => '09:00',
+                'departure_time' => '10:30',
+                'purpose'        => 'Kawalan darah tinggi dan kencing manis — pengambilan darah & rawatan',
+                'notes'          => 'Pesakit memerlukan slip masa untuk majikan.',
+            ]);
+
+            if ($p4) TimeSlip::create([
+                'patient_id'     => $p4->id,
+                'visit_id'       => $v4?->id,
+                'issued_by'      => $doc,
+                'slip_date'      => now()->format('Y-m-d'),
+                'arrival_time'   => '08:30',
+                'departure_time' => '10:00',
+                'purpose'        => 'Rawatan faringitis akut — pemeriksaan dan ubat-ubatan',
+                'notes'          => null,
+            ]);
+
+            if ($p6) TimeSlip::create([
+                'patient_id'     => $p6->id,
+                'visit_id'       => $v5?->id,
+                'issued_by'      => $doc,
+                'slip_date'      => now()->subDays(7)->format('Y-m-d'),
+                'arrival_time'   => '10:00',
+                'departure_time' => '11:30',
+                'purpose'        => 'Pemeriksaan antenatal minggu ke-24 — scan dan ujian darah',
+                'notes'          => 'Pesakit mengandung 24 minggu.',
+            ]);
         }
     }
 }

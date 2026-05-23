@@ -66,4 +66,9 @@ class Visit extends Model
     {
         return $this->hasMany(QuarantineLetter::class)->orderByDesc('id');
     }
+
+    public function prescriptions(): HasMany
+    {
+        return $this->hasMany(Prescription::class)->orderByDesc('id');
+    }
 }

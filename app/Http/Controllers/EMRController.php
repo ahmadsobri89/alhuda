@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
+use App\Models\InventoryItem;
 use App\Models\LookupCategory;
 use App\Models\Patient;
+use App\Models\Prescription;
 use App\Models\QuarantineLetter;
 use App\Models\Visit;
 use App\Models\VisitDiagnosis;
@@ -45,7 +47,7 @@ class EMRController extends Controller
 
         $selected = null;
         if ($request->filled('visit')) {
-            $v = Visit::with(['patient', 'vitals', 'diagnoses', 'medicalCertificates', 'referrals', 'timeSlips', 'quarantineLetters'])->find($request->visit);
+            $v = Visit::with(['patient', 'vitals', 'diagnoses', 'medicalCertificates', 'referrals', 'timeSlips', 'quarantineLetters', 'prescriptions.items'])->find($request->visit);
             if ($v) $selected = $this->formatVisit($v);
         }
 
@@ -53,7 +55,11 @@ class EMRController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'ic_number', 'patient_id', 'date_of_birth', 'gender', 'blood_type', 'allergies', 'conditions']);
 
-        $lookups = LookupCategory::forSlugs(['keutamaan_rujukan']);
+        $lookups = LookupCategory::forSlugs(['keutamaan_rujukan', 'kekerapan_dos', 'arahan_dos', 'bentuk_ubat']);
+
+        $drugItems = InventoryItem::where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'name', 'generic_name', 'form', 'unit', 'selling_price', 'stock_quantity']);
 
         return Inertia::render('EMR', [
             'currentRoute' => 'emr',
@@ -63,6 +69,7 @@ class EMRController extends Controller
             'filters'      => $request->only(['search', 'status', 'visit']),
             'today'        => now()->format('Y-m-d'),
             'lookups'      => $lookups,
+            'drugItems'    => $drugItems,
         ]);
     }
 
@@ -147,7 +154,55 @@ class EMRController extends Controller
                 'issued_by'        => $qn->issued_by,
                 'issue_date'       => $qn->issue_date->format('d/m/Y'),
             ])->values()->toArray(),
+            'prescriptions' => $v->prescriptions->map(fn ($rx) => [
+                'id'         => $rx->id,
+                'rx_number'  => $rx->rx_number,
+                'status'     => $rx->status,
+                'created_at' => $rx->created_at->format('d/m/Y H:i'),
+                'items'      => $rx->items->map(fn ($i) => [
+                    'drug_name' => $i->drug_name,
+                    'dosage'    => $i->dosage,
+                    'frequency' => $i->frequency,
+                    'quantity'  => $i->quantity,
+                    'drug_unit' => $i->drug_unit,
+                ])->values()->toArray(),
+            ])->values()->toArray(),
         ];
+    }
+
+    public function storePrescription(Request $request, Visit $visit)
+    {
+        $data = $request->validate([
+            'notes'               => ['nullable', 'string', 'max:1000'],
+            'items'               => ['required', 'array', 'min:1'],
+            'items.*.inventory_item_id' => ['nullable', 'exists:inventory_items,id'],
+            'items.*.drug_name'   => ['required', 'string', 'max:255'],
+            'items.*.drug_unit'   => ['nullable', 'string', 'max:100'],
+            'items.*.dosage'      => ['nullable', 'string', 'max:100'],
+            'items.*.frequency'   => ['nullable', 'string', 'max:100'],
+            'items.*.duration'    => ['nullable', 'string', 'max:100'],
+            'items.*.quantity'    => ['required', 'integer', 'min:1'],
+            'items.*.instructions'=> ['nullable', 'string', 'max:255'],
+        ]);
+
+        $rx = Prescription::create([
+            'patient_id'         => $visit->patient_id,
+            'visit_id'           => $visit->id,
+            'prescribing_doctor' => $visit->doctor_name,
+            'user_id'            => Auth::id(),
+            'status'             => 'pending',
+            'notes'              => $data['notes'] ?? null,
+            'drug_check_passed'  => true,
+            'drug_check_notes'   => 'Dijana daripada EMR.',
+        ]);
+
+        foreach ($data['items'] as $item) {
+            $rx->items()->create($item);
+        }
+
+        AuditLog::record('emr.prescription', "{$visit->patient->name} · {$rx->rx_number} · " . count($data['items']) . ' ubat');
+
+        return back()->with('success', "Preskripsi {$rx->rx_number} dihantar ke farmasi.");
     }
 
     public function store(Request $request)
