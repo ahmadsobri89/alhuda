@@ -286,8 +286,8 @@ body {
     $hrs         = intdiv($totalMin2, 60);
     $mns         = $totalMin2 % 60;
     $duration    = $hrs > 0 ? "{$hrs} jam {$mns} min" : "{$mns} minit";
-    $arrivalFmt  = \Carbon\Carbon::createFromFormat('H:i', $timeslip->arrival_time)->format('h:i A');
-    $departureFmt = \Carbon\Carbon::createFromFormat('H:i', $timeslip->departure_time)->format('h:i A');
+    $arrivalFmt  = \Carbon\Carbon::createFromFormat('H:i', trim($timeslip->arrival_time))->format('h:i A');
+    $departureFmt = \Carbon\Carbon::createFromFormat('H:i', trim($timeslip->departure_time))->format('h:i A');
 @endphp
 
 <div class="print-bar">
