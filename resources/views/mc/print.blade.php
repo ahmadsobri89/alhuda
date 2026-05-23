@@ -45,7 +45,7 @@ body {
 .lh-wrap {
     margin: -10mm -12mm 8px;
     overflow: hidden;
-    height: 30mm;
+    height: 31mm;
     flex-shrink: 0;
 }
 .lh-wrap img { width: 100%; display: block; }
@@ -252,8 +252,8 @@ body {
 @media print {
     .print-bar { display: none !important; }
     body { background: #fff; }
-    .page { box-shadow: none; padding: 8mm 10mm; width: 100%; min-height: unset; }
-    .lh-wrap { margin: -8mm -10mm 8px; }
+    .page { box-shadow: none; padding: 0 10mm 8mm; width: 100%; min-height: unset; }
+    .lh-wrap { margin: 0 -10mm 8px; height: 31mm; }
     @page { margin: 0; size: A5 portrait; }
 }
 </style>
@@ -277,7 +277,7 @@ body {
 
         {{-- Letterhead --}}
         <div class="lh-wrap">
-            <img src="{{ asset('images/letterhead.png') }}" alt="{{ $clinic->name }}" />
+            <img src="{{ asset('images/letterheadtop.png') }}" alt="{{ $clinic->name }}" />
         </div>
 
         {{-- Title --}}

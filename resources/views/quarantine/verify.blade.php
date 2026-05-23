@@ -54,12 +54,10 @@ body {
 }
 .card__lh {
     width: 100%;
-    height: 80px;
-    overflow: hidden;
     background: #fff;
     border-bottom: 1px solid #e5e7eb;
 }
-.card__lh img { width: 100%; display: block; margin-top: -4px; }
+.card__lh img { width: 100%; display: block; }
 .card__body { padding: 20px 24px; }
 .section-title {
     font-size: 10px;
@@ -147,7 +145,7 @@ body {
     </div>
 
     <div class="card__lh">
-        <img src="{{ asset('images/letterhead.png') }}" alt="{{ $clinic->name }}">
+        <img src="{{ asset('images/letterheadtop.png') }}" alt="{{ $clinic->name }}">
     </div>
 
     <div class="card__body">

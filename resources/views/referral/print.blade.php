@@ -45,7 +45,7 @@ body {
 .lh-wrap {
     margin: -16mm -18mm 10px;
     overflow: hidden;
-    height: 41mm;
+    height: 44mm;
     flex-shrink: 0;
 }
 .lh-wrap img { width: 100%; display: block; }
@@ -249,7 +249,7 @@ body {
     .print-bar { display: none !important; }
     body { background: #fff; }
     .page { box-shadow: none; padding: 12mm 16mm; width: 100%; min-height: unset; }
-    .lh-wrap { margin: -12mm -16mm 10px; }
+    .lh-wrap { margin: -12mm -16mm 10px; height: 44mm; }
     @page { margin: 0; size: A4 portrait; }
 }
 </style>
@@ -273,7 +273,7 @@ body {
 
         {{-- Letterhead --}}
         <div class="lh-wrap">
-            <img src="{{ asset('images/letterhead.png') }}" alt="{{ $clinic->name }}" />
+            <img src="{{ asset('images/letterheadtop.png') }}" alt="{{ $clinic->name }}" />
         </div>
 
         {{-- Title --}}
