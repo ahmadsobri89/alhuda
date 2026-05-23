@@ -9,6 +9,7 @@ use App\Http\Controllers\BillingController;
 use App\Http\Controllers\EMRController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\MCController;
+use App\Http\Controllers\QuarantineController;
 use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\TimeSlipController;
 use App\Http\Controllers\PatientController;
@@ -23,9 +24,10 @@ Route::get('/', function () {
 });
 
 // Public document verification (no auth required)
-Route::get('/verify/timeslip/{token}', [TimeSlipController::class, 'verify'])->name('timeslip.verify');
-Route::get('/verify/mc/{token}',       [MCController::class, 'verify'])->name('mc.verify');
-Route::get('/verify/referral/{token}', [ReferralController::class, 'verify'])->name('referral.verify');
+Route::get('/verify/timeslip/{token}',   [TimeSlipController::class, 'verify'])->name('timeslip.verify');
+Route::get('/verify/mc/{token}',         [MCController::class, 'verify'])->name('mc.verify');
+Route::get('/verify/referral/{token}',   [ReferralController::class, 'verify'])->name('referral.verify');
+Route::get('/verify/quarantine/{token}', [QuarantineController::class, 'verify'])->name('quarantine.verify');
 
 Route::post('/locale', [\App\Http\Controllers\LocaleController::class, 'switch'])->name('locale.switch');
 
@@ -65,6 +67,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/emr/{visit}/timeslip',       [TimeSlipController::class, 'store'])->name('timeslip.store');
     Route::delete('/timeslip/{timeslip}',      [TimeSlipController::class, 'destroy'])->name('timeslip.destroy');
     Route::get('/timeslip/{timeslip}/print',   [TimeSlipController::class, 'print'])->name('timeslip.print');
+    // Quarantine Letters
+    Route::post('/emr/{visit}/quarantine',              [QuarantineController::class, 'store'])->name('quarantine.store');
+    Route::delete('/quarantine/{quarantine}',            [QuarantineController::class, 'destroy'])->name('quarantine.destroy');
+    Route::get('/quarantine/{quarantine}/print',         [QuarantineController::class, 'print'])->name('quarantine.print');
     // Pharmacy — CRUD
     Route::get('/pharmacy',                                    [PharmacyController::class, 'index'])->name('pharmacy');
     Route::post('/pharmacy/prescriptions',                     [PharmacyController::class, 'store'])->name('pharmacy.store');
