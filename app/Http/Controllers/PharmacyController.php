@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StorePrescriptionRequest;
 use App\Http\Requests\UpdatePrescriptionRequest;
 use App\Models\AuditLog;
+use App\Models\InventoryItem;
+use App\Models\Invoice;
 use App\Models\LookupCategory;
 use App\Models\Patient;
 use App\Models\Prescription;
@@ -34,18 +36,19 @@ class PharmacyController extends Controller
             'wait_time'          => $rx->created_at->diffForHumans(),
             'created_at'         => $rx->created_at->format('d/m/Y H:i'),
             'items'              => $rx->items->map(fn ($item) => [
-                'id'              => $item->id,
-                'drug_name'       => $item->drug_name,
-                'kegunaan'        => $item->kegunaan,
-                'drug_unit'       => $item->drug_unit,
-                'dosage'          => $item->dosage,
-                'frequency'       => $item->frequency,
-                'duration'        => $item->duration,
-                'quantity'        => $item->quantity,
-                'instructions'    => $item->instructions,
-                'item_note'       => $item->item_note,
-                'is_prn'          => $item->is_prn,
-                'complete_course' => $item->complete_course,
+                'id'                  => $item->id,
+                'inventory_item_id'   => $item->inventory_item_id,
+                'drug_name'           => $item->drug_name,
+                'kegunaan'            => $item->kegunaan,
+                'drug_unit'           => $item->drug_unit,
+                'dosage'              => $item->dosage,
+                'frequency'           => $item->frequency,
+                'duration'            => $item->duration,
+                'quantity'            => $item->quantity,
+                'instructions'        => $item->instructions,
+                'item_note'           => $item->item_note,
+                'is_prn'              => $item->is_prn,
+                'complete_course'     => $item->complete_course,
             ])->all(),
         ];
     }
@@ -83,6 +86,10 @@ class PharmacyController extends Controller
 
         $lookups = LookupCategory::forSlugs(['kekerapan_dos', 'arahan_dos', 'bentuk_ubat']);
 
+        $drugItems = InventoryItem::where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'name', 'generic_name', 'form', 'unit', 'selling_price', 'stock_quantity', 'classification']);
+
         return Inertia::render('Pharmacy', [
             'currentRoute'      => 'pharmacy',
             'queue'             => $queue,
@@ -91,6 +98,7 @@ class PharmacyController extends Controller
             'filters'           => ['search' => $search],
             'allergiesInQueue'  => $allergiesInQueue,
             'lookups'           => $lookups,
+            'drugItems'         => $drugItems,
         ]);
     }
 
@@ -154,9 +162,79 @@ class PharmacyController extends Controller
             ] : []
         ));
 
+        if ($newStatus === 'dispensed' && $prescription->wasChanged('status')) {
+            $this->autoPopulateBill($prescription);
+        }
+
         AuditLog::record("rx.{$newStatus}", "{$prescription->rx_number} · {$prescription->patient->name}");
 
         return back()->with('success', "Status preskripsi {$prescription->rx_number} dikemaskini.");
+    }
+
+    private function autoPopulateBill(Prescription $prescription): void
+    {
+        $prescription->loadMissing('items');
+        if ($prescription->items->isEmpty()) return;
+
+        $invoice = Invoice::firstOrCreate(
+            ['patient_id' => $prescription->patient_id, 'status' => 'draft', 'invoice_date' => now()->toDateString()],
+            ['notes' => "Auto-dijana daripada {$prescription->rx_number}"]
+        );
+
+        // Pre-load inventory items by FK; fall back to name-match for items without FK
+        $linkedIds  = $prescription->items->pluck('inventory_item_id')->filter()->unique()->values()->all();
+        $drugNames  = $prescription->items->whereNull('inventory_item_id')->map(fn ($i) => strtolower($i->drug_name))->all();
+
+        $invById   = InventoryItem::whereIn('id', $linkedIds)->get()->keyBy('id');
+        $invByName = collect();
+        if (count($drugNames)) {
+            $invByName = InventoryItem::where('status', 'active')
+                ->where(function ($q) use ($drugNames) {
+                    $q->whereIn(DB::raw('LOWER(name)'), $drugNames)
+                      ->orWhereIn(DB::raw('LOWER(generic_name)'), $drugNames);
+                })
+                ->get()
+                ->keyBy(fn ($i) => strtolower($i->name));
+        }
+
+        $actor = Auth::user()?->name ?? 'System';
+
+        foreach ($prescription->items as $item) {
+            // Resolve inventory item: by FK first, then by name
+            $inv = $item->inventory_item_id
+                ? ($invById[$item->inventory_item_id] ?? null)
+                : ($invByName[strtolower($item->drug_name)]
+                   ?? $invByName->first(fn ($i) => strtolower($i->generic_name) === strtolower($item->drug_name)));
+
+            $unitPrice = $inv ? (float) $inv->selling_price : 0.0;
+            $qty       = (int) $item->quantity;
+
+            $invoice->items()->create([
+                'type'        => 'drug',
+                'code'        => null,
+                'description' => $item->drug_name,
+                'quantity'    => $qty,
+                'unit_price'  => $unitPrice,
+                'total_price' => round($qty * $unitPrice, 2),
+            ]);
+
+            // Deduct stock when an inventory item is linked
+            if ($inv && $qty > 0) {
+                $newStock = max(0, $inv->stock_quantity - $qty);
+                $inv->update(['stock_quantity' => $newStock]);
+                $inv->transactions()->create([
+                    'type'           => 'out',
+                    'quantity_delta' => -$qty,
+                    'quantity_after' => $newStock,
+                    'reference'      => $prescription->rx_number,
+                    'notes'          => "Dikeluarkan melalui preskripsi {$prescription->rx_number}",
+                    'performed_by'   => $actor,
+                ]);
+            }
+        }
+
+        $invoice->recalc();
+        AuditLog::record('billing.auto_rx', "{$invoice->invoice_number} ← {$prescription->rx_number}");
     }
 
     public function destroy(Prescription $prescription)

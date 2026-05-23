@@ -17,6 +17,7 @@ const props = defineProps({
   filters:          { type: Object, default: () => ({}) },
   allergiesInQueue: { type: Array,  default: () => [] },
   lookups:          { type: Object, default: () => ({}) },
+  drugItems:        { type: Array,  default: () => [] },
 })
 
 const page  = usePage()
@@ -67,7 +68,7 @@ const showModal    = ref(false)
 const editingRx    = ref(null)
 
 function emptyItem() {
-  return { drug_name: '', kegunaan: '', drug_unit: '', dosage: '', frequency: '', duration: '', quantity: 1, instructions: '', item_note: '', is_prn: false, complete_course: false }
+  return { inventory_item_id: null, drug_name: '', kegunaan: '', drug_unit: '', dosage: '', frequency: '', duration: '', quantity: 1, instructions: '', item_note: '', is_prn: false, complete_course: false }
 }
 
 const rxForm = useForm({
@@ -77,6 +78,44 @@ const rxForm = useForm({
   items:              [emptyItem()],
 })
 
+// ─── Inventory drug search (per-item UI state, not submitted) ─────────────
+const itemDrugSearch   = ref([])
+const itemDrugDropdown = ref([])
+
+function filteredDrugsFor(i) {
+  const q = (itemDrugSearch.value[i] ?? '').toLowerCase()
+  if (!q) return props.drugItems.slice(0, 12)
+  return props.drugItems.filter(d =>
+    d.name.toLowerCase().includes(q) ||
+    (d.generic_name ?? '').toLowerCase().includes(q)
+  ).slice(0, 12)
+}
+
+function selectDrug(i, inv) {
+  rxForm.items[i].inventory_item_id = inv.id
+  rxForm.items[i].drug_name         = inv.name
+  rxForm.items[i].drug_unit         = inv.form ?? ''
+  itemDrugSearch.value[i]           = inv.name
+  itemDrugDropdown.value[i]         = false
+}
+
+function clearDrugSelection(i) {
+  rxForm.items[i].inventory_item_id = null
+  rxForm.items[i].drug_name         = ''
+  itemDrugSearch.value[i]           = ''
+  itemDrugDropdown.value[i]         = false
+}
+
+function resolvedInvItem(item) {
+  if (!item.inventory_item_id) return null
+  return props.drugItems.find(d => d.id === item.inventory_item_id) ?? null
+}
+
+function resetDrugSearchArrays(len) {
+  itemDrugSearch.value   = Array(len).fill('')
+  itemDrugDropdown.value = Array(len).fill(false)
+}
+
 function openCreate() {
   editingRx.value = null
   selectedPatient.value = null
@@ -85,6 +124,7 @@ function openCreate() {
   rxForm.items = [emptyItem()]
   rxForm.prescribing_doctor = 'Dr. Aiman Rashid'
   rxForm.clearErrors()
+  resetDrugSearchArrays(1)
   showModal.value = true
 }
 
@@ -97,12 +137,15 @@ function openEdit(rx) {
   rxForm.prescribing_doctor = rx.prescribing_doctor
   rxForm.notes              = rx.notes ?? ''
   rxForm.items              = rx.items.map(i => ({
+    inventory_item_id: i.inventory_item_id ?? null,
     drug_name: i.drug_name, kegunaan: i.kegunaan ?? '', drug_unit: i.drug_unit ?? '',
     dosage: i.dosage ?? '', frequency: i.frequency ?? '', duration: i.duration ?? '',
     quantity: i.quantity, instructions: i.instructions ?? '', item_note: i.item_note ?? '',
     is_prn: i.is_prn ?? false, complete_course: i.complete_course ?? false,
   }))
   rxForm.clearErrors()
+  resetDrugSearchArrays(rx.items.length)
+  rx.items.forEach((it, idx) => { itemDrugSearch.value[idx] = it.drug_name })
   showModal.value = true
 }
 
@@ -116,8 +159,16 @@ function submitRx() {
   }
 }
 
-function addItem()     { rxForm.items.push(emptyItem()) }
-function removeItem(i) { rxForm.items.splice(i, 1) }
+function addItem() {
+  rxForm.items.push(emptyItem())
+  itemDrugSearch.value.push('')
+  itemDrugDropdown.value.push(false)
+}
+function removeItem(i) {
+  rxForm.items.splice(i, 1)
+  itemDrugSearch.value.splice(i, 1)
+  itemDrugDropdown.value.splice(i, 1)
+}
 
 const PRN_TAGS = ['Bila Perlu', 'Habiskan ubat']
 
@@ -142,14 +193,6 @@ function limitNoteLines(item) {
   const lines = item.item_note.split('\n')
   if (lines.length > 2) item.item_note = lines.slice(0, 2).join('\n')
 }
-
-// Common drugs for quick-fill
-const COMMON_DRUGS = [
-  'Metformin 500mg', 'Amlodipine 5mg', 'Atorvastatin 20mg', 'Losartan 50mg',
-  'Aspirin 75mg', 'Paracetamol 500mg', 'Ibuprofen 400mg', 'Omeprazole 20mg',
-  'Salbutamol Inhaler 100mcg', 'Azithromycin 500mg', 'Amoxicillin 500mg',
-  'Cetirizine 10mg', 'Levothyroxine 50mcg', 'Montelukast 10mg',
-]
 
 const FREQUENCIES  = computed(() => (props.lookups?.kekerapan_dos ?? []).map(v => v.label_ms))
 const INSTRUCTIONS = computed(() => (props.lookups?.arahan_dos    ?? []).map(v => v.label_ms))
@@ -484,10 +527,47 @@ function doDispense() {
               <div class="rx-row rx-row--2">
                 <div class="rx-field">
                   <label class="rx-field__lbl">{{ t('rx_lbl_drug') }} <span class="req">*</span></label>
-                  <input v-model="item.drug_name" class="input input--sm" placeholder="Nama ubat" list="drug-list" />
-                  <datalist id="drug-list">
-                    <option v-for="d in COMMON_DRUGS" :key="d" :value="d" />
-                  </datalist>
+                  <div style="position:relative">
+                    <!-- Linked inventory badge + clear -->
+                    <div v-if="item.inventory_item_id" class="drug-linked-bar">
+                      <span class="drug-linked-name">{{ item.drug_name }}</span>
+                      <span v-if="resolvedInvItem(item)" :class="['drug-stock-badge', resolvedInvItem(item).stock_quantity <= 0 ? 'drug-stock-badge--out' : resolvedInvItem(item).stock_quantity <= 10 ? 'drug-stock-badge--low' : 'drug-stock-badge--ok']">
+                        Stok: {{ resolvedInvItem(item).stock_quantity }}
+                      </span>
+                      <button type="button" class="drug-clear-btn" @click="clearDrugSelection(i)" title="Tukar ubat">✕</button>
+                    </div>
+                    <!-- Search input (shown when no inventory item linked) -->
+                    <template v-else>
+                      <input
+                        v-model="itemDrugSearch[i]"
+                        class="input input--sm"
+                        placeholder="Cari ubat inventori atau taip nama..."
+                        autocomplete="off"
+                        @input="itemDrugDropdown[i] = true; item.drug_name = itemDrugSearch[i]"
+                        @focus="itemDrugDropdown[i] = true"
+                        @blur="setTimeout(() => { itemDrugDropdown[i] = false }, 180)"
+                      />
+                      <div v-if="itemDrugDropdown[i] && filteredDrugsFor(i).length" class="drug-dropdown">
+                        <button
+                          v-for="inv in filteredDrugsFor(i)" :key="inv.id"
+                          type="button"
+                          class="drug-option"
+                          :class="{ 'drug-option--out': inv.stock_quantity <= 0 }"
+                          @mousedown.prevent="selectDrug(i, inv)"
+                        >
+                          <div class="drug-option__name">{{ inv.name }}</div>
+                          <div class="drug-option__meta">
+                            <span v-if="inv.generic_name" style="color:var(--fg3)">{{ inv.generic_name }}</span>
+                            <span v-if="inv.form" style="color:var(--fg3)"> · {{ inv.form }}</span>
+                            <span :class="['drug-option__stock', inv.stock_quantity <= 0 ? 'out' : inv.stock_quantity <= 10 ? 'low' : '']">
+                              Stok: {{ inv.stock_quantity }}
+                            </span>
+                            <span v-if="inv.selling_price > 0" class="drug-option__price">RM {{ Number(inv.selling_price).toFixed(2) }}</span>
+                          </div>
+                        </button>
+                      </div>
+                    </template>
+                  </div>
                   <span v-if="rxForm.errors[`items.${i}.drug_name`]" class="rx-field__err">Wajib diisi</span>
                 </div>
                 <div class="rx-field">
@@ -852,6 +932,44 @@ function doDispense() {
   line-height:1.5; white-space: pre-wrap; word-break: break-word;
 }
 .drug-card__note svg { flex-shrink:0; margin-top:1px; color:#B08000; }
+
+/* ── Inventory drug search dropdown ── */
+.drug-dropdown {
+  position:absolute; top:calc(100% + 3px); left:0; right:0; z-index:200;
+  background:#fff; border:1px solid var(--border); border-radius:10px;
+  box-shadow:var(--shadow-md); max-height:220px; overflow-y:auto;
+}
+.drug-option {
+  display:block; width:100%; text-align:left; padding:8px 12px;
+  border:0; background:transparent; cursor:pointer;
+}
+.drug-option:hover { background:var(--bg-soft); }
+.drug-option + .drug-option { border-top:1px solid var(--bg-muted); }
+.drug-option--out { opacity:.55; }
+.drug-option__name { font:600 12.5px var(--font-sans); color:var(--fg1); }
+.drug-option__meta { display:flex; align-items:center; gap:6px; margin-top:2px; font:500 11px var(--font-sans); flex-wrap:wrap; }
+.drug-option__stock { font:700 10.5px var(--font-mono); padding:1px 6px; border-radius:999px; background:var(--brand-green-light); color:var(--brand-green-dark); }
+.drug-option__stock.low { background:#FEF3C7; color:#92400E; }
+.drug-option__stock.out { background:#FEE2E2; color:#991B1B; }
+.drug-option__price { font:600 11px var(--font-mono); color:var(--brand-green-dark); margin-left:auto; }
+
+/* Linked drug bar (replaces input once inventory item selected) */
+.drug-linked-bar {
+  display:flex; align-items:center; gap:6px; min-height:34px;
+  padding:5px 10px; border:1.5px solid var(--brand-green);
+  border-radius:8px; background:var(--brand-green-light);
+}
+.drug-linked-name { flex:1; font:600 12.5px var(--font-sans); color:var(--brand-green-dark); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.drug-stock-badge { font:700 10.5px var(--font-mono); padding:1px 7px; border-radius:999px; white-space:nowrap; flex-shrink:0; }
+.drug-stock-badge--ok  { background:var(--brand-green-light); color:var(--brand-green-dark); border:1px solid var(--brand-green); }
+.drug-stock-badge--low { background:#FEF3C7; color:#92400E; border:1px solid #F59E0B; }
+.drug-stock-badge--out { background:#FEE2E2; color:#991B1B; border:1px solid #FECACA; }
+.drug-clear-btn {
+  width:20px; height:20px; border:0; background:transparent; cursor:pointer;
+  color:var(--brand-green-dark); font-size:12px; display:grid; place-items:center; flex-shrink:0;
+  border-radius:4px; opacity:.7;
+}
+.drug-clear-btn:hover { opacity:1; background:rgba(0,0,0,.06); }
 
 /* Allergy alert */
 .allergy-alert {
