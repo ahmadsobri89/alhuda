@@ -4,12 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class TimeSlip extends Model
 {
     protected $fillable = [
         'slip_number', 'patient_id', 'visit_id', 'issued_by',
         'slip_date', 'arrival_time', 'departure_time', 'purpose', 'notes',
+        'verify_token',
     ];
 
     protected function casts(): array
@@ -23,9 +25,13 @@ class TimeSlip extends Model
     {
         static::creating(function (TimeSlip $slip) {
             if (! $slip->slip_number) {
-                $year  = now()->year;
+                $year  = (int) now()->format('Y');
                 $count = static::whereYear('created_at', $year)->count() + 1;
                 $slip->slip_number = sprintf('TS-%d-%04d', $year, $count);
+            }
+
+            if (! $slip->verify_token) {
+                $slip->verify_token = Str::random(48);
             }
         });
     }

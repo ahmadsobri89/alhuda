@@ -22,6 +22,11 @@ Route::get('/', function () {
     return redirect()->route('dashboard');
 });
 
+// Public document verification (no auth required)
+Route::get('/verify/timeslip/{token}', [TimeSlipController::class, 'verify'])->name('timeslip.verify');
+Route::get('/verify/mc/{token}',       [MCController::class, 'verify'])->name('mc.verify');
+Route::get('/verify/referral/{token}', [ReferralController::class, 'verify'])->name('referral.verify');
+
 Route::post('/locale', [\App\Http\Controllers\LocaleController::class, 'switch'])->name('locale.switch');
 
 Route::middleware(['auth', 'verified'])->group(function () {

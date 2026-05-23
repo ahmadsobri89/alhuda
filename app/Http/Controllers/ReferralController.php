@@ -46,4 +46,13 @@ class ReferralController extends Controller
         AuditLog::record('referral.print', "{$referral->ref_number} · {$referral->patient->name}");
         return view('referral.print', compact('referral'));
     }
+
+    public function verify(string $token)
+    {
+        $referral = ReferralLetter::where('verify_token', $token)
+            ->with(['patient'])
+            ->firstOrFail();
+
+        return view('referral.verify', compact('referral'));
+    }
 }

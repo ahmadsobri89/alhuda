@@ -4,13 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class MedicalCertificate extends Model
 {
     protected $fillable = [
         'mc_number', 'patient_id', 'visit_id', 'issued_by',
         'issue_date', 'start_date', 'end_date', 'days',
-        'diagnosis', 'notes',
+        'diagnosis', 'notes', 'verify_token',
     ];
 
     protected function casts(): array
@@ -26,9 +27,13 @@ class MedicalCertificate extends Model
     {
         static::creating(function (MedicalCertificate $mc) {
             if (! $mc->mc_number) {
-                $year  = now()->year;
+                $year  = (int) now()->format('Y');
                 $count = static::whereYear('created_at', $year)->count() + 1;
                 $mc->mc_number = sprintf('MC-%d-%04d', $year, $count);
+            }
+
+            if (! $mc->verify_token) {
+                $mc->verify_token = Str::random(48);
             }
         });
     }
