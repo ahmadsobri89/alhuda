@@ -54,4 +54,13 @@ class MCController extends Controller
         AuditLog::record('mc.print', "{$mc->mc_number} · {$mc->patient->name}");
         return view('mc.print', compact('mc'));
     }
+
+    public function verify(string $token)
+    {
+        $mc = MedicalCertificate::where('verify_token', $token)
+            ->with(['patient'])
+            ->firstOrFail();
+
+        return view('mc.verify', compact('mc'));
+    }
 }

@@ -231,6 +231,27 @@ function deleteReferral(refId) {
   router.delete(`/referral/${refId}`, { preserveScroll: true, onSuccess: () => { showRefDelId.value = null } })
 }
 
+/* ── Quarantine Letter ────────────────────────────── */
+const showQnForm  = ref(false)
+const showQnDelId = ref(null)
+const qnForm      = useForm({
+  quarantine_start: props.today,
+  days:             7,
+  diagnosis:        '',
+  reason:           '',
+  notes:            '',
+})
+
+function issueQuarantine() {
+  qnForm.post(`/emr/${props.selected.id}/quarantine`, {
+    preserveScroll: true,
+    onSuccess: () => { qnForm.reset(); qnForm.quarantine_start = props.today; qnForm.days = 7; showQnForm.value = false },
+  })
+}
+function deleteQuarantine(qnId) {
+  router.delete(`/quarantine/${qnId}`, { preserveScroll: true, onSuccess: () => { showQnDelId.value = null } })
+}
+
 /* ── Close / Delete visit ─────────────────────────── */
 const showCloseConfirm  = ref(false)
 const showDeleteConfirm = ref(false)
@@ -716,6 +737,74 @@ const soapHints = computed(() => ({
               </div>
             </div>
 
+            <!-- Quarantine Letter -->
+            <div class="card">
+              <div class="card__header">
+                <h3 class="card__title">{{ t('qn_section') }}</h3>
+                <div class="spacer"></div>
+                <Btn variant="ghost" size="sm" @click="showQnForm = !showQnForm">
+                  {{ showQnForm ? t('qn_cancel') : t('qn_issue_btn') }}
+                </Btn>
+              </div>
+
+              <!-- Issue Quarantine form -->
+              <div v-if="showQnForm" class="card__body" style="border-bottom:1px solid var(--border)">
+                <div class="field" style="margin-bottom:8px">
+                  <label class="field__label">{{ t('qn_lbl_start') }}</label>
+                  <input v-model="qnForm.quarantine_start" type="date" class="input" required />
+                  <span v-if="qnForm.errors.quarantine_start" class="field__error">{{ qnForm.errors.quarantine_start }}</span>
+                </div>
+                <div class="field" style="margin-bottom:8px">
+                  <label class="field__label">{{ t('qn_lbl_days') }}</label>
+                  <input v-model="qnForm.days" type="number" min="1" max="365" class="input" />
+                  <span v-if="qnForm.errors.days" class="field__error">{{ qnForm.errors.days }}</span>
+                </div>
+                <div class="field" style="margin-bottom:8px">
+                  <label class="field__label">{{ t('qn_lbl_diagnosis') }}</label>
+                  <input v-model="qnForm.diagnosis" type="text" class="input" :placeholder="t('qn_ph_diagnosis')" maxlength="255" />
+                </div>
+                <div class="field" style="margin-bottom:8px">
+                  <label class="field__label">{{ t('qn_lbl_reason') }}</label>
+                  <input v-model="qnForm.reason" type="text" class="input" :placeholder="t('qn_ph_reason')" maxlength="255" />
+                </div>
+                <div class="field" style="margin-bottom:10px">
+                  <label class="field__label">{{ t('qn_lbl_notes') }}</label>
+                  <input v-model="qnForm.notes" type="text" class="input" :placeholder="t('qn_ph_notes')" maxlength="500" />
+                </div>
+                <Btn variant="primary" size="sm" style="width:100%;justify-content:center"
+                     :disabled="qnForm.processing || !qnForm.quarantine_start || qnForm.days < 1"
+                     @click="issueQuarantine">
+                  {{ qnForm.processing ? t('qn_submitting') : t('qn_issue_btn') }}
+                </Btn>
+              </div>
+
+              <!-- Quarantine list -->
+              <div v-if="selected.quarantines?.length">
+                <div v-for="qn in selected.quarantines" :key="qn.id"
+                     style="padding:10px 14px;border-top:1px solid var(--border)">
+                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                    <span style="font:700 11px var(--font-mono);color:#b45309">{{ qn.qn_number }}</span>
+                    <span style="font:500 10px var(--font-sans);color:var(--fg3);margin-left:auto">{{ qn.issue_date }}</span>
+                  </div>
+                  <div style="font:500 12px var(--font-sans);color:var(--fg1);margin-bottom:2px">
+                    {{ qn.days }} {{ t('qn_days_suffix') }} · {{ qn.quarantine_start }} → {{ qn.quarantine_end }}
+                  </div>
+                  <div v-if="qn.diagnosis" style="font:400 11px var(--font-sans);color:var(--fg2);margin-bottom:2px">{{ qn.diagnosis }}</div>
+                  <div v-if="qn.reason" style="font:400 11px var(--font-sans);color:var(--fg2);margin-bottom:6px">{{ qn.reason }}</div>
+                  <div style="display:flex;gap:6px">
+                    <a :href="`/quarantine/${qn.id}/print`" target="_blank" class="mc-print-btn" style="color:#b45309;border-color:#fcd34d;background:#fffbeb">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                      {{ t('qn_print') }}
+                    </a>
+                    <button class="mc-del-btn" @click="showQnDelId = qn.id">{{ t('qn_delete') }}</button>
+                  </div>
+                </div>
+              </div>
+              <div v-else style="padding:16px 14px;font:500 12px var(--font-sans);color:var(--fg3)">
+                {{ t('qn_no_records') }}
+              </div>
+            </div>
+
             <!-- Medical Certificate -->
             <div class="card">
               <div class="card__header">
@@ -894,6 +983,27 @@ const soapHints = computed(() => ({
             <div class="modal__footer">
               <Btn variant="secondary" @click="showRefDelId = null">{{ t('btn_cancel') }}</Btn>
               <Btn variant="primary" style="background:var(--brand-red)" @click="deleteReferral(showRefDelId)">{{ t('ref_del_yes') }}</Btn>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- ── Quarantine Delete confirm ───────────────────────── -->
+    <Teleport to="body">
+      <div v-if="showQnDelId !== null" class="modal-backdrop" @click.self="showQnDelId = null">
+        <div class="modal modal--sm">
+          <div class="modal__header">
+            <h3 class="modal__title" style="color:var(--brand-red)">{{ t('qn_del_confirm') }}</h3>
+            <button class="modal__close" @click="showQnDelId = null">✕</button>
+          </div>
+          <div class="modal__body">
+            <p style="font:400 14px var(--font-sans);color:var(--fg2);margin:0 0 16px">
+              {{ t('qn_del_body', { qn_number: selected?.quarantines?.find(q => q.id === showQnDelId)?.qn_number }) }}
+            </p>
+            <div class="modal__footer">
+              <Btn variant="secondary" @click="showQnDelId = null">{{ t('btn_cancel') }}</Btn>
+              <Btn variant="primary" style="background:var(--brand-red)" @click="deleteQuarantine(showQnDelId)">{{ t('qn_del_yes') }}</Btn>
             </div>
           </div>
         </div>

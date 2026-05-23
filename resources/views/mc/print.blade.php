@@ -41,21 +41,30 @@ body {
 
 .content { position: relative; z-index: 1; display: flex; flex-direction: column; flex: 1; }
 
-/* ── Header ── */
-.hd {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    padding-bottom: 6px;
-    border-bottom: 3px double #1b8a4a;
-    margin-bottom: 8px;
+/* ── Letterhead header ── */
+.lh-wrap {
+    margin: -10mm -12mm 8px;
+    overflow: hidden;
+    height: 30mm;
+    flex-shrink: 0;
 }
-.hd-brand { display: flex; align-items: center; gap: 8px; }
-.hd-logo  { width: 34px; height: 34px; border-radius: 5px; object-fit: contain; }
-.hd-name  { font: 700 15px 'Times New Roman', Times, serif; color: #1b8a4a; }
-.hd-sub   { font: 400 9px 'Times New Roman', Times, serif; color: #555; margin-top: 1px; }
-.hd-right { text-align: right; font: 400 8.5px 'Times New Roman', Times, serif; color: #555; line-height: 1.6; }
-.hd-right strong { font-size: 9px; color: #222; }
+.lh-wrap img { width: 100%; display: block; }
+
+/* ── QR code ── */
+.qr-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    margin-top: 6px;
+}
+.qr-wrap svg { width: 22mm; height: 22mm; }
+.qr-wrap__lbl {
+    font: 400 7px 'Times New Roman', Times, serif;
+    color: #888;
+    text-align: center;
+    line-height: 1.4;
+}
 
 /* ── Document title ── */
 .doc-title {
@@ -220,7 +229,7 @@ body {
 
 /* ── Screen bar ── */
 @media screen {
-    body { background: #d1d5db; padding: 24px 0 40px; }
+    body { background: #d1d5db; padding: 50px 0 40px; }
     .page { box-shadow: 0 4px 20px rgba(0,0,0,.15); background: #fff; }
     .print-bar {
         position: fixed; top: 0; left: 0; right: 0; z-index: 100;
@@ -238,13 +247,13 @@ body {
         background: rgba(255,255,255,.15); color: #fff; border: none;
         padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;
     }
-    body { padding-top: 50px; }
 }
 
 @media print {
     .print-bar { display: none !important; }
     body { background: #fff; }
     .page { box-shadow: none; padding: 8mm 10mm; width: 100%; min-height: unset; }
+    .lh-wrap { margin: -8mm -10mm 8px; }
     @page { margin: 0; size: A5 portrait; }
 }
 </style>
@@ -266,21 +275,9 @@ body {
     <div class="watermark">AL-HUDA</div>
     <div class="content">
 
-        {{-- Header --}}
-        <div class="hd">
-            <div class="hd-brand">
-                <img src="{{ $clinic->logo_url }}" alt="" class="hd-logo" />
-                <div>
-                    <div class="hd-name">{{ $clinic->name }}</div>
-                    <div class="hd-sub">{{ $clinic->tagline }}</div>
-                </div>
-            </div>
-            <div class="hd-right">
-                <strong>{{ $clinic->name }}</strong>
-                {{ $clinic->address }}<br>
-                {{ $clinic->postcode }} {{ $clinic->city }}, {{ $clinic->state }}<br>
-                Tel: {{ $clinic->phone }}@if($clinic->fax) · Faks: {{ $clinic->fax }}@endif
-            </div>
+        {{-- Letterhead --}}
+        <div class="lh-wrap">
+            <img src="{{ asset('images/letterhead.png') }}" alt="{{ $clinic->name }}" />
         </div>
 
         {{-- Title --}}
@@ -365,18 +362,20 @@ body {
                     <div class="chop-area">Cop Rasmi Klinik</div>
                 </div>
             </div>
-            <div class="sig-block">
-                <div style="margin-bottom:8px">
+            <div class="sig-block" style="justify-content:space-between">
+                <div style="width:100%">
                     <table style="font:400 9px 'Times New Roman',serif;width:100%;border-collapse:collapse">
                         <tr><td style="color:#777;padding:2px 0">Tarikh Dikeluarkan</td></tr>
                         <tr><td style="font-weight:700;font-size:10px;padding:2px 0">{{ $mc->created_at->format('d/m/Y H:i') }}</td></tr>
-                        <tr><td style="color:#777;padding:6px 0 2px 0">Dikeluarkan Oleh</td></tr>
+                        <tr><td style="color:#777;padding:4px 0 2px 0">Dikeluarkan Oleh</td></tr>
                         <tr><td style="font-weight:700;font-size:10px">{{ $mc->issued_by }}</td></tr>
                     </table>
                 </div>
-                <div style="flex:1"></div>
-                <div class="sig-block__label" style="width:100%;text-align:left;border-top:1px solid #000;padding-top:4px;margin-top:auto">
-                    Tandatangan / Penerimaan Pesakit
+                <div class="qr-wrap">
+                    {!! \SimpleSoftwareIO\QrCode\Facades\QrCode::size(84)->margin(0)->generate(
+                        route('mc.verify', $mc->verify_token)
+                    ) !!}
+                    <div class="qr-wrap__lbl">Imbas untuk<br>pengesahan</div>
                 </div>
             </div>
         </div>

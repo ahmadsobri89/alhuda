@@ -44,4 +44,13 @@ class TimeSlipController extends Controller
         AuditLog::record('timeslip.print', "{$timeslip->slip_number} · {$timeslip->patient->name}");
         return view('timeslip.print', compact('timeslip'));
     }
+
+    public function verify(string $token)
+    {
+        $timeslip = TimeSlip::where('verify_token', $token)
+            ->with(['patient'])
+            ->firstOrFail();
+
+        return view('timeslip.verify', compact('timeslip'));
+    }
 }

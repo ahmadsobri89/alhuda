@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AuditLog;
 use App\Models\LookupCategory;
 use App\Models\Patient;
+use App\Models\QuarantineLetter;
 use App\Models\Visit;
 use App\Models\VisitDiagnosis;
 use Illuminate\Http\Request;
@@ -44,7 +45,7 @@ class EMRController extends Controller
 
         $selected = null;
         if ($request->filled('visit')) {
-            $v = Visit::with(['patient', 'vitals', 'diagnoses', 'medicalCertificates', 'referrals', 'timeSlips'])->find($request->visit);
+            $v = Visit::with(['patient', 'vitals', 'diagnoses', 'medicalCertificates', 'referrals', 'timeSlips', 'quarantineLetters'])->find($request->visit);
             if ($v) $selected = $this->formatVisit($v);
         }
 
@@ -134,6 +135,17 @@ class EMRController extends Controller
                 'departure_time' => substr($ts->departure_time, 0, 5),
                 'purpose'        => $ts->purpose,
                 'issued_by'      => $ts->issued_by,
+            ])->values()->toArray(),
+            'quarantines' => $v->quarantineLetters->map(fn ($qn) => [
+                'id'               => $qn->id,
+                'qn_number'        => $qn->qn_number,
+                'quarantine_start' => $qn->quarantine_start->format('d/m/Y'),
+                'quarantine_end'   => $qn->quarantine_end->format('d/m/Y'),
+                'days'             => $qn->days,
+                'diagnosis'        => $qn->diagnosis,
+                'reason'           => $qn->reason,
+                'issued_by'        => $qn->issued_by,
+                'issue_date'       => $qn->issue_date->format('d/m/Y'),
             ])->values()->toArray(),
         ];
     }

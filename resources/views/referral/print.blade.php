@@ -41,21 +41,30 @@ body {
 
 .content { position: relative; z-index: 1; display: flex; flex-direction: column; flex: 1; }
 
-/* ── Header ── */
-.hd {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    padding-bottom: 8px;
-    border-bottom: 3px double #1b8a4a;
-    margin-bottom: 10px;
+/* ── Letterhead header ── */
+.lh-wrap {
+    margin: -16mm -18mm 10px;
+    overflow: hidden;
+    height: 41mm;
+    flex-shrink: 0;
 }
-.hd-brand { display: flex; align-items: center; gap: 10px; }
-.hd-logo  { width: 42px; height: 42px; border-radius: 6px; object-fit: contain; }
-.hd-name  { font: 700 17px 'Times New Roman', Times, serif; color: #1b8a4a; }
-.hd-sub   { font: 400 9.5px 'Times New Roman', Times, serif; color: #555; margin-top: 2px; }
-.hd-right { text-align: right; font: 400 9px 'Times New Roman', Times, serif; color: #555; line-height: 1.7; }
-.hd-right strong { font-size: 9.5px; color: #222; }
+.lh-wrap img { width: 100%; display: block; }
+
+/* ── QR code ── */
+.qr-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    margin-top: 8px;
+}
+.qr-wrap svg { width: 26mm; height: 26mm; }
+.qr-wrap__lbl {
+    font: 400 7.5px 'Times New Roman', Times, serif;
+    color: #888;
+    text-align: center;
+    line-height: 1.4;
+}
 
 /* ── Document title ── */
 .doc-title {
@@ -216,7 +225,7 @@ body {
 
 /* ── Screen bar ── */
 @media screen {
-    body { background: #d1d5db; padding: 24px 0 40px; }
+    body { background: #d1d5db; padding: 50px 0 40px; }
     .page { box-shadow: 0 4px 20px rgba(0,0,0,.15); background: #fff; }
     .print-bar {
         position: fixed; top: 0; left: 0; right: 0; z-index: 100;
@@ -234,13 +243,13 @@ body {
         background: rgba(255,255,255,.15); color: #fff; border: none;
         padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;
     }
-    body { padding-top: 50px; }
 }
 
 @media print {
     .print-bar { display: none !important; }
     body { background: #fff; }
     .page { box-shadow: none; padding: 12mm 16mm; width: 100%; min-height: unset; }
+    .lh-wrap { margin: -12mm -16mm 10px; }
     @page { margin: 0; size: A4 portrait; }
 }
 </style>
@@ -262,21 +271,9 @@ body {
     <div class="watermark">AL-HUDA</div>
     <div class="content">
 
-        {{-- Header --}}
-        <div class="hd">
-            <div class="hd-brand">
-                <img src="{{ $clinic->logo_url }}" alt="" class="hd-logo" />
-                <div>
-                    <div class="hd-name">{{ $clinic->name }}</div>
-                    <div class="hd-sub">{{ $clinic->tagline }}</div>
-                </div>
-            </div>
-            <div class="hd-right">
-                <strong>{{ $clinic->name }}</strong>
-                {{ $clinic->address }}<br>
-                {{ $clinic->postcode }} {{ $clinic->city }}, {{ $clinic->state }}<br>
-                Tel: {{ $clinic->phone }}@if($clinic->fax) · Faks: {{ $clinic->fax }}@endif
-            </div>
+        {{-- Letterhead --}}
+        <div class="lh-wrap">
+            <img src="{{ asset('images/letterhead.png') }}" alt="{{ $clinic->name }}" />
         </div>
 
         {{-- Title --}}
@@ -356,7 +353,7 @@ body {
         <div class="closing">
             Yang Hormat,<br>
             <br>
-            Dengan hormatnya saya merujuk pesakit di atas kepada penjagaan
+            Dengan hormatnya saya merujuk pesakit di atas kepada pihak
             @if($referral->referred_to_dept)
                 {{ $referral->referred_to_dept }},
             @endif
@@ -401,6 +398,12 @@ body {
                     <div>Tarikh: <strong style="color:#000">{{ $referral->created_at->format('d/m/Y H:i') }}</strong></div>
                     <div>No. Rujukan: <strong style="color:#000">{{ $referral->ref_number }}</strong></div>
                     <div>Dikeluarkan Oleh: <strong style="color:#000">{{ $referral->issued_by }}</strong></div>
+                </div>
+                <div class="qr-wrap">
+                    {!! \SimpleSoftwareIO\QrCode\Facades\QrCode::size(96)->margin(0)->generate(
+                        route('referral.verify', $referral->verify_token)
+                    ) !!}
+                    <div class="qr-wrap__lbl">Imbas untuk<br>pengesahan</div>
                 </div>
             </div>
         </div>

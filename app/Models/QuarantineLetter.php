@@ -6,34 +6,34 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
-class MedicalCertificate extends Model
+class QuarantineLetter extends Model
 {
     protected $fillable = [
-        'mc_number', 'patient_id', 'visit_id', 'issued_by',
-        'issue_date', 'start_date', 'end_date', 'days',
-        'diagnosis', 'notes', 'verify_token',
+        'qn_number', 'patient_id', 'visit_id', 'issued_by',
+        'issue_date', 'quarantine_start', 'quarantine_end', 'days',
+        'diagnosis', 'reason', 'notes', 'verify_token',
     ];
 
     protected function casts(): array
     {
         return [
-            'issue_date' => 'date',
-            'start_date' => 'date',
-            'end_date'   => 'date',
+            'issue_date'       => 'date',
+            'quarantine_start' => 'date',
+            'quarantine_end'   => 'date',
         ];
     }
 
     protected static function booted(): void
     {
-        static::creating(function (MedicalCertificate $mc) {
-            if (! $mc->mc_number) {
+        static::creating(function (QuarantineLetter $qn) {
+            if (! $qn->qn_number) {
                 $year  = (int) now()->format('Y');
                 $count = static::whereYear('created_at', $year)->count() + 1;
-                $mc->mc_number = sprintf('MC-%d-%04d', $year, $count);
+                $qn->qn_number = sprintf('QN-%d-%04d', $year, $count);
             }
 
-            if (! $mc->verify_token) {
-                $mc->verify_token = Str::random(48);
+            if (! $qn->verify_token) {
+                $qn->verify_token = Str::random(48);
             }
         });
     }

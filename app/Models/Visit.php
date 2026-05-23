@@ -61,4 +61,9 @@ class Visit extends Model
     {
         return $this->hasMany(TimeSlip::class)->orderByDesc('id');
     }
+
+    public function quarantineLetters(): HasMany
+    {
+        return $this->hasMany(QuarantineLetter::class)->orderByDesc('id');
+    }
 }

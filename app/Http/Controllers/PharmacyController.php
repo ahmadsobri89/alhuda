@@ -43,6 +43,7 @@ class PharmacyController extends Controller
                 'duration'        => $item->duration,
                 'quantity'        => $item->quantity,
                 'instructions'    => $item->instructions,
+                'item_note'       => $item->item_note,
                 'is_prn'          => $item->is_prn,
                 'complete_course' => $item->complete_course,
             ])->all(),
