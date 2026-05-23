@@ -280,14 +280,19 @@ body {
 <body>
 
 @php
-    [$ah2, $am2] = explode(':', $timeslip->arrival_time);
-    [$dh2, $dm2] = explode(':', $timeslip->departure_time);
+    [$ah2, $am2] = explode(':', trim($timeslip->arrival_time));
+    [$dh2, $dm2] = explode(':', trim($timeslip->departure_time));
     $totalMin2   = ($dh2 * 60 + $dm2) - ($ah2 * 60 + $am2);
     $hrs         = intdiv($totalMin2, 60);
     $mns         = $totalMin2 % 60;
     $duration    = $hrs > 0 ? "{$hrs} jam {$mns} min" : "{$mns} minit";
-    $arrivalFmt  = \Carbon\Carbon::createFromFormat('H:i', trim($timeslip->arrival_time))->format('h:i A');
-    $departureFmt = \Carbon\Carbon::createFromFormat('H:i', trim($timeslip->departure_time))->format('h:i A');
+    try {
+        $arrivalFmt  = \Carbon\Carbon::parse($timeslip->arrival_time)->format('h:i A');
+        $departureFmt = \Carbon\Carbon::parse($timeslip->departure_time)->format('h:i A');
+    } catch (\Exception $e) {
+        $arrivalFmt  = substr(trim($timeslip->arrival_time), 0, 5);
+        $departureFmt = substr(trim($timeslip->departure_time), 0, 5);
+    }
 @endphp
 
 <div class="print-bar">
