@@ -272,12 +272,12 @@ $unitMap = [
 ];
 
 $freqMap = [
-    'OD'  => 1, 'OD — 1× sehari'   => 1,
-    'BD'  => 2, 'BD — 2× sehari'   => 2,
-    'TDS' => 3, 'TDS — 3× sehari'  => 3,
-    'QID' => 4, 'QID — 4× sehari'  => 4,
-    'ON'  => 1, 'ON — Malam'       => 1,
-    'PRN' => null, 'PRN — Bila perlu' => null,
+    'OD'  => 1, 'OD — 1× sehari'   => 1, 'OD - 1x sehari'  => 1,
+    'BD'  => 2, 'BD — 2× sehari'   => 2, 'BD - 2x sehari'  => 2,
+    'TDS' => 3, 'TDS — 3× sehari'  => 3, 'TDS - 3x sehari' => 3,
+    'QID' => 4, 'QID — 4× sehari'  => 4, 'QID - 4x sehari' => 4,
+    'ON'  => 1, 'ON — Malam'       => 1, 'ON - malam'      => 1, 'ON - Malam' => 1,
+    'PRN' => null, 'PRN — Bila perlu' => null, 'PRN - bila perlu' => null, 'PRN - Bila perlu' => null,
 ];
 
 $mealMap = [
