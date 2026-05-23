@@ -15,19 +15,19 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $today = now()->format('Y-m-d');
-        $month = now()->month;
-        $year  = now()->year;
-        $user  = Auth::user();
+        $today       = now()->format('Y-m-d');
+        $filterMonth = max(1, min(12, (int) request('month', now()->month)));
+        $filterYear  = max(2015, min((int) now()->year, (int) request('year', now()->year)));
+        $user        = Auth::user();
 
         /* ── KPIs ── */
-        $todayAppts   = Appointment::whereDate('appointment_date', $today);
+        $todayAppts = Appointment::whereDate('appointment_date', $today);
         $kpi = [
             'today_total'    => (clone $todayAppts)->count(),
             'today_waiting'  => (clone $todayAppts)->whereIn('status', ['confirmed','waiting'])->count(),
             'today_in_room'  => (clone $todayAppts)->where('status', 'in_room')->count(),
             'today_done'     => (clone $todayAppts)->where('status', 'done')->count(),
-            'month_revenue'  => Invoice::where('status','paid')->whereMonth('paid_at',$month)->whereYear('paid_at',$year)->sum('total_amount'),
+            'month_revenue'  => Invoice::where('status','paid')->whereMonth('paid_at',$filterMonth)->whereYear('paid_at',$filterYear)->sum('total_amount'),
             'today_revenue'  => Invoice::where('status','paid')->whereDate('paid_at',$today)->sum('total_amount'),
             'pending_inv'    => Invoice::whereIn('status',['draft','unpaid'])->count(),
             'pending_amount' => Invoice::whereIn('status',['draft','unpaid'])->sum('total_amount'),
@@ -89,19 +89,42 @@ class DashboardController extends Controller
             $alerts->push(['type'=>'visit','title'=>'Rekod Terbuka','msg'=>$kpi['open_visits'].' rekod EMR belum ditutup','tone'=>'blue']);
         }
 
-        /* ── 7-day revenue sparkline ── */
-        $revChart = collect(range(6, 0))->map(function ($daysAgo) {
-            $d = now()->subDays($daysAgo);
-            return [
-                'label' => $d->isoFormat('ddd'),
-                'date'  => $d->format('Y-m-d'),
-                'value' => (float) Invoice::where('status','paid')->whereDate('paid_at',$d->format('Y-m-d'))->sum('total_amount'),
-            ];
-        })->values();
+        /* ── Revenue chart ── */
+        $isCurrentPeriod = $filterMonth === (int) now()->month && $filterYear === (int) now()->year;
 
-        /* ── Quick links activity (recent paid invoices) ── */
+        if ($isCurrentPeriod) {
+            $revChart = collect(range(6, 0))->map(function ($daysAgo) {
+                $d = now()->subDays($daysAgo);
+                return [
+                    'label' => $d->isoFormat('ddd'),
+                    'date'  => $d->format('Y-m-d'),
+                    'value' => (float) Invoice::where('status','paid')->whereDate('paid_at',$d->format('Y-m-d'))->sum('total_amount'),
+                ];
+            })->values();
+        } else {
+            $dailyTotals = Invoice::where('status','paid')
+                ->whereMonth('paid_at', $filterMonth)
+                ->whereYear('paid_at', $filterYear)
+                ->selectRaw('DATE(paid_at) as day, SUM(total_amount) as total')
+                ->groupBy('day')
+                ->pluck('total', 'day');
+
+            $daysInMonth = \Carbon\Carbon::create($filterYear, $filterMonth)->daysInMonth;
+            $revChart = collect(range(1, $daysInMonth))->map(function ($day) use ($filterMonth, $filterYear, $dailyTotals) {
+                $dateStr = sprintf('%04d-%02d-%02d', $filterYear, $filterMonth, $day);
+                return [
+                    'label' => (string) $day,
+                    'date'  => $dateStr,
+                    'value' => (float) ($dailyTotals[$dateStr] ?? 0),
+                ];
+            })->values();
+        }
+
+        /* ── Recent paid invoices (filtered by period) ── */
         $recentInvoices = Invoice::with('patient')
             ->where('status','paid')
+            ->whereMonth('paid_at', $filterMonth)
+            ->whereYear('paid_at', $filterYear)
             ->latest('paid_at')
             ->take(5)
             ->get()
@@ -114,16 +137,22 @@ class DashboardController extends Controller
                 'payment_method' => $i->payment_method,
             ]);
 
+        $filterYears = range(2015, (int) now()->year);
+
         return Inertia::render('Dashboard', [
-            'currentRoute'   => 'dashboard',
-            'kpi'            => $kpi,
-            'upcoming'       => $upcoming,
-            'recentVisits'   => $recentVisits,
-            'alerts'         => $alerts->values(),
-            'revChart'       => $revChart,
-            'recentInvoices' => $recentInvoices,
-            'userName'       => $user?->name ?? 'Pengguna',
-            'today'          => now()->isoFormat('dddd, D MMMM YYYY'),
+            'currentRoute'    => 'dashboard',
+            'kpi'             => $kpi,
+            'upcoming'        => $upcoming,
+            'recentVisits'    => $recentVisits,
+            'alerts'          => $alerts->values(),
+            'revChart'        => $revChart,
+            'recentInvoices'  => $recentInvoices,
+            'userName'        => $user?->name ?? 'Pengguna',
+            'today'           => now()->isoFormat('dddd, D MMMM YYYY'),
+            'selectedMonth'   => $filterMonth,
+            'selectedYear'    => $filterYear,
+            'filterYears'     => $filterYears,
+            'isCurrentPeriod' => $isCurrentPeriod,
         ]);
     }
 }

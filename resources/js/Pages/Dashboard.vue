@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import KlinikLayout from '@/Layouts/KlinikLayout.vue'
 import Avatar from '@/Components/Clinic/Avatar.vue'
@@ -10,19 +10,54 @@ import { useLocale } from '@/composables/useLocale'
 defineOptions({ layout: KlinikLayout })
 
 const props = defineProps({
-  kpi:            Object,
-  upcoming:       Array,
-  recentVisits:   Array,
-  alerts:         Array,
-  revChart:       Array,
-  recentInvoices: Array,
-  userName:       String,
-  today:          String,
+  kpi:             Object,
+  upcoming:        Array,
+  recentVisits:    Array,
+  alerts:          Array,
+  revChart:        Array,
+  recentInvoices:  Array,
+  userName:        String,
+  today:           String,
+  selectedMonth:   Number,
+  selectedYear:    Number,
+  filterYears:     Array,
+  isCurrentPeriod: Boolean,
 })
 
 const page  = usePage()
 const flash = computed(() => page.props.flash)
 const { t } = useLocale()
+
+/* ── filter state ── */
+const _now        = new Date()
+const filterMonth = ref(Number(props.selectedMonth) || (_now.getMonth() + 1))
+const filterYear  = ref(Number(props.selectedYear)  || _now.getFullYear())
+
+const months = computed(() =>
+  Array.from({ length: 12 }, (_, i) => ({
+    value: i + 1,
+    label: new Date(2000, i, 1).toLocaleString('ms-MY', { month: 'long' }),
+  }))
+)
+
+const selectedMonthLabel = computed(() => {
+  const m = new Date(filterYear.value, filterMonth.value - 1, 1)
+  return m.toLocaleString('ms-MY', { month: 'long' }) + ' ' + filterYear.value
+})
+
+function applyFilter() {
+  router.visit('/dashboard', {
+    data: { month: filterMonth.value, year: filterYear.value },
+    preserveState: false,
+  })
+}
+
+function resetFilter() {
+  const now = new Date()
+  filterMonth.value = now.getMonth() + 1
+  filterYear.value  = now.getFullYear()
+  router.visit('/dashboard')
+}
 
 /* ── type labels ── */
 const typeLabel = computed(() => ({
@@ -60,9 +95,20 @@ function barH(val) { return Math.max(4, Math.round((val / maxRev.value) * 72)) +
         <h2 class="greeting__name">{{ t('dash_greeting', { name: userName }) }}</h2>
         <p class="greeting__date">{{ today }}</p>
       </div>
-      <div class="greeting__actions">
-        <Btn variant="secondary" size="sm" @click="router.visit('/register-patient')">{{ t('dash_register') }}</Btn>
-        <Btn variant="primary"   size="sm" @click="router.visit('/appointments')">{{ t('dash_appt') }}</Btn>
+      <div class="greeting__right">
+        <div class="filter-bar">
+          <select v-model="filterMonth" class="select-sm" @change="applyFilter">
+            <option v-for="m in months" :key="m.value" :value="Number(m.value)">{{ m.label }}</option>
+          </select>
+          <select v-model="filterYear" class="select-sm" @change="applyFilter">
+            <option v-for="y in filterYears" :key="y" :value="Number(y)">{{ y }}</option>
+          </select>
+          <button v-if="!isCurrentPeriod" class="filter-reset" @click="resetFilter" title="Kembali ke bulan ini">×</button>
+        </div>
+        <div class="greeting__actions">
+          <Btn variant="secondary" size="sm" @click="router.visit('/register-patient')">{{ t('dash_register') }}</Btn>
+          <Btn variant="primary"   size="sm" @click="router.visit('/appointments')">{{ t('dash_appt') }}</Btn>
+        </div>
       </div>
     </div>
 
@@ -81,9 +127,9 @@ function barH(val) { return Math.max(4, Math.round((val / maxRev.value) * 72)) +
 
       <!-- Revenue bulan -->
       <div class="kpi-card">
-        <div class="kpi-card__label">{{ t('dash_kpi_revenue') }}</div>
+        <div class="kpi-card__label">{{ t('dash_kpi_revenue') }} · {{ selectedMonthLabel }}</div>
         <div class="kpi-card__val kpi-card__val--green">RM {{ Number(kpi.month_revenue).toLocaleString('ms-MY', {minimumFractionDigits:2, maximumFractionDigits:2}) }}</div>
-        <div class="kpi-card__sub">{{ t('dash_today_rev', { amount: Number(kpi.today_revenue).toFixed(2) }) }}</div>
+        <div class="kpi-card__sub">{{ isCurrentPeriod ? t('dash_today_rev', { amount: Number(kpi.today_revenue).toFixed(2) }) : selectedMonthLabel }}</div>
       </div>
 
       <!-- Invois tertunggak -->
@@ -196,11 +242,11 @@ function barH(val) { return Math.max(4, Math.round((val / maxRev.value) * 72)) +
           </div>
         </div>
 
-        <!-- Revenue 7 hari -->
+        <!-- Revenue chart -->
         <div class="card">
           <div class="card__header">
             <div>
-              <h3 class="card__title">{{ t('dash_revenue_7') }}</h3>
+              <h3 class="card__title">{{ isCurrentPeriod ? t('dash_revenue_7') : selectedMonthLabel }}</h3>
               <p class="card__sub">RM {{ Number(revChart.reduce((s,r)=>s+r.value,0)).toLocaleString('ms-MY',{minimumFractionDigits:2}) }}</p>
             </div>
           </div>
@@ -273,10 +319,47 @@ function barH(val) { return Math.max(4, Math.round((val / maxRev.value) * 72)) +
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 .greeting__name { font: 700 18px var(--font-sans); color: var(--fg1); }
 .greeting__date { font: 400 12px var(--font-sans); color: var(--fg3); margin-top: 2px; }
+.greeting__right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
 .greeting__actions { display: flex; gap: 8px; }
+
+/* filter bar */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.select-sm {
+  font: 500 12px var(--font-sans);
+  color: var(--fg2);
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color .15s;
+}
+.select-sm:focus { border-color: var(--brand-green); }
+.filter-reset {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid #FCA5A5;
+  background: #FEF2F2;
+  color: #DC2626;
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
 
 /* KPI row */
 .kpi-row {
