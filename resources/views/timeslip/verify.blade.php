@@ -203,8 +203,8 @@ body {
     $hrs       = intdiv($totalMin, 60);
     $mns       = $totalMin % 60;
     $duration  = $hrs > 0 ? "{$hrs} jam {$mns} min" : "{$mns} minit";
-    $arrFmt    = \Carbon\Carbon::createFromFormat('H:i', $timeslip->arrival_time)->format('h:i A');
-    $depFmt    = \Carbon\Carbon::createFromFormat('H:i', $timeslip->departure_time)->format('h:i A');
+    $arrFmt    = \Carbon\Carbon::createFromFormat('H:i:s', trim($timeslip->arrival_time))->format('h:i A');
+    $depFmt    = \Carbon\Carbon::createFromFormat('H:i:s', trim($timeslip->departure_time))->format('h:i A');
 @endphp
 
 <div class="card">
