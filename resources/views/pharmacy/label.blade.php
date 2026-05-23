@@ -3,156 +3,171 @@
 <head>
 <meta charset="utf-8">
 <title>{{ $rx->rx_number }} · Label Ubat · {{ $clinic->name }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@700;900&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ── Print page size (applies at print time regardless of media query) ── */
-@page { size: 80mm 50mm; margin: 0; }
+@page { margin: 0; }
 
 body {
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 7px;
+    font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
     color: #000;
     background: #fff;
 }
 
-/* ════════════════════════════
-   Label: exactly 80 × 50 mm
-   ════════════════════════════ */
-.label {
-    width: 80mm;
-    height: 50mm;
-    border: 1px solid #000;
-    display: flex;
-    flex-direction: column;
+/* ════════════════════════════════════════
+   Label container — locked to image ratio
+   945 × 591  →  ratio = 591/945 = 62.54%
+   All child % positions are always relative
+   to this box, never to the viewport.
+   ════════════════════════════════════════ */
+.label-wrap-inner {
+    position: relative;
+    width: 100%;
+    padding-bottom: 62.54%; /* maintains 945:591 ratio */
+}
+
+.label-bg {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: block;
+    object-fit: fill;
+}
+
+/* All text overlaid on top */
+.label-text {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+}
+
+/* ── Patient rows ── */
+/* Nama */
+.t-nama {
+    position: absolute;
+    top: 32%;
+    left: 12%;
+    right: 2%;
+    font-size: 29px;
+    font-weight: 600;
+    white-space: nowrap;
+    line-height: 1;
+}
+/* Tarikh */
+.t-tarikh {
+    position: absolute;
+    top: 39.6%;
+    left: 12%;
+    right: 2%;
+    font-size: 29px;
+    font-weight: 600;
+    white-space: nowrap;
+    line-height: 1;
+}
+/* Nama Ubat */
+.t-ubat {
+    position: absolute;
+    top: 47.5%;
+    left: 33.5%;
+    right: 2%;
+    font-size: 29px;
+    font-weight: 600;
+    white-space: nowrap;
     overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1;
 }
 
-/* ── HEADER (3 columns) ── */
-.lbl-header {
-    display: flex;
-    border-bottom: 1px solid #000;
-    flex-shrink: 0;
-}
-.lbl-header-logo {
-    width: 16mm;
-    flex-shrink: 0;
-    padding: 1mm 1mm;
-    border-right: 1px solid #000;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+/* ── Dosage numbers ── */
+.t-dose-num {
+    position: absolute;
+    top: 62.5%;
+    left: 9.8%;
+    width: 7.5%;
     text-align: center;
+    font-size: 33px;
+    font-weight: 900;
+    line-height: 1;
 }
-.lbl-header-info {
-    flex: 1;
-    min-width: 0;
-    padding: 1mm 1.5mm;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-.lbl-header-qr {
-    width: 14mm;
-    flex-shrink: 0;
-    padding: 1mm;
-    border-left: 1px solid #000;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+.t-freq-num {
+    position: absolute;
+    top: 62.5%;
+    left: 47%;
+    width: 7.5%;
     text-align: center;
+    font-size: 33px;
+    font-weight: 900;
+    line-height: 1;
 }
 
-.lbl-logo        { width: 11mm; height: 9mm; object-fit: contain; }
-.lbl-ckaps       { font-size: 5px; margin-top: 0.5mm; line-height: 1.2; }
-
-.lbl-clinic-name { font-size: 9px; font-weight: 900; letter-spacing: 1.5px; line-height: 1.1; }
-.lbl-company     { font-size: 5.5px; font-weight: 600; margin-top: 0.5mm; line-height: 1.3; }
-.lbl-address     { font-size: 5.5px; line-height: 1.3; margin-top: 0.3mm; }
-.lbl-contact     { font-size: 5.5px; font-weight: 700; margin-top: 0.5mm; line-height: 1.3; }
-
-.lbl-qr-img      { width: 10mm; height: 10mm; display: block; }
-.lbl-scan        { font-size: 5px; margin-top: 0.5mm; }
-
-/* ── PATIENT ── */
-.lbl-patient {
-    padding: 0.8mm 2mm;
-    border-bottom: 1px solid #000;
-    flex-shrink: 0;
+/* ── Unit highlight (EN row) ── */
+.t-unit-en {
+    position: absolute;
+    top: 58%;
+    left: 17.5%;
+    font-size: 23px;
+    line-height: 1;
+    display: flex;
+    gap: 1px;
+    align-items: center;
 }
-.lbl-pt-row { font-size: 7px; line-height: 1.7; }
-.lbl-pt-row b { font-weight: 700; }
-
-/* ── DOSAGE TABLE ── */
-.lbl-dose-wrap {
-    border-bottom: 1px solid #000;
-    padding: 0.5mm 2mm;
-    flex-shrink: 0;
+/* ── Unit highlight (BM row) ── */
+.t-unit-bm {
+    position: absolute;
+    top: 67%;
+    left: 17.5%;
+    font-size: 23px;
+    line-height: 1;
+    display: flex;
+    gap: 1px;
+    align-items: center;
 }
-.dose-tbl { width: 100%; border-collapse: collapse; }
-.dose-tbl td {
-    padding: 0.4mm 0.5mm;
-    font-size: 7px;
-    vertical-align: middle;
+.unit-part        { color: #aaa; }
+.unit-part.active { color: #000; font-weight: 700; }
+
+/* ── Meal timing ── */
+.t-meal-en {
+    position: absolute;
+    top: 58%;
+    left: 73%;
+    right: 2%;
+    font-size: 26px;
+    line-height: 1;
     white-space: nowrap;
 }
-.td-lang  { width: 9mm; }
-.td-num   { width: 9mm; text-align: center; padding: 0; }
-.dose-num-box {
-    width: 7mm;
-    height: 7mm;
-    border: 1.5px solid #000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    font-weight: 900;
-    margin: 0 auto;
+.t-meal-bm {
+    position: absolute;
+    top: 67%;
+    left: 73%;
+    right: 2%;
+    font-size: 26px;
+    line-height: 1;
+    white-space: nowrap;
 }
-tr.dose-row-bm td { border-top: 0.5px solid #ccc; }
 
-/* ── CHECKBOXES ── */
-.lbl-checks {
-    display: flex;
-    align-items: center;
-    gap: 3mm;
-    padding: 0.8mm 2mm;
-    border-bottom: 1px solid #000;
-    flex-shrink: 0;
-}
-.lbl-check-item {
-    display: flex;
-    align-items: center;
-    gap: 1.2mm;
-    font-size: 6.5px;
-}
-.check-sq {
-    width: 5mm;
-    height: 5mm;
-    border: 1.5px solid #000;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.check-tick { font-size: 10px; font-weight: 900; line-height: 1; }
-
-/* ── FOOTER ── */
-.lbl-footer {
-    background: #000;
-    color: #fff;
-    text-align: center;
-    font-size: 7px;
+/* ── Checkboxes ticks ── */
+.t-prn-tick {
+    position: absolute;
+    top: 81%;
+    left: 3.8%;
+    font-size: 40px;
     font-weight: 900;
-    padding: 1mm 2mm;
-    letter-spacing: 1px;
-    margin-top: auto;
+    line-height: 1;
+}
+.t-complete-tick {
+    position: absolute;
+    top: 81%;
+    left: 45.8%;
+    font-size: 40px;
+    font-weight: 900;
+    line-height: 1;
 }
 
 /* ════════════════════════════════════
-   Screen preview  (2× scale)
+   Screen preview
    ════════════════════════════════════ */
 @media screen {
     body {
@@ -161,16 +176,16 @@ tr.dose-row-bm td { border-top: 0.5px solid #ccc; }
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 8mm;
+        gap: 0;
     }
-    /* print-bar */
+
     .print-bar {
         position: fixed; top: 0; left: 0; right: 0; z-index: 100;
         background: #1b8a4a; padding: 9px 20px;
         display: flex; align-items: center; justify-content: space-between;
     }
     .print-bar__title { color: #fff; font-size: 12px; font-weight: 600; }
-    .print-bar__actions { display: flex; gap: 8px; }
+    .print-bar__actions { display: flex; gap: 8px; align-items: center; }
     .print-bar__btn {
         background: #fff; color: #1b8a4a; border: none;
         padding: 6px 18px; border-radius: 6px; font-size: 12px; font-weight: 700;
@@ -180,25 +195,35 @@ tr.dose-row-bm td { border-top: 0.5px solid #ccc; }
         background: rgba(255,255,255,.15); color: #fff; border: none;
         padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;
     }
-    /* Print settings reminder */
+
+    .nav-bar {
+        display: flex; align-items: center; gap: 12px;
+        background: rgba(255,255,255,.18); border-radius: 8px;
+        padding: 4px 12px;
+    }
+    .nav-btn {
+        background: rgba(255,255,255,.9); color: #1b8a4a; border: none;
+        width: 28px; height: 28px; border-radius: 50%; font-size: 16px; font-weight: 900;
+        cursor: pointer; display: flex; align-items: center; justify-content: center;
+        line-height: 1;
+    }
+    .nav-btn:disabled { opacity: 0.35; cursor: default; }
+    .nav-counter { color: #fff; font-size: 12px; font-weight: 600; min-width: 60px; text-align: center; }
+
     .print-hint {
         background: #fffbe6; border: 1px solid #f0c040;
-        border-radius: 6px; padding: 7px 16px;
+        border-radius: 6px; padding: 7px 16px; margin-bottom: 16px;
         font-size: 12px; color: #7a5a00;
         display: flex; align-items: center; gap: 8px;
     }
     .print-hint b { font-weight: 700; }
-    /* wrapper provides the 2× footprint so the page scrolls correctly */
+
     .label-wrap {
-        width: 160mm;
-        height: 100mm;
-        overflow: hidden;
-        flex-shrink: 0;
+        display: none;
+        width: 100%;
+        max-width: 945px;
     }
-    .label {
-        transform: scale(2);
-        transform-origin: top left;
-    }
+    .label-wrap.active { display: block; }
 }
 
 /* ════════════════════════════════════
@@ -217,24 +242,14 @@ tr.dose-row-bm td { border-top: 0.5px solid #ccc; }
         print-color-adjust: exact !important;
     }
 
-    /* Each wrapper = one page. Do NOT use display:contents — it breaks :last-child. */
     .label-wrap {
-        display: block;
-        width: 80mm;
-        height: 50mm;
-        overflow: hidden;
+        display: block !important;
         page-break-after: always;
         break-after: page;
     }
     .label-wrap:last-child {
         page-break-after: avoid;
         break-after: avoid;
-    }
-
-    .label {
-        transform: none !important;
-        width: 80mm !important;
-        height: 50mm !important;
     }
 }
 </style>
@@ -243,25 +258,25 @@ tr.dose-row-bm td { border-top: 0.5px solid #ccc; }
 
 @php
 $unitMap = [
-    'Tablet'     => ['en' => 'Tablet',  'bm' => 'Biji'],
-    'Kapsul'     => ['en' => 'Capsule', 'bm' => 'Kapsul'],
-    'Sirup'      => ['en' => 'ML',      'bm' => 'ML'],
-    'MDI'        => ['en' => 'Spray',   'bm' => 'Semburan'],
-    'Titis'      => ['en' => 'Drop',    'bm' => 'Titik'],
-    'Serbuk'     => ['en' => 'Sachet',  'bm' => 'Sachet'],
-    'Suntikan'   => ['en' => 'ml',      'bm' => 'ml'],
-    'Supositari' => ['en' => 'pc',      'bm' => 'biji'],
-    'Krim'       => ['en' => 'g',       'bm' => 'g'],
-    'Gel'        => ['en' => 'g',       'bm' => 'g'],
-    'Patch'      => ['en' => 'patch',   'bm' => 'patch'],
+    'Tablet'     => ['en' => 'Tablet',  'bm' => 'Biji',     'key' => 'tablet'],
+    'Kapsul'     => ['en' => 'Capsule', 'bm' => 'Kapsul',   'key' => 'capsule'],
+    'Sirup'      => ['en' => 'ML',      'bm' => 'ML',       'key' => 'ml'],
+    'MDI'        => ['en' => 'Spray',   'bm' => 'Semburan', 'key' => 'spray'],
+    'Titis'      => ['en' => 'Drop',    'bm' => 'Titik',    'key' => 'drop'],
+    'Serbuk'     => ['en' => 'Sachet',  'bm' => 'Sachet',   'key' => 'sachet'],
+    'Suntikan'   => ['en' => 'ml',      'bm' => 'ml',       'key' => 'ml'],
+    'Supositari' => ['en' => 'pc',      'bm' => 'biji',     'key' => 'tablet'],
+    'Krim'       => ['en' => 'g',       'bm' => 'g',        'key' => 'sachet'],
+    'Gel'        => ['en' => 'g',       'bm' => 'g',        'key' => 'sachet'],
+    'Patch'      => ['en' => 'patch',   'bm' => 'patch',    'key' => 'sachet'],
 ];
 
 $freqMap = [
-    'OD'  => 1, 'OD — 1× sehari'  => 1,
-    'BD'  => 2, 'BD — 2× sehari'  => 2,
-    'TDS' => 3, 'TDS — 3× sehari' => 3,
-    'QID' => 4, 'QID — 4× sehari' => 4,
-    'ON'  => 1, 'ON — Malam'      => 1,
+    'OD'  => 1, 'OD — 1× sehari'   => 1,
+    'BD'  => 2, 'BD — 2× sehari'   => 2,
+    'TDS' => 3, 'TDS — 3× sehari'  => 3,
+    'QID' => 4, 'QID — 4× sehari'  => 4,
+    'ON'  => 1, 'ON — Malam'       => 1,
     'PRN' => null, 'PRN — Bila perlu' => null,
 ];
 
@@ -281,6 +296,11 @@ $mealMap = [
         &nbsp;({{ $rx->items->count() }} label)
     </span>
     <div class="print-bar__actions">
+        <div class="nav-bar">
+            <button class="nav-btn" id="btn-prev" onclick="navigate(-1)" disabled>&#8592;</button>
+            <span class="nav-counter" id="nav-counter">1 / {{ $rx->items->count() }}</span>
+            <button class="nav-btn" id="btn-next" onclick="navigate(1)" {{ $rx->items->count() <= 1 ? 'disabled' : '' }}>&#8594;</button>
+        </div>
         <button class="print-bar__btn" onclick="window.print()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                  stroke-linecap="round" stroke-linejoin="round">
@@ -288,21 +308,21 @@ $mealMap = [
                 <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
                 <rect x="6" y="14" width="12" height="8"/>
             </svg>
-            Cetak Label
+            Cetak Semua
         </button>
         <button class="print-bar__close" onclick="window.close()">✕</button>
     </div>
 </div>
 
 <div class="print-hint">
-    ⚙️ <span>Tetapan cetak yang betul:
-    <b>Saiz kertas → 80 × 50 mm</b> &nbsp;·&nbsp;
+    ⚙️ <span>Tetapan cetak:
+    <b>Saiz kertas → 70 × 40 mm</b> &nbsp;·&nbsp;
     <b>Jidar → Tiada (None)</b> &nbsp;·&nbsp;
     <b>Skala → 100%</b> &nbsp;·&nbsp;
     Nyahpilih "Header and footers"</span>
 </div>
 
-@foreach($rx->items as $item)
+@foreach($rx->items as $idx => $item)
 @php
     /* ── Drug unit ── */
     $dosageLower = strtolower($item->dosage ?? '');
@@ -323,10 +343,9 @@ $mealMap = [
     } else {
         $unit = null;
     }
-    $unitEn = $unit['en'] ?? '';
-    $unitBm = $unit['bm'] ?? '';
+    $unitKey = $unit['key'] ?? null;
 
-    /* ── Dose number (first number in dosage string) ── */
+    /* ── Dose number ── */
     preg_match('/^\d+(\.\d+)?/', trim($item->dosage ?? ''), $dm);
     $doseNum = $dm[0] ?? '—';
 
@@ -353,89 +372,104 @@ $mealMap = [
         || str_contains(strtolower($item->instructions ?? ''), 'habiskan');
 @endphp
 
-<div class="label-wrap">
+<div class="label-wrap{{ $idx === 0 ? ' active' : '' }}" data-label-index="{{ $idx }}">
 <div class="label">
+<div class="label-wrap-inner">
 
-    {{-- ══ HEADER ══ --}}
-    <div class="lbl-header">
-        <div class="lbl-header-logo">
-            <img src="{{ $clinic->logo_url }}" alt="" class="lbl-logo" />
-            @if($clinic->ckaps_number)
-            <div class="lbl-ckaps">CKAPS:<br>{{ $clinic->ckaps_number }}</div>
-            @endif
+    {{-- Background image (the full label design) --}}
+    <img class="label-bg" src="{{ asset('images/label-medicine.png') }}" alt="" />
+
+    {{-- Dynamic text overlaid on top --}}
+    <div class="label-text">
+
+        {{-- Patient name --}}
+        <div class="t-nama">{{ $rx->patient->name }}</div>
+
+        {{-- Date --}}
+        <div class="t-tarikh">{{ $rx->created_at->format('d/m/Y') }}</div>
+
+        {{-- Drug name / Kegunaan --}}
+        <div class="t-ubat">{{ $item->drug_name }}@if($item->kegunaan) / {{ $item->kegunaan }}@endif</div>
+
+        {{-- Dose number (left box) --}}
+        <div class="t-dose-num">{{ $doseNum }}</div>
+
+        {{-- Frequency number (right box) --}}
+        <div class="t-freq-num">{{ $freqDisp }}</div>
+
+        {{-- Unit EN row: Tablet / ML / Drop / Spray --}}
+        <div class="t-unit-en">
+            <span class="unit-part {{ $unitKey === 'tablet'  ? 'active' : '' }}">Tablet</span>&nbsp;/&nbsp;
+            <span class="unit-part {{ $unitKey === 'ml'      ? 'active' : '' }}">ML</span>&nbsp;/&nbsp;
+            <span class="unit-part {{ $unitKey === 'drop'    ? 'active' : '' }}">Drop</span>&nbsp;/&nbsp;
+            <span class="unit-part {{ $unitKey === 'spray'   ? 'active' : '' }}">Spray</span>
         </div>
 
-        <div class="lbl-header-info">
-            <div class="lbl-clinic-name">{{ strtoupper($clinic->name) }}</div>
-            <div class="lbl-company">
-                {{ $clinic->tagline }}@if($clinic->reg_number) (SSM: {{ $clinic->reg_number }})@endif
-            </div>
-            <div class="lbl-address">
-                {{ $clinic->address }}, {{ $clinic->postcode }} {{ $clinic->city }}, {{ $clinic->state }}
-            </div>
-            <div class="lbl-contact">
-                {{ $clinic->phone }}@if($clinic->email) · {{ $clinic->email }}@endif
-            </div>
+        {{-- Unit BM row: Biji / ML / Titik / Semburan --}}
+        <div class="t-unit-bm">
+            <span class="unit-part {{ $unitKey === 'tablet'  ? 'active' : '' }}">Biji</span>&nbsp;/&nbsp;
+            <span class="unit-part {{ $unitKey === 'ml'      ? 'active' : '' }}">ML</span>&nbsp;/&nbsp;
+            <span class="unit-part {{ $unitKey === 'drop'    ? 'active' : '' }}">Titik</span>&nbsp;/&nbsp;
+            <span class="unit-part {{ $unitKey === 'spray'   ? 'active' : '' }}">Semburan</span>
         </div>
 
-        <div class="lbl-header-qr">
-            <img class="lbl-qr-img"
-                 src="https://api.qrserver.com/v1/create-qr-code/?size=40x40&data={{ urlencode($clinic->email ?? $clinic->phone) }}"
-                 alt="QR" />
-            <div class="lbl-scan">scan me</div>
-        </div>
-    </div>
+        {{-- Meal timing EN --}}
+        @if($mealEn)
+        <div class="t-meal-en">{{ $mealEn }}</div>
+        @endif
 
-    {{-- ══ PATIENT ══ --}}
-    <div class="lbl-patient">
-        <div class="lbl-pt-row"><b>Nama:</b> {{ $rx->patient->name }}</div>
-        <div class="lbl-pt-row"><b>Tarikh:</b> {{ $rx->created_at->format('d/m/Y') }}</div>
-        <div class="lbl-pt-row">
-            <b>Nama Ubat / Kegunaan:</b>
-            {{ $item->drug_name }}@if($item->kegunaan) / {{ $item->kegunaan }}@endif
-        </div>
-    </div>
+        {{-- Meal timing BM --}}
+        @if($mealBm)
+        <div class="t-meal-bm">{{ $mealBm }}</div>
+        @endif
 
-    {{-- ══ DOSAGE ══ --}}
-    <div class="lbl-dose-wrap">
-        <table class="dose-tbl">
-            <tr class="dose-row-en">
-                <td class="td-lang">Take</td>
-                <td class="td-num" rowspan="2">
-                    <div class="dose-num-box">{{ $doseNum }}</div>
-                </td>
-                <td class="td-unit">{{ $unitEn }}</td>
-                <td class="td-num" rowspan="2">
-                    <div class="dose-num-box">{{ $freqDisp }}</div>
-                </td>
-                <td class="td-right">Times Daily{{ $mealEn ? ' · ' . $mealEn : '' }}</td>
-            </tr>
-            <tr class="dose-row-bm">
-                <td class="td-lang">Makan</td>
-                <td class="td-unit">{{ $unitBm }}</td>
-                <td class="td-right">Kali Sehari{{ $mealBm ? ' · ' . $mealBm : '' }}</td>
-            </tr>
-        </table>
-    </div>
+        {{-- Bila Perlu tick --}}
+        @if($isPrn)
+        <div class="t-prn-tick">✓</div>
+        @endif
 
-    {{-- ══ CHECKBOXES ══ --}}
-    <div class="lbl-checks">
-        <div class="lbl-check-item">
-            <div class="check-sq">@if($isPrn)<span class="check-tick">✓</span>@endif</div>
-            <span>Bila Perlu / When Necessary</span>
-        </div>
-        <div class="lbl-check-item">
-            <div class="check-sq">@if($completeCourse)<span class="check-tick">✓</span>@endif</div>
-            <span>Habiskan Ubat / To Complete Medicine</span>
-        </div>
-    </div>
+        {{-- Habiskan Ubat tick --}}
+        @if($completeCourse)
+        <div class="t-complete-tick">✓</div>
+        @endif
 
-    {{-- ══ FOOTER ══ --}}
-    <div class="lbl-footer">UBAT TERKAWAL / CONTROLLED MEDICINE</div>
+    </div>{{-- .label-text --}}
 
+</div>{{-- .label-wrap-inner --}}
 </div>{{-- .label --}}
 </div>{{-- .label-wrap --}}
 @endforeach
 
+<script>
+(function () {
+    var total   = {{ $rx->items->count() }};
+    var current = 0;
+
+    var wraps   = document.querySelectorAll('.label-wrap');
+    var counter = document.getElementById('nav-counter');
+    var btnPrev = document.getElementById('btn-prev');
+    var btnNext = document.getElementById('btn-next');
+
+    function show(idx) {
+        wraps.forEach(function (w, i) {
+            w.classList.toggle('active', i === idx);
+        });
+        current = idx;
+        counter.textContent = (idx + 1) + ' / ' + total;
+        btnPrev.disabled = idx === 0;
+        btnNext.disabled = idx === total - 1;
+    }
+
+    window.navigate = function (dir) {
+        var next = current + dir;
+        if (next >= 0 && next < total) show(next);
+    };
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowRight') navigate(1);
+        if (e.key === 'ArrowLeft')  navigate(-1);
+    });
+})();
+</script>
 </body>
 </html>
