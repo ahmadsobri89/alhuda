@@ -1,0 +1,30 @@
+# ─────────────────────────────────────────────────────────────
+# Workflow : CI/CD
+# Repo     : ahmadsobri89/alhuda
+# Dijana   : 2026-05-23 15:36:45
+# Oleh     : github_auto_deploy.py
+# ─────────────────────────────────────────────────────────────
+name: CI/CD
+'on':
+  push:
+    branches:
+    - main
+jobs:
+  appserver:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Deploy ke VPS via SSH
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.SSH_PROD_HOST }}
+        username: ${{ secrets.SSH_PROD_USER }}
+        key: ${{ secrets.SSH_PROD_KEY }}
+        script: 'cd /var/www/alhuda
+
+          git pull origin main
+
+          npm run build
+          
+          php artisan optimize:clear'
