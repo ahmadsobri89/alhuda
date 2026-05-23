@@ -60,7 +60,7 @@ body {
 /* ── Clinic logo strip ── */
 .card__lh {
     width: 100%;
-    height: 56px;
+    height: 80px;
     overflow: hidden;
     background: #fff;
     border-bottom: 1px solid #e5e7eb;

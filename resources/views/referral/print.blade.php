@@ -45,7 +45,7 @@ body {
 .lh-wrap {
     margin: -16mm -18mm 10px;
     overflow: hidden;
-    height: 33mm;
+    height: 41mm;
     flex-shrink: 0;
 }
 .lh-wrap img { width: 100%; display: block; }
@@ -249,6 +249,7 @@ body {
     .print-bar { display: none !important; }
     body { background: #fff; }
     .page { box-shadow: none; padding: 12mm 16mm; width: 100%; min-height: unset; }
+    .lh-wrap { margin: -12mm -16mm 10px; }
     @page { margin: 0; size: A4 portrait; }
 }
 </style>

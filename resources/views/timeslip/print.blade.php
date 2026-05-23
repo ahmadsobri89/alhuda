@@ -55,7 +55,7 @@ body {
 .lh-wrap {
     margin: 0 -12mm 8px;
     overflow: hidden;
-    height: 23mm;
+    height: 30mm;
     flex-shrink: 0;
 }
 .lh-wrap img {
