@@ -59,6 +59,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/emr/prescriptions/{prescription}',         [EMRController::class, 'destroyPrescription'])->name('emr.prescription.destroy');
     Route::patch('/emr/prescription-items/{item}',            [EMRController::class, 'updatePrescriptionItem'])->name('emr.prescription.item.update');
     Route::delete('/emr/prescription-items/{item}',           [EMRController::class, 'destroyPrescriptionItem'])->name('emr.prescription.item.destroy');
+    // EMR — Services (billing)
+    Route::post('/emr/{visit}/services',                      [EMRController::class, 'storeService'])->name('emr.service.store');
+    Route::delete('/emr/{visit}/services/{item}',             [EMRController::class, 'destroyService'])->name('emr.service.destroy');
     // MC — Medical Certificates
     Route::post('/emr/{visit}/mc',  [MCController::class, 'store'])->name('mc.store');
     Route::delete('/mc/{mc}',       [MCController::class, 'destroy'])->name('mc.destroy');

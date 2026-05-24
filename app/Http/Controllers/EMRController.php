@@ -6,6 +6,8 @@ use App\Models\AuditLog;
 use App\Models\InventoryItem;
 use App\Models\LookupCategory;
 use App\Models\Patient;
+use App\Models\Invoice;
+use App\Models\InvoiceItem;
 use App\Models\Prescription;
 use App\Models\PrescriptionItem;
 use App\Models\QuarantineLetter;
@@ -79,6 +81,7 @@ class EMRController extends Controller
         $p = $v->patient;
         $dob = $p->date_of_birth;
         $age = $dob ? $dob->age : null;
+        $draftInvoice = Invoice::where('visit_id', $v->id)->whereNotIn('status', ['cancelled'])->with('items')->first();
 
         return [
             'id'                 => $v->id,
@@ -176,6 +179,21 @@ class EMRController extends Controller
                     'item_note'       => $i->item_note,
                 ])->values()->toArray(),
             ])->values()->toArray(),
+            'services' => $draftInvoice ? [
+                'id'             => $draftInvoice->id,
+                'invoice_number' => $draftInvoice->invoice_number,
+                'status'         => $draftInvoice->status,
+                'total_amount'   => $draftInvoice->total_amount,
+                'items'          => $draftInvoice->items->map(fn ($i) => [
+                    'id'          => $i->id,
+                    'type'        => $i->type,
+                    'code'        => $i->code,
+                    'description' => $i->description,
+                    'quantity'    => $i->quantity,
+                    'unit_price'  => $i->unit_price,
+                    'total_price' => $i->total_price,
+                ])->values()->toArray(),
+            ] : null,
         ];
     }
 
@@ -313,15 +331,23 @@ class EMRController extends Controller
             'signed_by' => Auth::user()->name,
         ]);
 
-        // Promote all draft prescriptions to pending so pharmacy can process them
+        // Promote draft prescriptions → pending (pharmacy queue)
         $promoted = $visit->prescriptions()->where('status', 'draft')->count();
         $visit->prescriptions()->where('status', 'draft')->update(['status' => 'pending']);
+
+        // Promote emr_draft service invoice → draft (visible to billing)
+        $invoicePromoted = Invoice::where('visit_id', $visit->id)
+            ->where('status', 'emr_draft')
+            ->update(['status' => 'draft']);
 
         AuditLog::record('emr.close', "{$visit->patient->name} · {$visit->visit_date->format('d/m/Y')}");
 
         $msg = 'Rekod ditandatangan dan ditutup.';
         if ($promoted > 0) {
             $msg .= " {$promoted} preskripsi dihantar ke farmasi.";
+        }
+        if ($invoicePromoted > 0) {
+            $msg .= ' Bil perkhidmatan dihantar ke bahagian bil.';
         }
 
         return back()->with('success', $msg);
@@ -398,5 +424,55 @@ class EMRController extends Controller
 
         return redirect()->route('emr', ['visit' => $visitId])
             ->with('success', "Preskripsi {$rxNum} dipadam.");
+    }
+
+    public function storeService(Request $request, Visit $visit)
+    {
+        $data = $request->validate([
+            'type'        => ['required', 'in:consultation,procedure,drug,lab,other'],
+            'description' => ['required', 'string', 'max:255'],
+            'quantity'    => ['required', 'numeric', 'min:0.01'],
+            'unit_price'  => ['required', 'numeric', 'min:0'],
+            'code'        => ['nullable', 'string', 'max:50'],
+        ]);
+
+        $invoice = Invoice::firstOrCreate(
+            ['visit_id' => $visit->id, 'status' => 'emr_draft'],
+            [
+                'patient_id'   => $visit->patient_id,
+                'invoice_date' => now()->toDateString(),
+            ]
+        );
+
+        $invoice->items()->create([
+            'type'        => $data['type'],
+            'code'        => $data['code'] ?? null,
+            'description' => $data['description'],
+            'quantity'    => $data['quantity'],
+            'unit_price'  => $data['unit_price'],
+            'total_price' => round($data['quantity'] * $data['unit_price'], 2),
+        ]);
+        $invoice->recalc();
+
+        AuditLog::record('emr.service', "{$visit->patient->name} · {$data['description']}");
+
+        return back()->with('success', "{$data['description']} ditambah ke bil.");
+    }
+
+    public function destroyService(Visit $visit, InvoiceItem $item)
+    {
+        $invoice = $item->invoice;
+
+        if ($invoice->visit_id !== $visit->id || $invoice->status !== 'emr_draft') {
+            return back()->with('error', 'Item bil tidak boleh dipadam selepas rekod ditutup.');
+        }
+
+        $desc = $item->description;
+        $item->delete();
+        $invoice->recalc();
+
+        AuditLog::record('emr.service_delete', $desc);
+
+        return back()->with('success', "{$desc} dipadam dari bil.");
     }
 }

@@ -17,6 +17,7 @@ class BillingController extends Controller
     public function index(Request $request)
     {
         $query = Invoice::with('patient')
+            ->where('status', '!=', 'emr_draft')
             ->orderByDesc('invoice_date')
             ->orderByDesc('id');
 

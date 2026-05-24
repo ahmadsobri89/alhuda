@@ -426,6 +426,57 @@ function deleteItem(itemId) {
   })
 }
 
+/* ── Services / Billing from EMR ─────────────────── */
+const svcForm      = useForm({ type: 'consultation', description: '', quantity: 1, unit_price: '' })
+const showSvcDelId = ref(null)
+
+const QUICK_SERVICES = [
+  { type: 'consultation', description: 'Yuran Perundingan',   unit_price: 20 },
+  { type: 'consultation', description: 'Konsultasi Susulan',  unit_price: 15 },
+  { type: 'procedure',    description: 'Pembersihan Luka',    unit_price: 30 },
+  { type: 'procedure',    description: 'Suntikan',            unit_price: 25 },
+  { type: 'lab',          description: 'Ujian Darah (FBC)',   unit_price: 50 },
+  { type: 'lab',          description: 'Ujian Urin',          unit_price: 15 },
+  { type: 'other',        description: 'Dressing',            unit_price: 10 },
+]
+
+const SVC_TYPES = {
+  consultation: 'Perundingan',
+  procedure:    'Prosedur',
+  drug:         'Ubat',
+  lab:          'Makmal',
+  other:        'Lain-lain',
+}
+
+function pickService(s) {
+  svcForm.type        = s.type
+  svcForm.description = s.description
+  svcForm.unit_price  = s.unit_price
+  svcForm.quantity    = 1
+}
+
+const svcTotal = computed(() => Number(svcForm.quantity ?? 0) * Number(svcForm.unit_price ?? 0))
+
+function addService() {
+  svcForm.post(`/emr/${props.selected.id}/services`, {
+    preserveScroll: true,
+    onSuccess: () => { svcForm.reset(); svcForm.type = 'consultation'; svcForm.quantity = 1 },
+  })
+}
+
+function deleteSvcItem(itemId) {
+  router.delete(`/emr/${props.selected.id}/services/${itemId}`, {
+    preserveScroll: true,
+    onSuccess: () => { showSvcDelId.value = null },
+  })
+}
+
+watch(() => props.selected?.id, () => {
+  svcForm.reset()
+  svcForm.type     = 'consultation'
+  svcForm.quantity = 1
+})
+
 /* ── Close / Delete visit ─────────────────────────── */
 const showCloseConfirm  = ref(false)
 const showDeleteConfirm = ref(false)
@@ -438,7 +489,7 @@ function deleteVisit() {
 }
 
 /* ── Helpers ─────────────────────────────────────── */
-const SOAP_LABELS = { S: 'Subjective', O: 'Objective', A: 'Assessment', P: 'Plan', Rx: 'Preskripsi' }
+const SOAP_LABELS = { S: 'Subjective', O: 'Objective', A: 'Assessment', P: 'Plan', Rx: 'Preskripsi', Bil: 'Perkhidmatan' }
 const SOAP_FIELDS = { S: 'soap_s', O: 'soap_o', A: 'soap_a', P: 'soap_p' }
 const soapHints = computed(() => ({
   S: t('emr_soap_hint_s'),
@@ -632,7 +683,7 @@ const soapHints = computed(() => ({
               </div>
 
               <!-- S / O / A / P text areas -->
-              <div v-if="soapTab !== 'Rx'" class="card__body soap-body">
+              <div v-if="soapTab !== 'Rx' && soapTab !== 'Bil'" class="card__body soap-body">
                 <textarea
                   v-model="soapForm[SOAP_FIELDS[soapTab]]"
                   class="input soap-textarea"
@@ -652,7 +703,7 @@ const soapHints = computed(() => ({
               </div>
 
               <!-- Rx tab: inline prescription form -->
-              <div v-else class="rx-inline-wrap">
+              <div v-else-if="soapTab === 'Rx'" class="rx-inline-wrap">
 
                 <!-- Existing prescriptions -->
                 <template v-if="selected.prescriptions?.length">
@@ -977,6 +1028,109 @@ const soapHints = computed(() => ({
                 </div>
 
               </div><!-- /rx-inline-wrap -->
+
+              <!-- Bil (Perkhidmatan) tab -->
+              <div v-else class="rx-inline-wrap">
+
+                <!-- Existing service items -->
+                <template v-if="selected.services?.items?.length">
+                  <div class="rx-inline-title" style="display:flex;align-items:center;gap:8px">
+                    <span>Bil {{ selected.services.invoice_number }}</span>
+                    <span v-if="selected.services.status === 'emr_draft'"
+                          class="rx-status-chip rx-status--draft" style="font-style:normal">
+                      Dalam EMR
+                    </span>
+                    <span v-else-if="selected.services.status === 'draft'"
+                          class="rx-status-chip rx-status--pending">
+                      Dihantar ke Bahagian Bil
+                    </span>
+                    <span v-else-if="selected.services.status === 'unpaid'"
+                          class="rx-status-chip rx-status--verifying">
+                      Menunggu Bayaran
+                    </span>
+                    <span v-else-if="selected.services.status === 'paid'"
+                          class="rx-status-chip rx-status--ready">
+                      Telah Dibayar
+                    </span>
+                    <span style="margin-left:auto;font:700 13px var(--font-mono);color:var(--brand-green-dark)">
+                      RM {{ Number(selected.services.total_amount ?? 0).toFixed(2) }}
+                    </span>
+                  </div>
+                  <div class="svc-item-list">
+                    <div v-for="item in selected.services.items" :key="item.id" class="svc-item">
+                      <span :class="['svc-type-badge', `svc-type-${item.type}`]">{{ SVC_TYPES[item.type] ?? item.type }}</span>
+                      <span class="svc-item__desc">{{ item.description }}</span>
+                      <span class="svc-item__meta">{{ item.quantity }} × RM {{ Number(item.unit_price).toFixed(2) }}</span>
+                      <span class="svc-item__total">RM {{ Number(item.total_price).toFixed(2) }}</span>
+                      <button v-if="selected.services.status === 'emr_draft'" class="rx-item-del-btn" @click="showSvcDelId = item.id" title="Padam item">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="hr" style="margin:12px 0"></div>
+                </template>
+
+                <!-- Add service form (open visits only) -->
+                <template v-if="selected.status === 'open'">
+                  <div class="rx-inline-title">Tambah Perkhidmatan</div>
+
+                  <!-- Quick picks -->
+                  <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">
+                    <button v-for="s in QUICK_SERVICES" :key="s.description"
+                            type="button"
+                            :class="['svc-chip', svcForm.description === s.description ? 'svc-chip--active' : '']"
+                            @click="pickService(s)">
+                      {{ s.description }}
+                      <span class="svc-chip__price">RM {{ s.unit_price }}</span>
+                    </button>
+                  </div>
+
+                  <!-- Form -->
+                  <div class="svc-form-grid">
+                    <div class="field">
+                      <label class="field__label">Jenis *</label>
+                      <select v-model="svcForm.type" class="input input--sm">
+                        <option v-for="(label, key) in SVC_TYPES" :key="key" :value="key">{{ label }}</option>
+                      </select>
+                    </div>
+                    <div class="field" style="grid-column:2/4">
+                      <label class="field__label">Penerangan *</label>
+                      <input v-model="svcForm.description" class="input input--sm" placeholder="cth: Yuran Perundingan" maxlength="255" />
+                      <span v-if="svcForm.errors.description" class="field__error">{{ svcForm.errors.description }}</span>
+                    </div>
+                    <div class="field">
+                      <label class="field__label">Kuantiti</label>
+                      <input v-model.number="svcForm.quantity" type="number" min="0.01" step="0.01" class="input input--sm" style="text-align:center" />
+                    </div>
+                    <div class="field">
+                      <label class="field__label">Harga Seunit (RM)</label>
+                      <input v-model.number="svcForm.unit_price" type="number" min="0" step="0.01" class="input input--sm" />
+                      <span v-if="svcForm.errors.unit_price" class="field__error">{{ svcForm.errors.unit_price }}</span>
+                    </div>
+                    <div class="field" style="display:flex;align-items:flex-end">
+                      <div class="svc-line-total">RM {{ svcTotal.toFixed(2) }}</div>
+                    </div>
+                  </div>
+
+                  <div class="rx-submit-row" style="margin-top:12px">
+                    <div class="rx-pending-hint">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                      Perkhidmatan akan dihantar ke bahagian bil apabila rekod EMR ditutup.
+                    </div>
+                    <Btn variant="primary" size="sm"
+                         :disabled="svcForm.processing || !svcForm.description || !svcForm.unit_price"
+                         @click="addService">
+                      {{ svcForm.processing ? 'Menyimpan...' : 'Tambah ke Bil' }}
+                    </Btn>
+                  </div>
+                </template>
+
+                <div v-else-if="!selected.services?.items?.length"
+                     style="padding:24px 0;font:500 12px var(--font-sans);color:var(--fg3);text-align:center">
+                  Tiada perkhidmatan dalam bil untuk lawatan ini.
+                </div>
+
+              </div><!-- /bil tab -->
             </div>
 
             <!-- Diagnoses -->
@@ -1606,6 +1760,29 @@ const soapHints = computed(() => ({
       </div>
     </Teleport>
 
+    <!-- ── Service item delete confirm ─────────────── -->
+    <Teleport to="body">
+      <div v-if="showSvcDelId !== null" class="modal-backdrop" @click.self="showSvcDelId = null">
+        <div class="modal modal--sm">
+          <div class="modal__header">
+            <h3 class="modal__title" style="color:var(--brand-red)">Padam Item Bil?</h3>
+            <button class="modal__close" @click="showSvcDelId = null">✕</button>
+          </div>
+          <div class="modal__body">
+            <p style="font:400 13px var(--font-sans);color:var(--fg2);margin:0 0 6px">
+              <strong>{{ selected?.services?.items?.find(i => i.id === showSvcDelId)?.description }}</strong>
+              akan dibuang dari bil.
+            </p>
+            <p style="font:400 12px var(--font-sans);color:var(--fg3);margin:0">Tindakan ini tidak boleh dibatalkan.</p>
+            <div class="modal__footer">
+              <Btn variant="secondary" @click="showSvcDelId = null">Batal</Btn>
+              <Btn variant="primary" style="background:var(--brand-red)" @click="deleteSvcItem(showSvcDelId)">Padam</Btn>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- ── Close confirm ──────────────────────────────── -->
     <Teleport to="body">
       <div v-if="showCloseConfirm" class="modal-backdrop" @click.self="showCloseConfirm = false">
@@ -2043,6 +2220,47 @@ const soapHints = computed(() => ({
 
 /* Smaller inputs */
 .input--sm { font-size: 12px !important; padding: 6px 9px !important; }
+
+/* ── Services (Bil) tab ── */
+.svc-item-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; }
+.svc-item {
+  display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: #fff;
+}
+.svc-item__desc  { flex: 1; font: 600 12.5px var(--font-sans); color: var(--fg1); min-width: 0; }
+.svc-item__meta  { font: 400 11px var(--font-sans); color: var(--fg3); white-space: nowrap; }
+.svc-item__total { font: 700 12px var(--font-mono); color: var(--brand-green-dark); white-space: nowrap; }
+
+.svc-type-badge {
+  display: inline-flex; align-items: center; padding: 1px 7px; border-radius: 999px;
+  font: 600 9.5px var(--font-sans); text-transform: uppercase; letter-spacing: .04em;
+  white-space: nowrap; flex-shrink: 0;
+}
+.svc-type-consultation { background: #EFF6FF; border: 1px solid #93C5FD; color: #1D4ED8; }
+.svc-type-procedure    { background: #FFFBEB; border: 1px solid #FCD34D; color: #92400E; }
+.svc-type-drug         { background: var(--brand-green-light); border: 1px solid var(--brand-green); color: var(--brand-green-dark); }
+.svc-type-lab          { background: #F5F3FF; border: 1px solid #C4B5FD; color: #5B21B6; }
+.svc-type-other        { background: var(--bg-soft); border: 1px solid var(--border); color: var(--fg2); }
+
+.svc-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px; border: 1px solid var(--border); border-radius: 999px;
+  background: #fff; color: var(--fg2); font: 400 11px var(--font-sans); cursor: pointer;
+}
+.svc-chip:hover      { border-color: var(--brand-green); color: var(--brand-green-dark); }
+.svc-chip--active    { background: var(--brand-green); border-color: var(--brand-green); color: #fff; }
+.svc-chip__price     { font: 700 10px var(--font-mono); opacity: .7; }
+.svc-chip--active .svc-chip__price { opacity: 1; }
+
+.svc-form-grid {
+  display: grid;
+  grid-template-columns: 120px 1fr 1fr 100px 100px 90px;
+  gap: 10px; align-items: start;
+}
+.svc-line-total {
+  font: 700 14px var(--font-mono); color: var(--brand-green-dark);
+  padding-bottom: 7px;
+}
 
 @media (max-width: 900px) {
   .rx-row--4      { grid-template-columns: 1fr 1fr; }

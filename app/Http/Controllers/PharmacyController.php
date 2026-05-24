@@ -176,10 +176,23 @@ class PharmacyController extends Controller
         $prescription->loadMissing('items');
         if ($prescription->items->isEmpty()) return;
 
-        $invoice = Invoice::firstOrCreate(
-            ['patient_id' => $prescription->patient_id, 'status' => 'draft', 'invoice_date' => now()->toDateString()],
-            ['notes' => "Auto-dijana daripada {$prescription->rx_number}"]
-        );
+        // Prescription from a visit → merge into the same draft invoice as the services
+        if ($prescription->visit_id) {
+            $invoice = Invoice::firstOrCreate(
+                ['visit_id' => $prescription->visit_id, 'status' => 'draft'],
+                [
+                    'patient_id'   => $prescription->patient_id,
+                    'invoice_date' => now()->toDateString(),
+                    'notes'        => "Auto-dijana daripada {$prescription->rx_number}",
+                ]
+            );
+        } else {
+            // Standalone pharmacy prescription (no visit) — use old patient+date key
+            $invoice = Invoice::firstOrCreate(
+                ['patient_id' => $prescription->patient_id, 'status' => 'draft', 'invoice_date' => now()->toDateString()],
+                ['notes' => "Auto-dijana daripada {$prescription->rx_number}"]
+            );
+        }
 
         // Pre-load inventory items by FK; fall back to name-match for items without FK
         $linkedIds  = $prescription->items->pluck('inventory_item_id')->filter()->unique()->values()->all();
