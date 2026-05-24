@@ -7,6 +7,7 @@ use App\Models\InventoryItem;
 use App\Models\LookupCategory;
 use App\Models\Patient;
 use App\Models\Prescription;
+use App\Models\PrescriptionItem;
 use App\Models\QuarantineLetter;
 use App\Models\Visit;
 use App\Models\VisitDiagnosis;
@@ -160,11 +161,19 @@ class EMRController extends Controller
                 'status'     => $rx->status,
                 'created_at' => $rx->created_at->format('d/m/Y H:i'),
                 'items'      => $rx->items->map(fn ($i) => [
-                    'drug_name' => $i->drug_name,
-                    'dosage'    => $i->dosage,
-                    'frequency' => $i->frequency,
-                    'quantity'  => $i->quantity,
-                    'drug_unit' => $i->drug_unit,
+                    'id'              => $i->id,
+                    'inventory_item_id' => $i->inventory_item_id,
+                    'drug_name'       => $i->drug_name,
+                    'kegunaan'        => $i->kegunaan,
+                    'dosage'          => $i->dosage,
+                    'frequency'       => $i->frequency,
+                    'duration'        => $i->duration,
+                    'quantity'        => $i->quantity,
+                    'drug_unit'       => $i->drug_unit,
+                    'instructions'    => $i->instructions,
+                    'is_prn'          => $i->is_prn,
+                    'complete_course' => $i->complete_course,
+                    'item_note'       => $i->item_note,
                 ])->values()->toArray(),
             ])->values()->toArray(),
         ];
@@ -173,36 +182,49 @@ class EMRController extends Controller
     public function storePrescription(Request $request, Visit $visit)
     {
         $data = $request->validate([
-            'notes'               => ['nullable', 'string', 'max:1000'],
-            'items'               => ['required', 'array', 'min:1'],
+            'notes'                    => ['nullable', 'string', 'max:1000'],
+            'items'                    => ['required', 'array', 'min:1'],
             'items.*.inventory_item_id' => ['nullable', 'exists:inventory_items,id'],
-            'items.*.drug_name'   => ['required', 'string', 'max:255'],
-            'items.*.drug_unit'   => ['nullable', 'string', 'max:100'],
-            'items.*.dosage'      => ['nullable', 'string', 'max:100'],
-            'items.*.frequency'   => ['nullable', 'string', 'max:100'],
-            'items.*.duration'    => ['nullable', 'string', 'max:100'],
-            'items.*.quantity'    => ['required', 'integer', 'min:1'],
-            'items.*.instructions'=> ['nullable', 'string', 'max:255'],
+            'items.*.drug_name'        => ['required', 'string', 'max:255'],
+            'items.*.kegunaan'         => ['nullable', 'string', 'max:255'],
+            'items.*.drug_unit'        => ['nullable', 'string', 'max:100'],
+            'items.*.dosage'           => ['nullable', 'string', 'max:100'],
+            'items.*.frequency'        => ['nullable', 'string', 'max:100'],
+            'items.*.duration'         => ['nullable', 'string', 'max:100'],
+            'items.*.quantity'         => ['required', 'integer', 'min:1'],
+            'items.*.instructions'     => ['nullable', 'string', 'max:255'],
+            'items.*.is_prn'           => ['nullable', 'boolean'],
+            'items.*.complete_course'  => ['nullable', 'boolean'],
+            'items.*.item_note'        => ['nullable', 'string', 'max:500'],
         ]);
 
-        $rx = Prescription::create([
-            'patient_id'         => $visit->patient_id,
-            'visit_id'           => $visit->id,
-            'prescribing_doctor' => $visit->doctor_name,
-            'user_id'            => Auth::id(),
-            'status'             => 'pending',
-            'notes'              => $data['notes'] ?? null,
-            'drug_check_passed'  => true,
-            'drug_check_notes'   => 'Dijana daripada EMR.',
-        ]);
+        // One draft prescription per visit — append items to it
+        $rx = $visit->prescriptions()->where('status', 'draft')->first();
+
+        if ($rx) {
+            if (!empty($data['notes'])) {
+                $rx->update(['notes' => $data['notes']]);
+            }
+        } else {
+            $rx = Prescription::create([
+                'patient_id'         => $visit->patient_id,
+                'visit_id'           => $visit->id,
+                'prescribing_doctor' => $visit->doctor_name,
+                'user_id'            => Auth::id(),
+                'status'             => 'draft',
+                'notes'              => $data['notes'] ?? null,
+                'drug_check_passed'  => false,
+                'drug_check_notes'   => null,
+            ]);
+        }
 
         foreach ($data['items'] as $item) {
             $rx->items()->create($item);
         }
 
-        AuditLog::record('emr.prescription', "{$visit->patient->name} · {$rx->rx_number} · " . count($data['items']) . ' ubat');
+        AuditLog::record('emr.prescription', "{$visit->patient->name} · {$rx->rx_number} · +" . count($data['items']) . ' ubat');
 
-        return back()->with('success', "Preskripsi {$rx->rx_number} dihantar ke farmasi.");
+        return back()->with('success', count($data['items']) . ' ubat ditambah. Preskripsi akan dihantar ke farmasi apabila rekod ditutup.');
     }
 
     public function store(Request $request)
@@ -291,9 +313,18 @@ class EMRController extends Controller
             'signed_by' => Auth::user()->name,
         ]);
 
+        // Promote all draft prescriptions to pending so pharmacy can process them
+        $promoted = $visit->prescriptions()->where('status', 'draft')->count();
+        $visit->prescriptions()->where('status', 'draft')->update(['status' => 'pending']);
+
         AuditLog::record('emr.close', "{$visit->patient->name} · {$visit->visit_date->format('d/m/Y')}");
 
-        return back()->with('success', 'Rekod ditandatangan dan ditutup.');
+        $msg = 'Rekod ditandatangan dan ditutup.';
+        if ($promoted > 0) {
+            $msg .= " {$promoted} preskripsi dihantar ke farmasi.";
+        }
+
+        return back()->with('success', $msg);
     }
 
     public function destroy(Visit $visit)
@@ -302,5 +333,70 @@ class EMRController extends Controller
         $visit->delete();
         AuditLog::record('emr.delete', $info);
         return redirect()->route('emr')->with('success', 'Rekod perubatan dipadam.');
+    }
+
+    public function updatePrescriptionItem(Request $request, PrescriptionItem $item)
+    {
+        if ($item->prescription->status !== 'draft') {
+            return back()->with('error', 'Ubat dalam preskripsi yang telah dihantar tidak boleh diedit.');
+        }
+
+        $data = $request->validate([
+            'inventory_item_id' => ['nullable', 'exists:inventory_items,id'],
+            'drug_name'         => ['required', 'string', 'max:255'],
+            'kegunaan'          => ['nullable', 'string', 'max:255'],
+            'drug_unit'         => ['nullable', 'string', 'max:100'],
+            'dosage'            => ['nullable', 'string', 'max:100'],
+            'frequency'         => ['nullable', 'string', 'max:100'],
+            'duration'          => ['nullable', 'string', 'max:100'],
+            'quantity'          => ['required', 'integer', 'min:1'],
+            'instructions'      => ['nullable', 'string', 'max:255'],
+            'is_prn'            => ['nullable', 'boolean'],
+            'complete_course'   => ['nullable', 'boolean'],
+            'item_note'         => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $item->update($data);
+        AuditLog::record('emr.prescription_item_update', $item->drug_name);
+
+        return back()->with('success', "{$item->drug_name} dikemaskini.");
+    }
+
+    public function destroyPrescriptionItem(PrescriptionItem $item)
+    {
+        if ($item->prescription->status !== 'draft') {
+            return back()->with('error', 'Ubat dalam preskripsi yang telah dihantar tidak boleh dipadam.');
+        }
+
+        $drugName = $item->drug_name;
+        $visitId  = $item->prescription->visit_id;
+
+        // Remove entire prescription if this is the last item
+        if ($item->prescription->items()->count() === 1) {
+            $item->prescription->delete();
+        } else {
+            $item->delete();
+        }
+
+        AuditLog::record('emr.prescription_item_delete', $drugName);
+
+        return redirect()->route('emr', ['visit' => $visitId])
+            ->with('success', "{$drugName} dipadam.");
+    }
+
+    public function destroyPrescription(Prescription $prescription)
+    {
+        if ($prescription->status !== 'draft') {
+            return back()->with('error', 'Preskripsi yang telah dihantar ke farmasi tidak boleh dipadam dari sini.');
+        }
+
+        $rxNum   = $prescription->rx_number;
+        $visitId = $prescription->visit_id;
+        $prescription->delete();
+
+        AuditLog::record('emr.prescription_delete', $rxNum);
+
+        return redirect()->route('emr', ['visit' => $visitId])
+            ->with('success', "Preskripsi {$rxNum} dipadam.");
     }
 }

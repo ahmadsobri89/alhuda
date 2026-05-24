@@ -254,23 +254,19 @@ function deleteQuarantine(qnId) {
 }
 
 /* ── Prescription from EMR ───────────────────────── */
-const showRxModal   = ref(false)
-const rxDrugSearch  = ref([])
-const rxDrugOpen    = ref([])
+const rxDrugSearch  = ref([''])
+const rxDrugOpen    = ref([false])
 
 function emptyRxItem() {
-  return { inventory_item_id: null, drug_name: '', drug_unit: '', dosage: '', frequency: '', duration: '', quantity: 1, instructions: '' }
+  return {
+    inventory_item_id: null, drug_name: '', kegunaan: '', drug_unit: '',
+    dosage: '', frequency: '', duration: '', quantity: 1,
+    instructions: '', is_prn: false, complete_course: false, item_note: '',
+  }
 }
 
 const rxForm = useForm({ notes: '', items: [emptyRxItem()] })
 
-function openRxModal() {
-  rxForm.reset()
-  rxForm.items  = [emptyRxItem()]
-  rxDrugSearch.value = ['']
-  rxDrugOpen.value   = [false]
-  showRxModal.value  = true
-}
 function addRxItem() {
   rxForm.items.push(emptyRxItem())
   rxDrugSearch.value.push('')
@@ -307,16 +303,126 @@ function resolvedRxInv(item) {
     : null
 }
 
-const RX_FREQS = computed(() => (props.lookups?.kekerapan_dos ?? []).map(v => v.label_ms))
-const RX_INSTRS = computed(() => (props.lookups?.arahan_dos   ?? []).map(v => v.label_ms))
+const RX_FREQS  = computed(() => (props.lookups?.kekerapan_dos ?? []).map(v => v.label_ms))
+const RX_INSTRS = computed(() => (props.lookups?.arahan_dos    ?? []).map(v => v.label_ms))
+const DRUG_UNITS = computed(() => (props.lookups?.bentuk_ubat  ?? []).map(v => ({ code: v.code, label: v.label_ms })))
 
-const RX_STATUS_TONE  = { pending:'orange', verifying:'blue', ready:'green', dispensed:'neutral', cancelled:'neutral' }
-const RX_STATUS_LABEL = { pending:'Menunggu', verifying:'Sedang Disemak', ready:'Sedia', dispensed:'Telah Diambil', cancelled:'Dibatalkan' }
+const RX_STATUS_TONE  = { draft:'neutral', pending:'orange', verifying:'blue', ready:'green', dispensed:'neutral', cancelled:'neutral' }
+const RX_STATUS_LABEL = { draft:'Draf', pending:'Menunggu', verifying:'Sedang Disemak', ready:'Sedia', dispensed:'Telah Diambil', cancelled:'Dibatalkan' }
+
+const PRN_TAGS = ['Bila Perlu', 'Habiskan ubat']
+function updateRxPrnLine(note, tag, active) {
+  const lines  = (note ?? '').split('\n')
+  const idx    = lines.findIndex(l => PRN_TAGS.some(t => l.includes(t)))
+  let tags     = idx >= 0 ? PRN_TAGS.filter(t => lines[idx].includes(t)) : []
+  if (idx >= 0) lines.splice(idx, 1)
+  tags = active ? [...new Set([...tags, tag])] : tags.filter(t => t !== tag)
+  const other  = lines.filter(l => l.trim())
+  return [...other, ...(tags.length ? [tags.join(', ')] : [])].join('\n').trim()
+}
+function onRxPrnChange(item)      { item.item_note = updateRxPrnLine(item.item_note, 'Bila Perlu',    item.is_prn) }
+function onRxCompleteChange(item) { item.item_note = updateRxPrnLine(item.item_note, 'Habiskan ubat', item.complete_course) }
+function limitRxNoteLines(item)   { const ls = item.item_note.split('\n'); if (ls.length > 2) item.item_note = ls.slice(0, 2).join('\n') }
 
 function submitRx() {
   rxForm.post(`/emr/${props.selected.id}/prescription`, {
     preserveScroll: true,
-    onSuccess: () => { showRxModal.value = false },
+    onSuccess: () => {
+      rxForm.reset()
+      rxForm.items       = [emptyRxItem()]
+      rxDrugSearch.value = ['']
+      rxDrugOpen.value   = [false]
+    },
+  })
+}
+
+watch(() => props.selected?.id, () => {
+  rxForm.reset()
+  rxForm.items       = [emptyRxItem()]
+  rxDrugSearch.value = ['']
+  rxDrugOpen.value   = [false]
+})
+
+const showRxDelId = ref(null)
+function deleteRx(rxId) {
+  router.delete(`/emr/prescriptions/${rxId}`, {
+    preserveScroll: true,
+    onSuccess: () => { showRxDelId.value = null },
+  })
+}
+
+/* ── Per-item edit ─────────────────────────────────── */
+const editingItemId  = ref(null)
+const editForm       = ref({})
+const editDrugSearch = ref('')
+const editDrugOpen   = ref(false)
+const editSaving     = ref(false)
+
+function openEditItem(item) {
+  editingItemId.value  = item.id
+  editDrugSearch.value = item.drug_name
+  editDrugOpen.value   = false
+  editForm.value = {
+    inventory_item_id: item.inventory_item_id ?? null,
+    drug_name:         item.drug_name,
+    kegunaan:          item.kegunaan          ?? '',
+    drug_unit:         item.drug_unit         ?? '',
+    dosage:            item.dosage            ?? '',
+    frequency:         item.frequency         ?? '',
+    duration:          item.duration          ?? '',
+    quantity:          item.quantity,
+    instructions:      item.instructions      ?? '',
+    is_prn:            item.is_prn            ?? false,
+    complete_course:   item.complete_course   ?? false,
+    item_note:         item.item_note         ?? '',
+  }
+}
+function cancelEditItem() {
+  editingItemId.value  = null
+  editDrugSearch.value = ''
+  editDrugOpen.value   = false
+  editForm.value       = {}
+}
+function saveEditItem(itemId) {
+  editSaving.value = true
+  router.patch(`/emr/prescription-items/${itemId}`, editForm.value, {
+    preserveScroll: true,
+    onSuccess: () => { editingItemId.value = null; editForm.value = {} },
+    onFinish:  () => { editSaving.value = false },
+  })
+}
+
+function filteredEditDrugs() {
+  const q = editDrugSearch.value.toLowerCase()
+  if (!q) return props.drugItems.slice(0, 10)
+  return props.drugItems.filter(d =>
+    d.name.toLowerCase().includes(q) || (d.generic_name ?? '').toLowerCase().includes(q)
+  ).slice(0, 10)
+}
+function selectEditDrug(inv) {
+  editForm.value.inventory_item_id = inv.id
+  editForm.value.drug_name         = inv.name
+  editForm.value.drug_unit         = inv.form ?? ''
+  editDrugSearch.value             = inv.name
+  editDrugOpen.value               = false
+}
+function clearEditDrug() {
+  editForm.value.inventory_item_id = null
+  editForm.value.drug_name         = ''
+  editDrugSearch.value             = ''
+}
+const resolvedEditInv = computed(() =>
+  editForm.value.inventory_item_id
+    ? props.drugItems.find(d => d.id === editForm.value.inventory_item_id) ?? null
+    : null
+)
+
+/* ── Per-item delete ───────────────────────────────── */
+const showItemDelId = ref(null)
+function deleteItem(itemId) {
+  router.delete(`/emr/prescription-items/${itemId}`, {
+    preserveScroll: true,
+    onSuccess: () => { showItemDelId.value = null },
   })
 }
 
@@ -332,7 +438,7 @@ function deleteVisit() {
 }
 
 /* ── Helpers ─────────────────────────────────────── */
-const SOAP_LABELS = { S: 'Subjective', O: 'Objective', A: 'Assessment', P: 'Plan' }
+const SOAP_LABELS = { S: 'Subjective', O: 'Objective', A: 'Assessment', P: 'Plan', Rx: 'Preskripsi' }
 const SOAP_FIELDS = { S: 'soap_s', O: 'soap_o', A: 'soap_a', P: 'soap_p' }
 const soapHints = computed(() => ({
   S: t('emr_soap_hint_s'),
@@ -524,7 +630,9 @@ const soapHints = computed(() => ({
                           @click="soapTab = key">{{ label }}</button>
                 </div>
               </div>
-              <div class="card__body soap-body">
+
+              <!-- S / O / A / P text areas -->
+              <div v-if="soapTab !== 'Rx'" class="card__body soap-body">
                 <textarea
                   v-model="soapForm[SOAP_FIELDS[soapTab]]"
                   class="input soap-textarea"
@@ -542,6 +650,333 @@ const soapHints = computed(() => ({
                   </span>
                 </div>
               </div>
+
+              <!-- Rx tab: inline prescription form -->
+              <div v-else class="rx-inline-wrap">
+
+                <!-- Existing prescriptions -->
+                <template v-if="selected.prescriptions?.length">
+                  <div class="rx-inline-title">Preskripsi Sedia Ada</div>
+                  <div v-for="rx in selected.prescriptions" :key="rx.id" class="rx-existing-card">
+                    <div class="rx-existing-card__head">
+                      <span class="rx-existing-card__num">{{ rx.rx_number }}</span>
+                      <span :class="['rx-status-chip', `rx-status--${rx.status}`]">{{ RX_STATUS_LABEL[rx.status] ?? rx.status }}</span>
+                      <span class="rx-existing-card__date">{{ rx.created_at }}</span>
+                      <a :href="`/pharmacy/prescriptions/${rx.id}/print`" target="_blank" class="rx-existing-print">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                        Cetak
+                      </a>
+                      <button v-if="rx.status === 'draft'" class="rx-del-btn" @click="showRxDelId = rx.id" title="Padam preskripsi">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                      </button>
+                    </div>
+                    <template v-for="item in rx.items" :key="item.id">
+
+                      <!-- ── Inline edit form ── -->
+                      <div v-if="editingItemId === item.id" class="rx-item-edit-wrap">
+
+                        <!-- Row 1: Nama + Kegunaan -->
+                        <div class="rx-row rx-row--2">
+                          <div class="field">
+                            <label class="field__label">Nama Ubat</label>
+                            <div style="position:relative">
+                              <div v-if="editForm.inventory_item_id" class="drug-linked-bar">
+                                <span class="drug-linked-name">{{ editForm.drug_name }}</span>
+                                <span v-if="resolvedEditInv" :class="['drug-stock-badge', resolvedEditInv.stock_quantity <= 0 ? 'drug-stock-badge--out' : resolvedEditInv.stock_quantity <= 10 ? 'drug-stock-badge--low' : 'drug-stock-badge--ok']">
+                                  Stok: {{ resolvedEditInv.stock_quantity }}
+                                </span>
+                                <button type="button" class="drug-clear-btn" @click="clearEditDrug">✕</button>
+                              </div>
+                              <template v-else>
+                                <input v-model="editDrugSearch" class="input input--sm"
+                                       placeholder="Cari atau taip nama ubat..."
+                                       autocomplete="off"
+                                       @input="editDrugOpen = true; editForm.drug_name = editDrugSearch"
+                                       @focus="editDrugOpen = true"
+                                       @blur="setTimeout(() => { editDrugOpen = false }, 180)" />
+                                <div v-if="editDrugOpen && filteredEditDrugs().length" class="drug-dropdown">
+                                  <button v-for="inv in filteredEditDrugs()" :key="inv.id"
+                                          type="button" class="drug-option"
+                                          :class="{ 'drug-option--out': inv.stock_quantity <= 0 }"
+                                          @mousedown.prevent="selectEditDrug(inv)">
+                                    <div class="drug-option__name">{{ inv.name }}</div>
+                                    <div class="drug-option__meta">
+                                      <span v-if="inv.generic_name" style="color:var(--fg3)">{{ inv.generic_name }}</span>
+                                      <span v-if="inv.form"> · {{ inv.form }}</span>
+                                      <span :class="['drug-option__stock', inv.stock_quantity <= 0 ? 'out' : inv.stock_quantity <= 10 ? 'low' : '']">Stok: {{ inv.stock_quantity }}</span>
+                                      <span v-if="inv.selling_price > 0" class="drug-option__price">RM {{ Number(inv.selling_price).toFixed(2) }}</span>
+                                    </div>
+                                  </button>
+                                </div>
+                              </template>
+                            </div>
+                          </div>
+                          <div class="field">
+                            <label class="field__label">Kegunaan</label>
+                            <input v-model="editForm.kegunaan" class="input input--sm" placeholder="cth: Demam" />
+                          </div>
+                        </div>
+
+                        <!-- Row 2: Bentuk · Dos · Kekerapan · Tempoh -->
+                        <div class="rx-row rx-row--4">
+                          <div class="field">
+                            <label class="field__label">Bentuk Ubat</label>
+                            <select v-model="editForm.drug_unit" class="input input--sm">
+                              <option value="">— Pilih —</option>
+                              <option v-for="u in DRUG_UNITS" :key="u.code" :value="u.code">{{ u.label }}</option>
+                            </select>
+                          </div>
+                          <div class="field">
+                            <label class="field__label">Dos</label>
+                            <input v-model="editForm.dosage" class="input input--sm" placeholder="1 tablet" />
+                          </div>
+                          <div class="field">
+                            <label class="field__label">Kekerapan</label>
+                            <input v-model="editForm.frequency" class="input input--sm" placeholder="OD / BD" list="edit-freq-list" />
+                            <datalist id="edit-freq-list">
+                              <option v-for="f in RX_FREQS" :key="f" :value="f" />
+                            </datalist>
+                          </div>
+                          <div class="field">
+                            <label class="field__label">Tempoh</label>
+                            <input v-model="editForm.duration" class="input input--sm" placeholder="7 hari" />
+                          </div>
+                        </div>
+
+                        <!-- Row 3: Qty · Arahan · PRN · Habiskan -->
+                        <div class="rx-row rx-row--footer">
+                          <div class="field rx-field--qty">
+                            <label class="field__label">Kuantiti</label>
+                            <input v-model.number="editForm.quantity" type="number" min="1" class="input input--sm" style="text-align:center" />
+                          </div>
+                          <div class="field rx-field--instr">
+                            <label class="field__label">Arahan</label>
+                            <input v-model="editForm.instructions" class="input input--sm" placeholder="Selepas makan" list="edit-instr-list" />
+                            <datalist id="edit-instr-list">
+                              <option v-for="ins in RX_INSTRS" :key="ins" :value="ins" />
+                            </datalist>
+                          </div>
+                          <label class="rx-toggle">
+                            <input type="checkbox" v-model="editForm.is_prn" @change="onRxPrnChange(editForm)" />
+                            <span class="rx-toggle__txt"><strong>PRN</strong><small>Bila Perlu</small></span>
+                          </label>
+                          <label class="rx-toggle">
+                            <input type="checkbox" v-model="editForm.complete_course" @change="onRxCompleteChange(editForm)" />
+                            <span class="rx-toggle__txt"><strong>Habis</strong><small>Habiskan</small></span>
+                          </label>
+                        </div>
+
+                        <!-- Row 4: Nota -->
+                        <div class="rx-row rx-row--note">
+                          <div class="field">
+                            <label class="field__label" style="font-size:10px;color:var(--fg3)">Nota Ubat</label>
+                            <textarea v-model="editForm.item_note" class="input input--sm rx-item-note"
+                                      rows="2" style="resize:none" @input="limitRxNoteLines(editForm)"
+                                      placeholder="cth: Simpan dalam peti sejuk..."></textarea>
+                          </div>
+                        </div>
+
+                        <!-- Edit actions -->
+                        <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:8px">
+                          <button type="button" class="rx-edit-cancel" @click="cancelEditItem">Batal</button>
+                          <button type="button" class="rx-edit-save" :disabled="editSaving || !editForm.drug_name" @click="saveEditItem(item.id)">
+                            {{ editSaving ? 'Menyimpan...' : 'Simpan' }}
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- ── Display row ── -->
+                      <div v-else class="rx-existing-drug">
+                        <span class="rx-existing-drug__dot"></span>
+                        <span class="rx-existing-drug__name">{{ item.drug_name }}</span>
+                        <span v-if="item.kegunaan" class="rx-existing-drug__use">– {{ item.kegunaan }}</span>
+                        <span v-if="item.dosage || item.frequency" class="rx-existing-drug__meta">
+                          {{ [item.dosage, item.frequency].filter(Boolean).join(' · ') }}
+                        </span>
+                        <span v-if="item.is_prn" class="rx-existing-drug__tag rx-existing-drug__tag--prn">PRN</span>
+                        <span v-if="item.complete_course" class="rx-existing-drug__tag rx-existing-drug__tag--cc">Habis</span>
+                        <span class="rx-existing-drug__qty">× {{ item.quantity }}</span>
+                        <div v-if="rx.status === 'draft'" class="rx-existing-drug__actions">
+                          <button class="rx-item-edit-btn" @click="openEditItem(item)" title="Edit ubat">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                          </button>
+                          <button class="rx-item-del-btn" @click="showItemDelId = item.id" title="Padam ubat">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- Item note (display only) -->
+                      <div v-if="editingItemId !== item.id && item.item_note"
+                           style="font:400 10.5px var(--font-sans);color:var(--fg3);padding-left:12px;margin-top:-1px">
+                        ✎ {{ item.item_note }}
+                      </div>
+                    </template>
+                  </div>
+                  <div class="hr" style="margin:12px 0"></div>
+                </template>
+
+                <!-- New prescription form (open visits only) -->
+                <template v-if="selected.status === 'open'">
+                  <div class="rx-inline-title">Tambah Preskripsi Baru</div>
+
+                  <div v-for="(item, i) in rxForm.items" :key="i" class="rx-drug-card">
+                    <!-- Card header -->
+                    <div class="rx-drug-card__head">
+                      <span class="rx-drug-card__num">Ubat {{ i + 1 }}</span>
+                      <button type="button" class="rx-remove-btn" @click="removeRxItem(i)" :disabled="rxForm.items.length === 1">×</button>
+                    </div>
+
+                    <!-- Row 1: Nama Ubat + Kegunaan -->
+                    <div class="rx-row rx-row--2">
+                      <div class="field">
+                        <label class="field__label">Nama Ubat <span style="color:var(--brand-red)">*</span></label>
+                        <div style="position:relative">
+                          <div v-if="item.inventory_item_id" class="drug-linked-bar">
+                            <span class="drug-linked-name">{{ item.drug_name }}</span>
+                            <span v-if="resolvedRxInv(item)" :class="['drug-stock-badge', resolvedRxInv(item).stock_quantity <= 0 ? 'drug-stock-badge--out' : resolvedRxInv(item).stock_quantity <= 10 ? 'drug-stock-badge--low' : 'drug-stock-badge--ok']">
+                              Stok: {{ resolvedRxInv(item).stock_quantity }}
+                            </span>
+                            <button type="button" class="drug-clear-btn" @click="clearRxDrug(i)" title="Tukar ubat">✕</button>
+                          </div>
+                          <template v-else>
+                            <input
+                              v-model="rxDrugSearch[i]"
+                              class="input input--sm"
+                              placeholder="Cari inventori atau taip nama ubat..."
+                              autocomplete="off"
+                              @input="rxDrugOpen[i] = true; item.drug_name = rxDrugSearch[i]"
+                              @focus="rxDrugOpen[i] = true"
+                              @blur="setTimeout(() => { rxDrugOpen[i] = false }, 180)"
+                            />
+                            <div v-if="rxDrugOpen[i] && filteredRxDrugs(i).length" class="drug-dropdown">
+                              <button
+                                v-for="inv in filteredRxDrugs(i)" :key="inv.id"
+                                type="button"
+                                class="drug-option"
+                                :class="{ 'drug-option--out': inv.stock_quantity <= 0 }"
+                                @mousedown.prevent="selectRxDrug(i, inv)"
+                              >
+                                <div class="drug-option__name">{{ inv.name }}</div>
+                                <div class="drug-option__meta">
+                                  <span v-if="inv.generic_name" style="color:var(--fg3)">{{ inv.generic_name }}</span>
+                                  <span v-if="inv.form"> · {{ inv.form }}</span>
+                                  <span :class="['drug-option__stock', inv.stock_quantity <= 0 ? 'out' : inv.stock_quantity <= 10 ? 'low' : '']">Stok: {{ inv.stock_quantity }}</span>
+                                  <span v-if="inv.selling_price > 0" class="drug-option__price">RM {{ Number(inv.selling_price).toFixed(2) }}</span>
+                                </div>
+                              </button>
+                            </div>
+                          </template>
+                        </div>
+                        <span v-if="rxForm.errors[`items.${i}.drug_name`]" class="field__error">Wajib diisi</span>
+                      </div>
+                      <div class="field">
+                        <label class="field__label">Kegunaan</label>
+                        <input v-model="item.kegunaan" class="input input--sm" placeholder="cth: Demam, Sakit Kepala" />
+                      </div>
+                    </div>
+
+                    <!-- Row 2: Bentuk · Dos · Kekerapan · Tempoh -->
+                    <div class="rx-row rx-row--4">
+                      <div class="field">
+                        <label class="field__label">Bentuk Ubat</label>
+                        <select v-model="item.drug_unit" class="input input--sm">
+                          <option value="">— Pilih —</option>
+                          <option v-for="u in DRUG_UNITS" :key="u.code" :value="u.code">{{ u.label }}</option>
+                        </select>
+                      </div>
+                      <div class="field">
+                        <label class="field__label">Dos</label>
+                        <input v-model="item.dosage" class="input input--sm" placeholder="1 tablet" />
+                      </div>
+                      <div class="field">
+                        <label class="field__label">Kekerapan</label>
+                        <input v-model="item.frequency" class="input input--sm" placeholder="OD / BD / TDS" list="emr-freq-list" />
+                        <datalist id="emr-freq-list">
+                          <option v-for="f in RX_FREQS" :key="f" :value="f" />
+                        </datalist>
+                      </div>
+                      <div class="field">
+                        <label class="field__label">Tempoh</label>
+                        <input v-model="item.duration" class="input input--sm" placeholder="7 hari" />
+                      </div>
+                    </div>
+
+                    <!-- Row 3: Qty · Arahan · PRN · Habiskan -->
+                    <div class="rx-row rx-row--footer">
+                      <div class="field rx-field--qty">
+                        <label class="field__label">Kuantiti <span style="color:var(--brand-red)">*</span></label>
+                        <input v-model.number="item.quantity" type="number" min="1" class="input input--sm" style="text-align:center" />
+                      </div>
+                      <div class="field rx-field--instr">
+                        <label class="field__label">Arahan</label>
+                        <input v-model="item.instructions" class="input input--sm" placeholder="Selepas makan" list="emr-instr-list" />
+                        <datalist id="emr-instr-list">
+                          <option v-for="ins in RX_INSTRS" :key="ins" :value="ins" />
+                        </datalist>
+                      </div>
+                      <label class="rx-toggle">
+                        <input type="checkbox" v-model="item.is_prn" @change="onRxPrnChange(item)" />
+                        <span class="rx-toggle__txt">
+                          <strong>PRN</strong>
+                          <small>Bila Perlu</small>
+                        </span>
+                      </label>
+                      <label class="rx-toggle">
+                        <input type="checkbox" v-model="item.complete_course" @change="onRxCompleteChange(item)" />
+                        <span class="rx-toggle__txt">
+                          <strong>Habis</strong>
+                          <small>Habiskan</small>
+                        </span>
+                      </label>
+                    </div>
+
+                    <!-- Row 4: Nota ubat -->
+                    <div class="rx-row rx-row--note">
+                      <div class="field">
+                        <label class="field__label" style="font-size:10px;color:var(--fg3)">Nota Ubat</label>
+                        <textarea
+                          v-model="item.item_note"
+                          class="input input--sm rx-item-note"
+                          rows="2"
+                          placeholder="cth: Simpan dalam peti sejuk, elakkan cahaya matahari..."
+                          style="resize:none"
+                          @input="limitRxNoteLines(item)"
+                        ></textarea>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Add drug button -->
+                  <button type="button" class="rx-add-btn" @click="addRxItem">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Tambah Ubat
+                  </button>
+
+                  <!-- Notes -->
+                  <div class="field" style="margin-top:14px">
+                    <label class="field__label">Nota Farmasi (pilihan)</label>
+                    <textarea v-model="rxForm.notes" class="input input--sm" rows="2" placeholder="Nota khas untuk ahli farmasi..." style="resize:vertical"></textarea>
+                  </div>
+
+                  <!-- Submit -->
+                  <div class="rx-submit-row">
+                    <div class="rx-pending-hint">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                      Ubat akan dihantar ke farmasi apabila rekod EMR ditutup.
+                    </div>
+                    <Btn variant="primary" :disabled="rxForm.processing || !rxForm.items.some(i => i.drug_name)" @click="submitRx">
+                      {{ rxForm.processing ? 'Menyimpan...' : 'Simpan Ubat' }}
+                    </Btn>
+                  </div>
+                </template>
+
+                <div v-else-if="!selected.prescriptions?.length"
+                     style="padding:24px 0;font:500 12px var(--font-sans);color:var(--fg3);text-align:center">
+                  Tiada preskripsi untuk lawatan ini.
+                </div>
+
+              </div><!-- /rx-inline-wrap -->
             </div>
 
             <!-- Diagnoses -->
@@ -657,49 +1092,6 @@ const soapHints = computed(() => ({
                 <Btn variant="ghost" style="width:100%;justify-content:center;color:var(--brand-red)" @click="showDeleteConfirm = true">
                   {{ t('emr_delete_record') }}
                 </Btn>
-              </div>
-            </div>
-
-            <!-- Preskripsi Ubat -->
-            <div class="card">
-              <div class="card__header">
-                <h3 class="card__title">Preskripsi Ubat</h3>
-                <div class="spacer"></div>
-                <Btn v-if="selected.status === 'open'" variant="ghost" size="sm" @click="openRxModal">
-                  + Preskripsi
-                </Btn>
-              </div>
-
-              <div v-if="selected.prescriptions?.length">
-                <div v-for="rx in selected.prescriptions" :key="rx.id"
-                     style="padding:10px 14px;border-top:1px solid var(--border)">
-                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-                    <span style="font:700 11px var(--font-mono);color:var(--brand-green-dark)">{{ rx.rx_number }}</span>
-                    <span :class="['rx-status-chip', `rx-status--${rx.status}`]">{{ RX_STATUS_LABEL[rx.status] ?? rx.status }}</span>
-                    <span style="font:500 10px var(--font-sans);color:var(--fg3);margin-left:auto">{{ rx.created_at }}</span>
-                  </div>
-                  <div style="display:flex;flex-direction:column;gap:3px">
-                    <div v-for="(item, i) in rx.items" :key="i"
-                         style="display:flex;align-items:baseline;gap:6px;font:500 12px var(--font-sans);color:var(--fg1)">
-                      <span style="width:5px;height:5px;border-radius:50%;background:var(--brand-green);flex-shrink:0;margin-top:4px"></span>
-                      <span>{{ item.drug_name }}</span>
-                      <span v-if="item.dosage || item.frequency" style="font:400 11px var(--font-sans);color:var(--fg3)">
-                        {{ [item.dosage, item.frequency].filter(Boolean).join(' · ') }}
-                      </span>
-                      <span style="font:700 11px var(--font-mono);color:var(--brand-green-dark);margin-left:auto">× {{ item.quantity }}</span>
-                    </div>
-                  </div>
-                  <div style="margin-top:6px">
-                    <a :href="`/pharmacy/prescriptions/${rx.id}/print`" target="_blank"
-                       class="mc-print-btn" style="color:var(--brand-green-dark);border-color:var(--brand-green);background:var(--brand-green-light)">
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-                      Cetak Rx
-                    </a>
-                  </div>
-                </div>
-              </div>
-              <div v-else style="padding:16px 14px;font:500 12px var(--font-sans);color:var(--fg3)">
-                Tiada preskripsi untuk lawatan ini.
               </div>
             </div>
 
@@ -852,128 +1244,6 @@ const soapHints = computed(() => ({
         </div>
       </template>
     </div>
-
-    <!-- ── Prescription Modal ──────────────────────────────── -->
-    <Teleport to="body">
-      <div v-if="showRxModal" class="modal-backdrop" @click.self="showRxModal = false; rxForm.clearErrors()">
-        <div class="modal modal--xl">
-          <div class="modal__header">
-            <div style="display:flex;align-items:center;gap:10px;flex:1">
-              <div style="width:34px;height:34px;border-radius:9px;background:var(--brand-green);color:#fff;font:800 13px var(--font-mono);display:grid;place-items:center;flex-shrink:0">Rx</div>
-              <div>
-                <h3 class="modal__title">Preskripsi Ubat</h3>
-                <p style="font:500 11px var(--font-mono);color:var(--fg3);margin:2px 0 0">{{ selected?.patient_name }}</p>
-              </div>
-            </div>
-            <button class="modal__close" @click="showRxModal = false; rxForm.clearErrors()">✕</button>
-          </div>
-
-          <div class="modal__body">
-            <!-- Drug rows -->
-            <div v-for="(item, i) in rxForm.items" :key="i" class="rx-emr-card">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-                <span class="rx-emr-num">Ubat {{ i + 1 }}</span>
-                <button type="button" class="rx-emr-remove" @click="removeRxItem(i)" :disabled="rxForm.items.length === 1">×</button>
-              </div>
-
-              <!-- Drug name search -->
-              <div class="field" style="margin-bottom:10px">
-                <label class="field__label">Nama Ubat <span style="color:var(--brand-red)">*</span></label>
-                <div style="position:relative">
-                  <div v-if="item.inventory_item_id" class="rx-linked-bar">
-                    <span class="rx-linked-name">{{ item.drug_name }}</span>
-                    <span v-if="resolvedRxInv(item)" :class="['rx-stock-badge', resolvedRxInv(item).stock_quantity <= 0 ? 'rx-stock--out' : resolvedRxInv(item).stock_quantity <= 10 ? 'rx-stock--low' : 'rx-stock--ok']">
-                      Stok: {{ resolvedRxInv(item).stock_quantity }}
-                    </span>
-                    <button type="button" class="rx-linked-clear" @click="clearRxDrug(i)">✕</button>
-                  </div>
-                  <template v-else>
-                    <input
-                      v-model="rxDrugSearch[i]"
-                      class="input"
-                      placeholder="Cari dari inventori atau taip nama ubat..."
-                      autocomplete="off"
-                      @input="rxDrugOpen[i] = true; item.drug_name = rxDrugSearch[i]"
-                      @focus="rxDrugOpen[i] = true"
-                      @blur="setTimeout(() => { rxDrugOpen[i] = false }, 180)"
-                    />
-                    <div v-if="rxDrugOpen[i] && filteredRxDrugs(i).length" class="rx-drug-dd">
-                      <button
-                        v-for="inv in filteredRxDrugs(i)" :key="inv.id"
-                        type="button"
-                        class="rx-drug-opt"
-                        :class="{ 'rx-drug-opt--out': inv.stock_quantity <= 0 }"
-                        @mousedown.prevent="selectRxDrug(i, inv)"
-                      >
-                        <span class="rx-drug-opt__name">{{ inv.name }}</span>
-                        <span class="rx-drug-opt__meta">
-                          <span v-if="inv.generic_name" style="color:var(--fg3)">{{ inv.generic_name }}</span>
-                          <span v-if="inv.form"> · {{ inv.form }}</span>
-                          <span :class="['rx-drug-opt__stock', inv.stock_quantity <= 0 ? 'out' : inv.stock_quantity <= 10 ? 'low' : '']">Stok: {{ inv.stock_quantity }}</span>
-                          <span v-if="inv.selling_price > 0" style="color:var(--brand-green-dark);font-weight:700;margin-left:auto">RM {{ Number(inv.selling_price).toFixed(2) }}</span>
-                        </span>
-                      </button>
-                    </div>
-                  </template>
-                </div>
-                <span v-if="rxForm.errors[`items.${i}.drug_name`]" style="font:500 11px var(--font-sans);color:var(--brand-red)">Wajib diisi</span>
-              </div>
-
-              <!-- Dosage · Frequency · Duration · Qty grid -->
-              <div class="rx-emr-grid">
-                <div class="field">
-                  <label class="field__label">Dos</label>
-                  <input v-model="item.dosage" class="input" placeholder="1 tablet" />
-                </div>
-                <div class="field">
-                  <label class="field__label">Kekerapan</label>
-                  <input v-model="item.frequency" class="input" placeholder="OD / BD / TDS" list="rx-freq-list" />
-                  <datalist id="rx-freq-list">
-                    <option v-for="f in RX_FREQS" :key="f" :value="f" />
-                  </datalist>
-                </div>
-                <div class="field">
-                  <label class="field__label">Tempoh</label>
-                  <input v-model="item.duration" class="input" placeholder="7 hari" />
-                </div>
-                <div class="field">
-                  <label class="field__label">Kuantiti <span style="color:var(--brand-red)">*</span></label>
-                  <input v-model.number="item.quantity" type="number" min="1" class="input" style="text-align:center" />
-                </div>
-              </div>
-
-              <!-- Instructions -->
-              <div class="field" style="margin-top:8px">
-                <label class="field__label">Arahan</label>
-                <input v-model="item.instructions" class="input" placeholder="Selepas makan" list="rx-instr-list" />
-                <datalist id="rx-instr-list">
-                  <option v-for="ins in RX_INSTRS" :key="ins" :value="ins" />
-                </datalist>
-              </div>
-            </div>
-
-            <!-- Add drug button -->
-            <button type="button" class="rx-emr-add-btn" @click="addRxItem">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Tambah Ubat
-            </button>
-
-            <!-- Notes -->
-            <div class="field" style="margin-top:14px">
-              <label class="field__label">Nota (pilihan)</label>
-              <textarea v-model="rxForm.notes" class="input" rows="2" placeholder="Nota khas untuk ahli farmasi..." style="resize:vertical"></textarea>
-            </div>
-
-            <div class="modal__footer">
-              <Btn variant="secondary" type="button" @click="showRxModal = false; rxForm.clearErrors()">Batal</Btn>
-              <Btn variant="primary" :disabled="rxForm.processing || !rxForm.items.some(i => i.drug_name)" @click="submitRx">
-                {{ rxForm.processing ? 'Menghantar...' : 'Hantar ke Farmasi' }}
-              </Btn>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Teleport>
 
     <!-- ── Issue MC Modal ────────────────────────────────── -->
     <Teleport to="body">
@@ -1287,6 +1557,55 @@ const soapHints = computed(() => ({
       </div>
     </Teleport>
 
+    <!-- ── Rx Delete confirm ─────────────────────────── -->
+    <Teleport to="body">
+      <div v-if="showRxDelId !== null" class="modal-backdrop" @click.self="showRxDelId = null">
+        <div class="modal modal--sm">
+          <div class="modal__header">
+            <h3 class="modal__title" style="color:var(--brand-red)">Padam Preskripsi?</h3>
+            <button class="modal__close" @click="showRxDelId = null">✕</button>
+          </div>
+          <div class="modal__body">
+            <p style="font:400 13px var(--font-sans);color:var(--fg2);margin:0 0 6px">
+              Preskripsi
+              <strong class="mono">{{ selected?.prescriptions?.find(r => r.id === showRxDelId)?.rx_number }}</strong>
+              akan dipadam sepenuhnya.
+            </p>
+            <p style="font:400 12px var(--font-sans);color:var(--fg3);margin:0">Tindakan ini tidak boleh dibatalkan.</p>
+            <div class="modal__footer">
+              <Btn variant="secondary" @click="showRxDelId = null">Batal</Btn>
+              <Btn variant="primary" style="background:var(--brand-red)" @click="deleteRx(showRxDelId)">Padam</Btn>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- ── Prescription item delete confirm ─────────── -->
+    <Teleport to="body">
+      <div v-if="showItemDelId !== null" class="modal-backdrop" @click.self="showItemDelId = null">
+        <div class="modal modal--sm">
+          <div class="modal__header">
+            <h3 class="modal__title" style="color:var(--brand-red)">Padam Ubat?</h3>
+            <button class="modal__close" @click="showItemDelId = null">✕</button>
+          </div>
+          <div class="modal__body">
+            <p style="font:400 13px var(--font-sans);color:var(--fg2);margin:0 0 6px">
+              <strong>{{ selected?.prescriptions?.flatMap(r => r.items).find(i => i.id === showItemDelId)?.drug_name }}</strong>
+              akan dibuang dari preskripsi.
+            </p>
+            <p style="font:400 12px var(--font-sans);color:var(--fg3);margin:0">
+              Jika ini adalah ubat terakhir, keseluruhan preskripsi akan dipadam.
+            </p>
+            <div class="modal__footer">
+              <Btn variant="secondary" @click="showItemDelId = null">Batal</Btn>
+              <Btn variant="primary" style="background:var(--brand-red)" @click="deleteItem(showItemDelId)">Padam</Btn>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- ── Close confirm ──────────────────────────────── -->
     <Teleport to="body">
       <div v-if="showCloseConfirm" class="modal-backdrop" @click.self="showCloseConfirm = false">
@@ -1528,84 +1847,206 @@ const soapHints = computed(() => ({
 .ref-urgency-urgent    { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
 .ref-urgency-emergency { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; }
 
-/* ── Rx status chip (EMR card) ── */
+/* ── Rx status chip ── */
 .rx-status-chip {
   display: inline-flex; align-items: center;
   padding: 1px 7px; border-radius: 999px;
   font: 600 9.5px var(--font-sans); text-transform: uppercase; letter-spacing: .04em;
   border: 1px solid var(--border); background: var(--bg-soft); color: var(--fg2);
 }
+.rx-status--draft     { background:#F1F5F9; border-color:#CBD5E1; color:#475569; font-style:italic; }
 .rx-status--pending   { background:#FFF7ED; border-color:#FED7AA; color:#C2410C; }
 .rx-status--verifying { background:#EFF6FF; border-color:#93C5FD; color:#1D4ED8; }
 .rx-status--ready     { background:var(--brand-green-light); border-color:var(--brand-green); color:var(--brand-green-dark); }
 .rx-status--dispensed { background:#F9FAFB; border-color:#D1D5DB; color:#6B7280; }
 .rx-status--cancelled { background:#F9FAFB; border-color:#D1D5DB; color:#9CA3AF; }
 
-/* ── Rx modal internals ── */
-.rx-emr-card {
+/* ── Right column "+" hint button ── */
+.rx-tab-hint {
+  font: 600 11px var(--font-sans); color: var(--brand-green-dark);
+  background: var(--brand-green-light); border: 1px solid var(--brand-green);
+  border-radius: 6px; padding: 3px 9px; cursor: pointer;
+}
+.rx-tab-hint:hover { background: var(--brand-green); color: #fff; }
+
+/* ── Rx inline in SOAP card ── */
+.rx-inline-wrap {
+  flex: 1; overflow-y: auto; padding: 14px 18px;
+  display: flex; flex-direction: column;
+}
+.rx-inline-title {
+  font: 700 10.5px var(--font-sans); text-transform: uppercase; letter-spacing: .06em;
+  color: var(--fg3); margin-bottom: 10px;
+}
+
+/* Existing prescription card */
+.rx-existing-card {
+  border: 1px solid var(--border); border-radius: 10px;
+  padding: 10px 12px; margin-bottom: 8px; background: var(--bg-soft);
+}
+.rx-existing-card__head {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;
+}
+.rx-existing-card__num  { font: 700 11px var(--font-mono); color: var(--brand-green-dark); }
+.rx-existing-card__date { font: 500 10px var(--font-sans); color: var(--fg3); margin-left: auto; }
+.rx-existing-print {
+  display: inline-flex; align-items: center; gap: 3px;
+  font: 600 11px var(--font-sans); color: var(--brand-green-dark);
+  text-decoration: none; padding: 2px 7px;
+  border: 1px solid var(--brand-green); border-radius: 4px;
+  background: var(--brand-green-light);
+}
+.rx-existing-print:hover { background: var(--brand-green); color: #fff; }
+.rx-del-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 6px;
+  background: #fff; color: var(--fg3); cursor: pointer; flex-shrink: 0;
+}
+.rx-del-btn:hover { background: #FEE2E2; color: #dc2626; border-color: #FECACA; }
+
+/* Per-item inline edit */
+.rx-item-edit-wrap {
+  border: 1.5px solid var(--brand-green); border-radius: 10px;
+  padding: 12px; margin: 6px 0; background: #fff;
+}
+.rx-existing-drug__actions {
+  display: flex; gap: 3px; margin-left: auto; flex-shrink: 0;
+}
+.rx-item-edit-btn, .rx-item-del-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 5px; border: 1px solid var(--border);
+  background: #fff; cursor: pointer; color: var(--fg3);
+}
+.rx-item-edit-btn:hover { background: #EFF6FF; color: #1D4ED8; border-color: #93C5FD; }
+.rx-item-del-btn:hover  { background: #FEE2E2; color: #dc2626; border-color: #FECACA; }
+.rx-edit-save {
+  padding: 5px 14px; border-radius: 7px; border: none;
+  background: var(--brand-green); color: #fff;
+  font: 600 12px var(--font-sans); cursor: pointer;
+}
+.rx-edit-save:hover:not(:disabled) { filter: brightness(1.1); }
+.rx-edit-save:disabled { opacity: .5; cursor: default; }
+.rx-edit-cancel {
+  padding: 5px 14px; border-radius: 7px;
+  border: 1px solid var(--border); background: #fff;
+  color: var(--fg2); font: 500 12px var(--font-sans); cursor: pointer;
+}
+.rx-edit-cancel:hover { background: var(--bg-soft); }
+.rx-submit-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-top: 14px; padding-bottom: 4px; flex-wrap: wrap;
+}
+.rx-pending-hint {
+  display: flex; align-items: center; gap: 5px;
+  font: 500 11px var(--font-sans); color: var(--fg3); flex: 1;
+}
+.rx-existing-drug {
+  display: flex; align-items: baseline; gap: 5px;
+  font: 500 12px var(--font-sans); color: var(--fg1); margin-bottom: 3px; flex-wrap: wrap;
+}
+.rx-existing-drug__dot  { width: 5px; height: 5px; border-radius: 50%; background: var(--brand-green); flex-shrink: 0; margin-top: 4px; }
+.rx-existing-drug__name { font-weight: 600; }
+.rx-existing-drug__use  { font: 400 11px var(--font-sans); color: var(--fg2); }
+.rx-existing-drug__meta { font: 400 11px var(--font-sans); color: var(--fg3); }
+.rx-existing-drug__qty  { font: 700 11px var(--font-mono); color: var(--brand-green-dark); margin-left: auto; }
+.rx-existing-drug__tag  { font: 700 9px var(--font-sans); padding: 1px 5px; border-radius: 999px; }
+.rx-existing-drug__tag--prn { background:#FFF7ED; color:#C2410C; border:1px solid #FED7AA; }
+.rx-existing-drug__tag--cc  { background:#EFF6FF; color:#1D4ED8; border:1px solid #93C5FD; }
+
+/* ── Drug entry card (matches Pharmacy) ── */
+.rx-drug-card {
   border: 1.5px solid var(--border); border-radius: 12px;
   padding: 14px; margin-bottom: 10px; background: #fff;
-  transition: border-color .15s;
 }
-.rx-emr-card:focus-within { border-color: var(--brand-green); box-shadow: 0 0 0 3px rgba(27,138,74,.08); }
-.rx-emr-num {
+.rx-drug-card:focus-within { border-color: var(--brand-green); box-shadow: 0 0 0 3px rgba(27,138,74,.08); }
+.rx-drug-card__head {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
+}
+.rx-drug-card__num {
   font: 700 10.5px var(--font-sans); text-transform: uppercase; letter-spacing: .07em;
   color: var(--brand-green-dark); background: var(--brand-green-light); padding: 3px 10px; border-radius: 999px;
 }
-.rx-emr-remove {
+.rx-remove-btn {
   width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 6px;
-  background: #fff; color: var(--fg3); cursor: pointer; font-size: 15px;
-  display: grid; place-items: center;
+  background: #fff; color: var(--fg3); cursor: pointer; font-size: 15px; display: grid; place-items: center;
 }
-.rx-emr-remove:hover:not(:disabled) { background: #FEE2E2; color: #dc2626; border-color: #FECACA; }
-.rx-emr-remove:disabled { opacity: .3; cursor: default; }
-.rx-emr-grid { display: grid; grid-template-columns: 1fr 1.4fr 0.9fr 0.7fr; gap: 10px; }
-.rx-emr-add-btn {
+.rx-remove-btn:hover:not(:disabled) { background: #FEE2E2; color: #dc2626; border-color: #FECACA; }
+.rx-remove-btn:disabled { opacity: .3; cursor: default; }
+
+/* Rows (matches Pharmacy rx-row layout) */
+.rx-row { display: grid; gap: 10px; margin-bottom: 10px; }
+.rx-row--2      { grid-template-columns: 1fr 1fr; }
+.rx-row--4      { grid-template-columns: 1fr 0.8fr 1.1fr 0.9fr; }
+.rx-row--footer { grid-template-columns: 70px 1fr auto auto; align-items: end; }
+.rx-row--note   { grid-template-columns: 1fr; }
+.rx-field--qty  { max-width: 70px; }
+
+/* Linked drug bar */
+.drug-linked-bar {
+  display: flex; align-items: center; gap: 6px; min-height: 34px;
+  padding: 5px 10px; border: 1.5px solid var(--brand-green);
+  border-radius: 8px; background: var(--brand-green-light);
+}
+.drug-linked-name {
+  flex: 1; font: 600 12.5px var(--font-sans); color: var(--brand-green-dark);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.drug-stock-badge { font: 700 10px var(--font-mono); padding: 1px 6px; border-radius: 999px; flex-shrink: 0; }
+.drug-stock-badge--ok  { background: var(--brand-green-light); color: var(--brand-green-dark); border: 1px solid var(--brand-green); }
+.drug-stock-badge--low { background: #FEF3C7; color: #92400E; border: 1px solid #F59E0B; }
+.drug-stock-badge--out { background: #FEE2E2; color: #991B1B; border: 1px solid #FECACA; }
+.drug-clear-btn {
+  width: 18px; height: 18px; border: 0; background: transparent; cursor: pointer;
+  color: var(--brand-green-dark); font-size: 11px; display: grid; place-items: center; opacity: .7;
+}
+.drug-clear-btn:hover { opacity: 1; }
+
+/* Drug search dropdown */
+.drug-dropdown {
+  position: absolute; top: calc(100% + 3px); left: 0; right: 0; z-index: 200;
+  background: #fff; border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: var(--shadow-md); max-height: 220px; overflow-y: auto;
+}
+.drug-option {
+  display: block; width: 100%; text-align: left; padding: 8px 12px;
+  border: 0; background: transparent; cursor: pointer;
+}
+.drug-option:hover { background: var(--bg-soft); }
+.drug-option + .drug-option { border-top: 1px solid var(--bg-muted); }
+.drug-option--out { opacity: .5; }
+.drug-option__name { display: block; font: 600 12.5px var(--font-sans); color: var(--fg1); }
+.drug-option__meta { display: flex; align-items: center; gap: 6px; font: 500 11px var(--font-sans); margin-top: 2px; flex-wrap: wrap; }
+.drug-option__stock { font: 700 10.5px var(--font-mono); padding: 1px 6px; border-radius: 999px; background: var(--brand-green-light); color: var(--brand-green-dark); }
+.drug-option__stock.low { background: #FEF3C7; color: #92400E; }
+.drug-option__stock.out { background: #FEE2E2; color: #991B1B; }
+.drug-option__price { color: var(--brand-green-dark); font-weight: 700; margin-left: auto; }
+
+/* Add drug button */
+.rx-add-btn {
   display: flex; align-items: center; justify-content: center; gap: 6px;
   width: 100%; padding: 9px; margin-top: 4px;
   border: 1.5px dashed var(--border); border-radius: 10px;
   background: transparent; color: var(--brand-green-dark);
   font: 600 13px var(--font-sans); cursor: pointer;
 }
-.rx-emr-add-btn:hover { background: var(--brand-green-light); border-color: var(--brand-green); }
+.rx-add-btn:hover { background: var(--brand-green-light); border-color: var(--brand-green); }
 
-/* Rx drug search dropdown */
-.rx-drug-dd {
-  position: absolute; top: calc(100% + 3px); left: 0; right: 0; z-index: 200;
-  background: #fff; border: 1px solid var(--border); border-radius: 10px;
-  box-shadow: var(--shadow-md); max-height: 220px; overflow-y: auto;
-}
-.rx-drug-opt {
-  display: block; width: 100%; text-align: left; padding: 8px 12px;
-  border: 0; background: transparent; cursor: pointer;
-}
-.rx-drug-opt:hover { background: var(--bg-soft); }
-.rx-drug-opt + .rx-drug-opt { border-top: 1px solid var(--bg-muted); }
-.rx-drug-opt--out { opacity: .5; }
-.rx-drug-opt__name { display: block; font: 600 12.5px var(--font-sans); color: var(--fg1); }
-.rx-drug-opt__meta { display: flex; align-items: center; gap: 6px; font: 500 11px var(--font-sans); margin-top: 2px; flex-wrap: wrap; }
-.rx-drug-opt__stock { font: 700 10.5px var(--font-mono); padding: 1px 6px; border-radius: 999px; background: var(--brand-green-light); color: var(--brand-green-dark); }
-.rx-drug-opt__stock.low { background: #FEF3C7; color: #92400E; }
-.rx-drug-opt__stock.out { background: #FEE2E2; color: #991B1B; }
+/* PRN / Complete toggle */
+.rx-toggle { display: flex; align-items: center; gap: 5px; cursor: pointer; padding-bottom: 1px; }
+.rx-toggle input[type=checkbox] { width: 14px; height: 14px; accent-color: var(--brand-green); cursor: pointer; }
+.rx-toggle__txt { display: flex; flex-direction: column; line-height: 1.2; }
+.rx-toggle__txt strong { font: 700 11px var(--font-sans); color: var(--fg1); }
+.rx-toggle__txt small  { font: 400 9.5px var(--font-sans); color: var(--fg3); }
 
-/* Rx linked drug bar */
-.rx-linked-bar {
-  display: flex; align-items: center; gap: 6px; min-height: 38px;
-  padding: 6px 10px; border: 1.5px solid var(--brand-green);
-  border-radius: 8px; background: var(--brand-green-light);
-}
-.rx-linked-name { flex: 1; font: 600 12.5px var(--font-sans); color: var(--brand-green-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rx-stock-badge { font: 700 10.5px var(--font-mono); padding: 1px 7px; border-radius: 999px; flex-shrink: 0; }
-.rx-stock--ok  { background: var(--brand-green-light); color: var(--brand-green-dark); border: 1px solid var(--brand-green); }
-.rx-stock--low { background: #FEF3C7; color: #92400E; border: 1px solid #F59E0B; }
-.rx-stock--out { background: #FEE2E2; color: #991B1B; border: 1px solid #FECACA; }
-.rx-linked-clear {
-  width: 18px; height: 18px; border: 0; background: transparent; cursor: pointer;
-  color: var(--brand-green-dark); font-size: 11px; display: grid; place-items: center; opacity: .7;
-}
-.rx-linked-clear:hover { opacity: 1; }
+/* Note textarea */
+.rx-item-note { min-height: 44px; }
 
-@media (max-width: 640px) {
-  .rx-emr-grid { grid-template-columns: 1fr 1fr; }
+/* Smaller inputs */
+.input--sm { font-size: 12px !important; padding: 6px 9px !important; }
+
+@media (max-width: 900px) {
+  .rx-row--4      { grid-template-columns: 1fr 1fr; }
+  .rx-row--footer { grid-template-columns: 70px 1fr; }
+  .rx-toggle { margin-top: 8px; }
 }
 </style>
