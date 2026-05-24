@@ -22,28 +22,30 @@ body {
     padding: 16mm 18mm 14mm;
     display: flex;
     flex-direction: column;
+    position: relative;
 }
 
-/* ── Header ── */
-.hd {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    padding-bottom: 14px;
-    border-bottom: 2px solid #1b8a4a;
-    margin-bottom: 18px;
+/* ── Letterhead header ── */
+.lh-wrap {
+    margin: -16mm -18mm 14px;
+    flex-shrink: 0;
+    line-height: 0;
 }
-.hd-brand { display: flex; align-items: center; gap: 12px; }
-.hd-logo {
-    width: 52px; height: 52px;
-    border-radius: 10px;
-    object-fit: contain;
-    border: 1px solid #e5e7eb;
+.lh-wrap img { width: 100%; display: block; height: auto; }
+
+/* ── Watermark ── */
+.watermark {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%) rotate(-35deg);
+    font: 700 70px 'Segoe UI', Arial, sans-serif;
+    color: rgba(27,138,74,.04);
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 0;
+    letter-spacing: 6px;
 }
-.hd-name  { font-size: 20px; font-weight: 800; color: #1b8a4a; line-height: 1.2; }
-.hd-sub   { font-size: 11px; color: #6b7280; margin-top: 2px; }
-.hd-addr  { text-align: right; font-size: 11px; color: #6b7280; line-height: 1.7; }
-.hd-addr strong { display: block; font-size: 12px; color: #374151; margin-bottom: 2px; }
+.content { position: relative; z-index: 1; display: flex; flex-direction: column; flex: 1; }
 
 /* ── Invoice meta ── */
 .meta-row {
@@ -177,7 +179,7 @@ body {
 @media print {
     .print-bar { display: none !important; }
     body { padding: 0; background: #fff; }
-    .page { box-shadow: none; padding: 12mm 14mm 10mm; width: 100%; }
+    .page { box-shadow: none; padding: 16mm 18mm 14mm; width: 100%; }
     @page { margin: 0; size: A4; }
 }
 </style>
@@ -197,23 +199,12 @@ body {
 </div>
 
 <div class="page">
+    <div class="watermark">AL-HUDA</div>
+    <div class="content">
 
-    {{-- ── Clinic header ── --}}
-    <div class="hd">
-        <div class="hd-brand">
-            <img src="{{ $clinic->logo_url }}" alt="" class="hd-logo" />
-            <div>
-                <div class="hd-name">{{ $clinic->name }}</div>
-                <div class="hd-sub">{{ $clinic->tagline }}</div>
-            </div>
-        </div>
-        <div class="hd-addr">
-            <strong>{{ $clinic->name }}</strong>
-            {{ $clinic->address }}<br>
-            {{ $clinic->postcode }} {{ $clinic->city }}, {{ $clinic->state }}<br>
-            Tel: {{ $clinic->phone }}@if($clinic->fax) · Faks: {{ $clinic->fax }}@endif
-            @if($clinic->email)<br>{{ $clinic->email }}@endif
-        </div>
+    {{-- ── Letterhead ── --}}
+    <div class="lh-wrap">
+        <img src="{{ asset('images/letterheadtop.png') }}" alt="{{ $clinic->name }}" />
     </div>
 
     {{-- ── Invoice meta ── --}}
@@ -367,6 +358,7 @@ body {
         </div>
     </div>
 
+    </div>{{-- .content --}}
 </div>
 </body>
 </html>
