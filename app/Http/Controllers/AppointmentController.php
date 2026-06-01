@@ -56,7 +56,7 @@ class AppointmentController extends Controller
             ? Carbon::parse($request->input('week'))->startOfWeek(Carbon::MONDAY)
             : now()->startOfWeek(Carbon::MONDAY);
 
-        $weekEnd = $weekStart->copy()->addDays(5); // Mon–Sat
+        $weekEnd = $weekStart->copy()->addDays(6); // Mon–Sun
 
         // Fetch week's appointments
         $weekAppts = Appointment::with('patient')
@@ -75,7 +75,7 @@ class AppointmentController extends Controller
 
         // Build week dates array
         $weekDates = [];
-        for ($i = 0; $i <= 5; $i++) {
+        for ($i = 0; $i <= 6; $i++) {
             $d = $weekStart->copy()->addDays($i);
             $weekDates[] = [
                 'date'     => $d->format('Y-m-d'),
