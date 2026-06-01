@@ -54,6 +54,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/emr/{visit}/diagnoses',                      [EMRController::class, 'storeDiagnosis'])->name('emr.diagnoses.store');
     Route::delete('/emr/{visit}/diagnoses/{diagnosis}',        [EMRController::class, 'destroyDiagnosis'])->name('emr.diagnoses.destroy');
     Route::patch('/emr/{visit}/close',                         [EMRController::class, 'close'])->name('emr.close');
+    Route::patch('/emr/{visit}/reopen',                        [EMRController::class, 'reopen'])->name('emr.reopen');
     Route::delete('/emr/{visit}',                              [EMRController::class, 'destroy'])->name('emr.destroy');
     Route::post('/emr/{visit}/prescription',                   [EMRController::class, 'storePrescription'])->name('emr.prescription.store');
     Route::delete('/emr/prescriptions/{prescription}',         [EMRController::class, 'destroyPrescription'])->name('emr.prescription.destroy');

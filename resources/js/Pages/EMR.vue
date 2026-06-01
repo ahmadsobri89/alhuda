@@ -479,10 +479,14 @@ watch(() => props.selected?.id, () => {
 
 /* ── Close / Delete visit ─────────────────────────── */
 const showCloseConfirm  = ref(false)
+const showReopenConfirm = ref(false)
 const showDeleteConfirm = ref(false)
 
 function closeVisit() {
   router.patch(`/emr/${props.selected.id}/close`, {}, { preserveScroll: true, onSuccess: () => { showCloseConfirm.value = false } })
+}
+function reopenVisit() {
+  router.patch(`/emr/${props.selected.id}/reopen`, {}, { preserveScroll: true, onSuccess: () => { showReopenConfirm.value = false } })
 }
 function deleteVisit() {
   router.delete(`/emr/${props.selected.id}`, { onSuccess: () => { showDeleteConfirm.value = false } })
@@ -531,7 +535,7 @@ const soapHints = computed(() => ({
              @click="openVisit(v.id)">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
             <span style="font:600 12.5px var(--font-sans);color:var(--fg1);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ v.patient_name }}</span>
-            <Badge :tone="v.status === 'open' ? 'yellow' : 'green'" style="font-size:9px;padding:1px 5px">{{ v.status === 'open' ? t('emr_filter_open') : t('emr_filter_closed') }}</Badge>
+            <Badge :tone="v.status === 'open' ? 'yellow' : v.status === 'reopened' ? 'orange' : 'green'" style="font-size:9px;padding:1px 5px">{{ v.status === 'open' ? t('emr_filter_open') : v.status === 'reopened' ? t('emr_filter_reopened') : t('emr_filter_closed') }}</Badge>
           </div>
           <div style="font:500 10.5px var(--font-mono);color:var(--fg3)">{{ v.patient_ic }} · {{ v.visit_date }}</div>
           <div v-if="v.chief_complaint" style="font:400 11px var(--font-sans);color:var(--fg2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ v.chief_complaint }}</div>
@@ -692,7 +696,7 @@ const soapHints = computed(() => ({
                   @input="soapDirty = true"
                 ></textarea>
                 <div class="row" style="margin-top:8px;gap:6px;flex-shrink:0">
-                  <Btn v-if="selected.status === 'open'" variant="primary" size="sm"
+                  <Btn v-if="selected.status === 'open' || selected.status === 'reopened'" variant="primary" size="sm"
                        :disabled="soapForm.processing || !soapDirty" @click="saveSoap">
                     {{ soapForm.processing ? t('emr_saving') : t('emr_save_soap') }}
                   </Btn>
@@ -868,7 +872,7 @@ const soapHints = computed(() => ({
                 </template>
 
                 <!-- New prescription form (open visits only) -->
-                <template v-if="selected.status === 'open'">
+                <template v-if="selected.status === 'open' || selected.status === 'reopened'">
                   <div class="rx-inline-title">Tambah Preskripsi Baru</div>
 
                   <div v-for="(item, i) in rxForm.items" :key="i" class="rx-drug-card">
@@ -1071,7 +1075,7 @@ const soapHints = computed(() => ({
                 </template>
 
                 <!-- Add service form (open visits only) -->
-                <template v-if="selected.status === 'open'">
+                <template v-if="selected.status === 'open' || selected.status === 'reopened'">
                   <div class="rx-inline-title">Tambah Perkhidmatan</div>
 
                   <!-- Quick picks -->
@@ -1138,13 +1142,13 @@ const soapHints = computed(() => ({
               <div class="card__header">
                 <h3 class="card__title">{{ t('emr_dx') }}</h3>
                 <div class="spacer"></div>
-                <Btn v-if="selected.status === 'open'" variant="ghost" size="sm" @click="showDxForm = !showDxForm">
+                <Btn v-if="selected.status === 'open' || selected.status === 'reopened'" variant="ghost" size="sm" @click="showDxForm = !showDxForm">
                   {{ showDxForm ? t('btn_close') : t('emr_add_dx') }}
                 </Btn>
               </div>
 
               <!-- Add diagnosis form -->
-              <div v-if="showDxForm && selected.status === 'open'" class="card__body" style="border-bottom:1px solid var(--border)">
+              <div v-if="showDxForm && (selected.status === 'open' || selected.status === 'reopened')" class="card__body" style="border-bottom:1px solid var(--border)">
                 <div style="font:700 11px var(--font-sans);letter-spacing:.05em;text-transform:uppercase;color:var(--fg3);margin-bottom:8px">{{ t('emr_quick_select') }}</div>
                 <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">
                   <button v-for="q in QUICK_ICD" :key="q.code"
@@ -1186,7 +1190,7 @@ const soapHints = computed(() => ({
                   </Badge>
                   <div style="flex:1;font:500 13px var(--font-sans);color:var(--fg1)">{{ dx.description }}</div>
                   <span style="font:500 11px var(--font-sans);color:var(--fg3)">{{ dx.type === 'primary' ? t('emr_dx_primary') : t('emr_dx_secondary') }}</span>
-                  <button v-if="selected.status === 'open'"
+                  <button v-if="selected.status === 'open' || selected.status === 'reopened'"
                           style="background:none;border:none;color:var(--fg3);cursor:pointer;font-size:14px;padding:0 2px"
                           @click="removeDiagnosis(dx.id)">✕</button>
                 </div>
@@ -1215,13 +1219,17 @@ const soapHints = computed(() => ({
                 </div>
                 <div class="info-row">
                   <span class="info-label">{{ t('emr_lbl_status') }}</span>
-                  <Badge :tone="selected.status === 'open' ? 'yellow' : 'green'">
-                    {{ selected.status === 'open' ? t('emr_status_open') : t('emr_status_closed') }}
+                  <Badge :tone="selected.status === 'open' ? 'yellow' : selected.status === 'reopened' ? 'orange' : 'green'">
+                    {{ selected.status === 'open' ? t('emr_status_open') : selected.status === 'reopened' ? t('emr_status_reopened') : t('emr_status_closed') }}
                   </Badge>
                 </div>
                 <div v-if="selected.signed_by" class="info-row">
                   <span class="info-label">{{ t('emr_signed_label') }}</span>
                   <span class="info-val" style="font-size:11px">{{ selected.signed_by }}<br>{{ selected.signed_at }}</span>
+                </div>
+                <div v-if="selected.reopened_by" class="info-row">
+                  <span class="info-label">{{ t('emr_reopened_label') }}</span>
+                  <span class="info-val" style="font-size:11px">{{ selected.reopened_by }}<br>{{ selected.reopened_at }}</span>
                 </div>
               </div>
             </div>
@@ -1239,9 +1247,27 @@ const soapHints = computed(() => ({
                     {{ t('emr_save_soap') }}
                   </Btn>
                 </template>
-                <div v-else style="background:var(--brand-green-light);border:1px solid var(--brand-green);border-radius:8px;padding:10px 12px;font:500 12px var(--font-sans);color:var(--brand-green-dark);text-align:center">
-                  {{ t('emr_record_closed') }}
-                </div>
+                <template v-else-if="selected.status === 'closed'">
+                  <Btn variant="primary" style="width:100%;justify-content:center" @click="showReopenConfirm = true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"/></svg>
+                    {{ t('emr_reopen_record') }}
+                  </Btn>
+                  <div style="background:var(--brand-green-light);border:1px solid var(--brand-green);border-radius:8px;padding:10px 12px;font:500 12px var(--font-sans);color:var(--brand-green-dark);text-align:center">
+                    {{ t('emr_record_closed') }}
+                  </div>
+                </template>
+                <template v-else-if="selected.status === 'reopened'">
+                  <Btn variant="primary" style="width:100%;justify-content:center" @click="showCloseConfirm = true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    {{ t('emr_close_sign') }}
+                  </Btn>
+                  <Btn variant="secondary" style="width:100%;justify-content:center" @click="saveSoap" :disabled="soapForm.processing">
+                    {{ t('emr_save_soap') }}
+                  </Btn>
+                  <div style="background:var(--brand-orange-light);border:1px solid var(--brand-orange);border-radius:8px;padding:10px 12px;font:500 12px var(--font-sans);color:var(--brand-orange-dark);text-align:center">
+                    {{ t('emr_record_reopened') }}
+                  </div>
+                </template>
                 <div class="hr"></div>
                 <Btn variant="ghost" style="width:100%;justify-content:center;color:var(--brand-red)" @click="showDeleteConfirm = true">
                   {{ t('emr_delete_record') }}
@@ -1800,6 +1826,30 @@ const soapHints = computed(() => ({
               <Btn variant="primary" @click="closeVisit">
                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 {{ t('emr_confirm_close_btn') }}
+              </Btn>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- ── Reopen confirm ─────────────────────────────── -->
+    <Teleport to="body">
+      <div v-if="showReopenConfirm" class="modal-backdrop" @click.self="showReopenConfirm = false">
+        <div class="modal modal--sm">
+          <div class="modal__header">
+            <h3 class="modal__title">{{ t('emr_confirm_reopen') }}</h3>
+            <button class="modal__close" @click="showReopenConfirm = false">✕</button>
+          </div>
+          <div class="modal__body">
+            <p style="font:400 14px var(--font-sans);color:var(--fg2);margin:0 0 6px">
+              {{ t('emr_reopen_body_patient', { name: selected?.patient_name }) }}
+            </p>
+            <div class="modal__footer">
+              <Btn variant="secondary" @click="showReopenConfirm = false">{{ t('btn_cancel') }}</Btn>
+              <Btn variant="primary" @click="reopenVisit">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"/></svg>
+                {{ t('emr_confirm_reopen_btn') }}
               </Btn>
             </div>
           </div>

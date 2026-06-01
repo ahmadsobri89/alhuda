@@ -16,14 +16,15 @@ class Visit extends Model
         'patient_id', 'user_id', 'appointment_id', 'doctor_name',
         'visit_date', 'chief_complaint', 'status',
         'soap_s', 'soap_o', 'soap_a', 'soap_p',
-        'signed_at', 'signed_by',
+        'signed_at', 'signed_by', 'reopened_at', 'reopened_by',
     ];
 
     protected function casts(): array
     {
         return [
-            'visit_date' => 'date',
-            'signed_at'  => 'datetime',
+            'visit_date'  => 'date',
+            'signed_at'   => 'datetime',
+            'reopened_at' => 'datetime',
         ];
     }
 

@@ -194,6 +194,8 @@ class EMRController extends Controller
                     'total_price' => $i->total_price,
                 ])->values()->toArray(),
             ] : null,
+            'reopened_at'        => $v->reopened_at?->format('d/m/Y H:i'),
+            'reopened_by'        => $v->reopened_by,
         ];
     }
 
@@ -351,6 +353,31 @@ class EMRController extends Controller
         }
 
         return back()->with('success', $msg);
+    }
+
+    public function reopen(Visit $visit)
+    {
+        // Authorization: Only Admin or the doctor who originally signed can reopen
+        $user = Auth::user();
+        if ($user->role !== 'admin' && ($user->role !== 'doctor' || $user->name !== $visit->signed_by)) {
+            return back()->with('error', 'Anda tidak mempunyai kebenaran untuk membuka semula rekod ini.');
+        }
+
+        // Record old status before reopening
+        $oldStatus = $visit->status;
+
+        $visit->update([
+            'status'      => 'reopened',
+            'reopened_at' => now(),
+            'reopened_by' => Auth::user()->name,
+        ]);
+
+        AuditLog::record('emr.reopen', "{$visit->patient->name} · {$visit->visit_date->format('d/m/Y')}", true, [
+            'old_status'    => $oldStatus,
+            'reopened_from' => $visit->signed_by,
+        ]);
+
+        return back()->with('success', 'Rekod telah dibuka semula untuk penyuntingan.');
     }
 
     public function destroy(Visit $visit)
