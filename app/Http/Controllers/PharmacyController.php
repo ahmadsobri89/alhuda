@@ -57,6 +57,11 @@ class PharmacyController extends Controller
     {
         $search = $request->input('search');
 
+        $perPage = (int) $request->input('per_page', 15);
+        if (! in_array($perPage, [15, 30, 50, 100], true)) {
+            $perPage = 15;
+        }
+
         $queueStatuses = ['pending', 'verifying', 'ready'];
 
         $queue = Prescription::with(['patient', 'items'])
@@ -74,7 +79,7 @@ class PharmacyController extends Controller
                 })
             )
             ->orderByDesc('updated_at')
-            ->paginate(15)
+            ->paginate($perPage)
             ->withQueryString()
             ->through(fn ($rx) => $this->formatRx($rx));
 
@@ -95,7 +100,7 @@ class PharmacyController extends Controller
             'queue'             => $queue,
             'history'           => $history,
             'patients'          => $patients,
-            'filters'           => ['search' => $search],
+            'filters'           => ['search' => $search, 'per_page' => $perPage],
             'allergiesInQueue'  => $allergiesInQueue,
             'lookups'           => $lookups,
             'drugItems'         => $drugItems,

@@ -15,15 +15,21 @@ use Inertia\Inertia;
 
 class SettingsController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $users = User::orderBy('name')->get(['id', 'name', 'email', 'role', 'mmc_number', 'mfa_enabled', 'status']);
 
         $policies = SecurityPolicy::orderBy('id')->get(['id', 'key', 'label', 'enabled']);
 
+        $perPage = (int) $request->input('per_page', 20);
+        if (! in_array($perPage, [20, 50, 100], true)) {
+            $perPage = 20;
+        }
+
         $auditLogs = AuditLog::with('user:id,name')
             ->orderByDesc('created_at')
-            ->paginate(20)
+            ->paginate($perPage)
+            ->withQueryString()
             ->through(fn ($r) => [
                 'id'  => $r->id,
                 'ts'  => $r->created_at->format('d/m H:i:s'),
@@ -65,6 +71,7 @@ class SettingsController extends Controller
             'policies'         => $policies,
             'auditLogs'        => $auditLogs,
             'lookupCategories' => $lookupCategories,
+            'filters'          => ['per_page' => $perPage],
             'clinic'           => [
                 'name'         => $cp->name,
                 'tagline'      => $cp->tagline,

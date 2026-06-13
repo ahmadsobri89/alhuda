@@ -19,16 +19,34 @@ const props = defineProps({
 const page = usePage()
 const flash = computed(() => page.props.flash?.success)
 
-// ─── Search ────────────────────────────────────────────────────────────────
-const search = ref(props.filters.search ?? '')
+// ─── Search & pagination ────────────────────────────────────────────────────
+const search  = ref(props.filters.search ?? '')
+const perPage = ref(props.filters.per_page ?? 15)
+const PER_PAGE_OPTIONS = [15, 30, 50, 100]
 let searchTimeout = null
 
-watch(search, (val) => {
+function queryParams(extra = {}) {
+  return {
+    search: search.value || undefined,
+    per_page: perPage.value !== 15 ? perPage.value : undefined,
+    ...extra,
+  }
+}
+
+watch(search, () => {
   clearTimeout(searchTimeout)
   searchTimeout = setTimeout(() => {
-    router.get(route('patients'), { search: val || undefined }, { preserveState: true, replace: true })
+    router.get(route('patients'), queryParams(), { preserveState: true, replace: true })
   }, 350)
 })
+
+function setPerPage() {
+  router.get(route('patients'), queryParams(), { preserveState: true, replace: true })
+}
+
+function goToPage(url) {
+  if (url) router.get(url, queryParams(), { preserveState: true, preserveScroll: true })
+}
 
 // ─── Lookups from DB ───────────────────────────────────────────────────────
 const states           = computed(() => (props.lookups?.negeri          ?? []).map(v => v.code))
@@ -169,7 +187,8 @@ function genderLabel(g) { return g === 'male' ? t('gender_male') : t('gender_fem
     </div>
 
     <!-- Table -->
-    <div class="card" style="overflow:hidden">
+    <div class="card table-card">
+      <div class="table-scroll">
       <div class="table__head" style="grid-template-columns:130px 2fr 1.3fr 70px 1.5fr 100px 110px 110px">
         <div>{{ t('pat_col_id') }}</div><div>{{ t('pat_col_patient') }}</div><div>{{ t('pat_col_ic') }}</div><div>{{ t('pat_col_visits') }}</div><div>{{ t('pat_col_diagnosis') }}</div><div>{{ t('pat_col_allergy') }}</div><div>{{ t('pat_col_last_visit') }}</div><div></div>
       </div>
@@ -218,14 +237,24 @@ function genderLabel(g) { return g === 'male' ? t('gender_male') : t('gender_fem
       <div v-if="!patients.data?.length" style="padding:32px;text-align:center;color:var(--fg3);font:500 13px var(--font-sans)">
         {{ t('pat_no_records') }}
       </div>
+      </div><!-- /.table-scroll -->
+    </div>
 
-      <!-- Pagination -->
-      <div v-if="patients.last_page > 1" class="pagination">
+    <!-- Pagination — bar sticky di bawah skrin -->
+    <div v-if="patients.data?.length" class="pagination">
+      <div class="pagination__info">
+        {{ t('pg_show') }}
+        <select v-model.number="perPage" @change="setPerPage" class="per-page-select">
+          <option v-for="n in PER_PAGE_OPTIONS" :key="n" :value="n">{{ n }}</option>
+        </select>
+        / {{ t('pg_per_page') }} · {{ patients.from }}–{{ patients.to }} {{ t('pg_of') }} {{ patients.total }}
+      </div>
+      <div v-if="patients.last_page > 1" class="pagination__pages">
         <button
           v-for="link in patients.links" :key="link.label"
           :disabled="!link.url"
           :class="['page-btn', link.active ? 'active':'']"
-          @click="link.url && router.get(link.url, {search: search||undefined}, {preserveState:true})"
+          @click="goToPage(link.url)"
           v-html="link.label"
         ></button>
       </div>
@@ -597,12 +626,5 @@ function genderLabel(g) { return g === 'male' ? t('gender_male') : t('gender_fem
 .info-val { font: 500 13px var(--font-sans); color: var(--fg1); }
 .info-val.mono { font-family: var(--font-mono); font-size: 12px; }
 
-/* ── Pagination ── */
-.pagination { display: flex; gap: 4px; padding: 12px 16px; border-top: 1px solid var(--border); justify-content: center; }
-.page-btn {
-  min-width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 6px;
-  background: #fff; color: var(--fg2); font: 500 12px var(--font-sans); cursor: pointer; padding: 0 8px;
-}
-.page-btn.active { background: var(--brand-green); border-color: var(--brand-green); color: #fff; font-weight: 700; }
-.page-btn:disabled { opacity: .4; cursor: default; }
+/* Pagination & datatable scroll styles kini global di app.css */
 </style>

@@ -24,13 +24,22 @@ const { t } = useLocale()
 // ─── Search & filter ───────────────────────────────────────────────────────
 const search     = ref(props.filters.search ?? '')
 const activeFilter = ref(props.filters.filter ?? 'all')
+const perPage    = ref(props.filters.per_page ?? 20)
+const PER_PAGE_OPTIONS = [20, 50, 100]
 let searchTimer  = null
 
-function applyFilters() {
-  router.get(route('inventory'), {
+// Parameter pertanyaan dikongsi oleh carian, penapis & pagination.
+function queryParams(extra = {}) {
+  return {
     search: search.value || undefined,
     filter: activeFilter.value !== 'all' ? activeFilter.value : undefined,
-  }, { preserveState: true, replace: true })
+    per_page: perPage.value !== 20 ? perPage.value : undefined,
+    ...extra,
+  }
+}
+
+function applyFilters() {
+  router.get(route('inventory'), queryParams(), { preserveState: true, replace: true })
 }
 
 watch(search, () => {
@@ -41,6 +50,16 @@ watch(search, () => {
 function setFilter(f) {
   activeFilter.value = f
   applyFilters()
+}
+
+// Tukar saiz halaman — kembali ke halaman 1.
+function setPerPage() {
+  router.get(route('inventory'), queryParams(), { preserveState: true, replace: true })
+}
+
+// Navigasi pagination — kekalkan carian/penapis/saiz halaman & posisi skrol.
+function goToPage(url) {
+  if (url) router.get(url, queryParams(), { preserveState: true, preserveScroll: true })
 }
 
 // ─── Flag helpers ──────────────────────────────────────────────────────────
@@ -222,7 +241,8 @@ function doDiscontinue() {
     </div>
 
     <!-- Table -->
-    <div class="card" style="overflow:hidden">
+    <div class="card table-card">
+      <div class="table-scroll">
       <div class="table__head" style="grid-template-columns:2.2fr 1fr 80px 80px 100px 120px 90px 90px 1fr 110px">
         <div>{{ t('inv_col_drug') }}</div><div>{{ t('inv_col_form') }}</div><div>{{ t('inv_col_stock') }}</div><div>{{ t('inv_col_reorder') }}</div><div>{{ t('inv_col_expiry') }}</div><div>{{ t('inv_col_lot') }}</div><div>{{ t('inv_col_cost') }}</div><div>{{ t('inv_col_selling') }}</div><div>{{ t('inv_col_flags') }}</div><div></div>
       </div>
@@ -270,14 +290,24 @@ function doDiscontinue() {
       <div v-if="!items.data?.length" style="padding:32px;text-align:center;color:var(--fg3);font:500 13px var(--font-sans)">
         {{ t('inv_no_items') }}
       </div>
+      </div><!-- /.table-scroll -->
+    </div>
 
-      <!-- Pagination -->
-      <div v-if="items.last_page > 1" class="pagination">
+    <!-- Pagination — bar sticky di bawah skrin -->
+    <div v-if="items.data?.length" class="pagination">
+      <div class="pagination__info">
+        {{ t('inv_show') }}
+        <select v-model.number="perPage" @change="setPerPage" class="per-page-select">
+          <option v-for="n in PER_PAGE_OPTIONS" :key="n" :value="n">{{ n }}</option>
+        </select>
+        / {{ t('inv_per_page') }} · {{ items.from }}–{{ items.to }} {{ t('inv_of') }} {{ items.total }}
+      </div>
+      <div v-if="items.last_page > 1" class="pagination__pages">
         <button
           v-for="link in items.links" :key="link.label"
           :disabled="!link.url"
           :class="['page-btn', link.active ? 'active':'']"
-          @click="link.url && router.get(link.url, {search:search||undefined,filter:activeFilter!=='all'?activeFilter:undefined},{preserveState:true})"
+          @click="goToPage(link.url)"
           v-html="link.label"
         ></button>
       </div>
@@ -644,9 +674,5 @@ function doDiscontinue() {
 .stock-track { height: 8px; background: var(--bg-muted); border-radius: 4px; overflow: hidden; }
 .stock-fill  { height: 100%; border-radius: 4px; transition: width .3s; }
 
-/* Pagination */
-.pagination { display:flex; gap:4px; padding:12px 16px; border-top:1px solid var(--border); justify-content:center; }
-.page-btn { min-width:32px; height:32px; border:1px solid var(--border); border-radius:6px; background:#fff; color:var(--fg2); font:500 12px var(--font-sans); cursor:pointer; padding:0 8px; }
-.page-btn.active { background:var(--brand-green); border-color:var(--brand-green); color:#fff; font-weight:700; }
-.page-btn:disabled { opacity:.4; cursor:default; }
+/* Pagination & datatable scroll styles kini global di app.css */
 </style>

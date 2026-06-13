@@ -23,29 +23,38 @@ const page  = usePage()
 const flash = computed(() => page.props.flash)
 const { t } = useLocale()
 
-/* ── filters ── */
+/* ── filters & pagination ── */
 const search     = ref(props.filters?.search ?? '')
 const statusFilt = ref(props.filters?.status ?? '')
+const perPage    = ref(props.filters?.per_page ?? 30)
+const PER_PAGE_OPTIONS = [15, 30, 50, 100]
+
+function queryParams (extra = {}) {
+  return {
+    search:   search.value || undefined,
+    status:   statusFilt.value || undefined,
+    per_page: perPage.value !== 30 ? perPage.value : undefined,
+    invoice:  props.selected?.id,
+    ...extra,
+  }
+}
 
 function applyFilter () {
-  router.get('/billing', {
-    search:  search.value || undefined,
-    status:  statusFilt.value || undefined,
-    invoice: props.selected?.id,
-  }, { preserveState: true, replace: true })
+  router.get('/billing', queryParams(), { preserveState: true, replace: true })
 }
 
 let searchTimer
 watch(search, () => { clearTimeout(searchTimer); searchTimer = setTimeout(applyFilter, 350) })
 
 function setStatus (s) { statusFilt.value = s; applyFilter() }
+function setPerPage () { applyFilter() }
 
 function selectInvoice (id) {
-  router.get('/billing', {
-    search:  search.value || undefined,
-    status:  statusFilt.value || undefined,
-    invoice: id,
-  }, { preserveState: true, replace: true })
+  router.get('/billing', queryParams({ invoice: id }), { preserveState: true, replace: true })
+}
+
+function goToPage (url) {
+  if (url) router.get(url, queryParams(), { preserveState: true, preserveScroll: true })
 }
 
 /* ── labels ── */
@@ -202,11 +211,17 @@ function submitNew () {
         <p v-if="!invoices.data.length" class="inv-empty">{{ t('bill_no_invoices') }}</p>
       </div>
 
-      <div v-if="invoices.last_page>1" class="pg-bar">
-        <button v-for="link in invoices.links" :key="link.label"
-          v-html="link.label" class="pg-btn"
-          :class="{ active:link.active, disabled:!link.url }" :disabled="!link.url"
-          @click="link.url && router.get(link.url,{},{preserveState:true})" />
+      <div v-if="invoices.data.length" class="pg-bar">
+        <select v-model.number="perPage" @change="setPerPage" class="per-page-select" :title="t('pg_per_page')">
+          <option v-for="n in PER_PAGE_OPTIONS" :key="n" :value="n">{{ n }}/{{ t('pg_per_page') }}</option>
+        </select>
+        <span class="pg-count">{{ invoices.from }}–{{ invoices.to }} {{ t('pg_of') }} {{ invoices.total }}</span>
+        <template v-if="invoices.last_page>1">
+          <button v-for="link in invoices.links" :key="link.label"
+            v-html="link.label" class="pg-btn"
+            :class="{ active:link.active, disabled:!link.url }" :disabled="!link.url"
+            @click="goToPage(link.url)" />
+        </template>
       </div>
     </aside>
 
@@ -631,7 +646,8 @@ function submitNew () {
 .inv-item__amt  { font: 700 12px var(--font-mono); color: var(--fg1); }
 .inv-empty { padding: 32px 12px; text-align: center; color: var(--fg3); font: 400 12px var(--font-sans); }
 
-.pg-bar { display: flex; gap: 4px; padding: 8px 12px; border-top: 1px solid var(--border); flex-wrap: wrap; flex-shrink: 0; }
+.pg-bar { display: flex; gap: 4px; padding: 8px 12px; border-top: 1px solid var(--border); flex-wrap: wrap; flex-shrink: 0; align-items: center; }
+.pg-count { font: 500 11px var(--font-sans); color: var(--fg3); margin-right: auto; }
 .pg-btn { font: 500 11px var(--font-sans); padding: 3px 8px; border-radius: 6px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
 .pg-btn.active { background: var(--brand-green); color: #fff; border-color: var(--brand-green); }
 .pg-btn.disabled { opacity: .4; cursor: default; }

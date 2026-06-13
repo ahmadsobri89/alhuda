@@ -34,7 +34,12 @@ class BillingController extends Controller
             $query->where('status', $request->status);
         }
 
-        $invoices = $query->paginate(30)->withQueryString()
+        $perPage = (int) $request->input('per_page', 30);
+        if (! in_array($perPage, [15, 30, 50, 100], true)) {
+            $perPage = 30;
+        }
+
+        $invoices = $query->paginate($perPage)->withQueryString()
             ->through(fn ($inv) => [
                 'id'             => $inv->id,
                 'invoice_number' => $inv->invoice_number,
@@ -80,7 +85,7 @@ class BillingController extends Controller
             'selected'     => $selected,
             'patients'     => $patients,
             'stats'        => $stats,
-            'filters'      => $request->only(['search', 'status', 'invoice']),
+            'filters'      => array_merge($request->only(['search', 'status', 'invoice']), ['per_page' => $perPage]),
             'today'        => $today,
             'lookups'      => $lookups,
             'drugItems'    => $drugItems,

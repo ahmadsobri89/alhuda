@@ -36,7 +36,12 @@ class EMRController extends Controller
             $query->where('status', $request->status);
         }
 
-        $visits = $query->paginate(30)->withQueryString()
+        $perPage = (int) $request->input('per_page', 30);
+        if (! in_array($perPage, [30, 50, 100], true)) {
+            $perPage = 30;
+        }
+
+        $visits = $query->paginate($perPage)->withQueryString()
             ->through(fn ($v) => [
                 'id'              => $v->id,
                 'patient_name'    => $v->patient->name,
@@ -69,7 +74,7 @@ class EMRController extends Controller
             'visits'       => $visits,
             'selected'     => $selected,
             'patients'     => $patients,
-            'filters'      => $request->only(['search', 'status', 'visit']),
+            'filters'      => array_merge($request->only(['search', 'status', 'visit']), ['per_page' => $perPage]),
             'today'        => now()->format('Y-m-d'),
             'lookups'      => $lookups,
             'drugItems'    => $drugItems,

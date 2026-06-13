@@ -59,6 +59,12 @@ class InventoryController extends Controller
         $search = $request->input('search');
         $filter = $request->input('filter', 'all'); // all|low|expiring|poison
 
+        // Saiz halaman — hadkan kepada nilai yang dibenarkan.
+        $perPage = (int) $request->input('per_page', 20);
+        if (! in_array($perPage, [20, 50, 100], true)) {
+            $perPage = 20;
+        }
+
         $query = InventoryItem::query()->where('status', '!=', 'discontinued');
 
         if ($search) {
@@ -80,7 +86,7 @@ class InventoryController extends Controller
         }
 
         $items = $query->orderBy('name')
-            ->paginate(20)
+            ->paginate($perPage)
             ->withQueryString()
             ->through(fn ($item) => $this->formatItem($item));
 
@@ -99,7 +105,7 @@ class InventoryController extends Controller
             'currentRoute' => 'inventory',
             'items'        => $items,
             'kpis'         => $kpis,
-            'filters'      => ['search' => $search, 'filter' => $filter],
+            'filters'      => ['search' => $search, 'filter' => $filter, 'per_page' => $perPage],
             'lookups'      => $lookups,
         ]);
     }

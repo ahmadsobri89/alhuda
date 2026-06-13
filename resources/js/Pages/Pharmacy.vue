@@ -25,15 +25,34 @@ const flash = computed(() => page.props.flash?.success)
 const { t } = useLocale()
 const tab   = ref('queue')
 
-// ─── History search ────────────────────────────────────────────────────────
-const search = ref(props.filters.search ?? '')
+// ─── History search & pagination ─────────────────────────────────────────────
+const search  = ref(props.filters.search ?? '')
+const perPage = ref(props.filters.per_page ?? 15)
+const PER_PAGE_OPTIONS = [15, 30, 50, 100]
 let searchTimer = null
-watch(search, v => {
+
+function queryParams(extra = {}) {
+  return {
+    search: search.value || undefined,
+    per_page: perPage.value !== 15 ? perPage.value : undefined,
+    ...extra,
+  }
+}
+
+watch(search, () => {
   clearTimeout(searchTimer)
   searchTimer = setTimeout(() => {
-    router.get(route('pharmacy'), { search: v || undefined }, { preserveState: true, replace: true })
+    router.get(route('pharmacy'), queryParams(), { preserveState: true, replace: true })
   }, 350)
 })
+
+function setPerPage() {
+  router.get(route('pharmacy'), queryParams(), { preserveState: true, replace: true })
+}
+
+function goToPage(url) {
+  if (url) router.get(url, queryParams(), { preserveState: true, preserveScroll: true })
+}
 
 // ─── Status helpers ────────────────────────────────────────────────────────
 const STATUS_TONE = { pending: 'orange', verifying: 'blue', ready: 'green', dispensed: 'neutral', cancelled: 'neutral' }
@@ -257,11 +276,12 @@ function doDispense() {
     </div>
 
     <!-- ── Queue Tab ────────────────────────────────────────────────────── -->
-    <div v-if="tab==='queue'" class="card" style="overflow:hidden">
+    <div v-if="tab==='queue'" class="card table-card">
       <div class="card__header">
         <h3 class="card__title">{{ t('rx_queue_title') }}</h3>
         <p class="card__sub">{{ t('rx_queue_waiting', { n: queue.length }) }}</p>
       </div>
+      <div class="table-scroll">
       <div class="table__head" style="grid-template-columns:130px 1.8fr 60px 1.2fr 110px 110px 190px">
         <div>{{ t('rx_col_no') }}</div><div>{{ t('rx_col_patient') }}</div><div>{{ t('rx_col_drug') }}</div><div>{{ t('rx_col_doctor') }}</div><div>{{ t('rx_col_wait') }}</div><div>{{ t('rx_col_status') }}</div><div></div>
       </div>
@@ -293,10 +313,11 @@ function doDispense() {
       <div v-if="!queue.length" style="padding:32px;text-align:center;color:var(--fg3);font:500 13px var(--font-sans)">
         {{ t('rx_queue_empty') }}
       </div>
+      </div><!-- /.table-scroll -->
     </div>
 
     <!-- ── History Tab ──────────────────────────────────────────────────── -->
-    <div v-if="tab==='history'">
+    <div v-if="tab==='history'" class="tab-panel">
       <div class="row">
         <div style="position:relative;flex:1;max-width:360px">
           <input v-model="search" class="input" :placeholder="t('rx_history_search_ph')" style="padding-left:36px" />
@@ -305,7 +326,8 @@ function doDispense() {
           </span>
         </div>
       </div>
-      <div class="card" style="overflow:hidden">
+      <div class="card table-card">
+        <div class="table-scroll">
         <div class="table__head" style="grid-template-columns:130px 1.8fr 60px 1.2fr 150px 100px 120px">
           <div>{{ t('rx_col_no') }}</div><div>{{ t('rx_col_patient') }}</div><div>{{ t('rx_col_drug') }}</div><div>{{ t('rx_col_doctor') }}</div><div>{{ t('rx_col_wait') }}</div><div>{{ t('rx_col_status') }}</div><div></div>
         </div>
@@ -340,13 +362,24 @@ function doDispense() {
         <div v-if="!history.data?.length" style="padding:32px;text-align:center;color:var(--fg3);font:500 13px var(--font-sans)">
           {{ t('rx_no_history') }}
         </div>
-        <!-- Pagination -->
-        <div v-if="history.last_page > 1" class="pagination">
+        </div><!-- /.table-scroll -->
+      </div>
+
+      <!-- Pagination — bar sticky di bawah skrin -->
+      <div v-if="history.data?.length" class="pagination">
+        <div class="pagination__info">
+          {{ t('pg_show') }}
+          <select v-model.number="perPage" @change="setPerPage" class="per-page-select">
+            <option v-for="n in PER_PAGE_OPTIONS" :key="n" :value="n">{{ n }}</option>
+          </select>
+          / {{ t('pg_per_page') }} · {{ history.from }}–{{ history.to }} {{ t('pg_of') }} {{ history.total }}
+        </div>
+        <div v-if="history.last_page > 1" class="pagination__pages">
           <button
             v-for="link in history.links" :key="link.label"
             :disabled="!link.url"
             :class="['page-btn', link.active ? 'active':'']"
-            @click="link.url && router.get(link.url, {search: search||undefined}, {preserveState:true})"
+            @click="goToPage(link.url)"
             v-html="link.label"
           ></button>
         </div>
@@ -978,11 +1011,7 @@ function doDispense() {
   margin-bottom:10px;
 }
 
-/* Pagination */
-.pagination { display:flex; gap:4px; padding:12px 16px; border-top:1px solid var(--border); justify-content:center; }
-.page-btn { min-width:32px; height:32px; border:1px solid var(--border); border-radius:6px; background:#fff; color:var(--fg2); font:500 12px var(--font-sans); cursor:pointer; padding:0 8px; }
-.page-btn.active { background:var(--brand-green); border-color:var(--brand-green); color:#fff; font-weight:700; }
-.page-btn:disabled { opacity:.4; cursor:default; }
+/* Pagination & datatable scroll styles kini global di app.css */
 
 /* ── Tablet (≤ 900px) ── */
 @media (max-width: 900px) {

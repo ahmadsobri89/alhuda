@@ -109,6 +109,28 @@ input, select, textarea { font-family: inherit; }
 .table__row { display: grid; padding: 12px 16px; border-top: 1px solid var(--border); align-items: center; }
 .table__row:first-child { border-top: 0; }
 
+/* ── Datatable: kad mengisi ruang baki, badan jadual scroll sendiri ──────── */
+.tab-panel    { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 14px; }  /* panel tab penuh tinggi */
+.table-card   { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.table-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+.table-scroll .table__head { position: sticky; top: 0; z-index: 3; }   /* tajuk lajur kekal kelihatan */
+.table-scroll .table__row:first-child { border-top: 0; }
+
+/* ── Bar pagination (sticky di bawah skrin) ─────────────────────────────── */
+.pagination {
+  position: sticky; bottom: 0; z-index: 10;
+  display: flex; gap: 12px; padding: 10px 16px;
+  justify-content: space-between; align-items: center; flex-wrap: wrap;
+  background: #fff; border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, .12);
+}
+.pagination__info  { font: 500 12px var(--font-sans); color: var(--fg3); display: flex; align-items: center; gap: 6px; }
+.pagination__pages { display: flex; gap: 4px; flex-wrap: wrap; }
+.per-page-select   { height: 28px; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--fg2); font: 500 12px var(--font-sans); padding: 0 4px; cursor: pointer; }
+.page-btn          { min-width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--fg2); font: 500 12px var(--font-sans); cursor: pointer; padding: 0 8px; }
+.page-btn.active   { background: var(--brand-green); border-color: var(--brand-green); color: #fff; font-weight: 700; }
+.page-btn:disabled { opacity: .4; cursor: default; }
+
 .input, .select { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font: 400 13px var(--font-sans); background: #fff; }
 .input:focus, .select:focus { outline: none; border-color: var(--brand-green); box-shadow: 0 0 0 3px rgba(27,138,74,.15); }
 

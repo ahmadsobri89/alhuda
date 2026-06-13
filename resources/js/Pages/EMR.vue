@@ -26,28 +26,40 @@ const { t } = useLocale()
 /* ── Visit list navigation ────────────────────────── */
 const search     = ref(props.filters?.search ?? '')
 const statusFilter = ref(props.filters?.status ?? '')
+const perPage    = ref(props.filters?.per_page ?? 30)
+const PER_PAGE_OPTIONS = [30, 50, 100]
 let searchTimer  = null
+
+function queryParams(extra = {}) {
+  return {
+    search:   search.value || undefined,
+    status:   statusFilter.value || undefined,
+    per_page: perPage.value !== 30 ? perPage.value : undefined,
+    visit:    props.filters?.visit,
+    ...extra,
+  }
+}
 
 function applyFilter() {
   clearTimeout(searchTimer)
   searchTimer = setTimeout(() => {
-    router.get('/emr', {
-      search: search.value || undefined,
-      status: statusFilter.value || undefined,
-      visit:  props.filters?.visit,
-    }, { preserveState: true, replace: true })
+    router.get('/emr', queryParams(), { preserveState: true, replace: true })
   }, 350)
 }
 
 watch(search,       applyFilter)
 watch(statusFilter, applyFilter)
 
+function setPerPage() {
+  router.get('/emr', queryParams(), { preserveState: true, replace: true })
+}
+
+function goToPage(url) {
+  if (url) router.get(url, queryParams(), { preserveState: true, preserveScroll: true })
+}
+
 function openVisit(id) {
-  router.get('/emr', {
-    visit:  id,
-    search: search.value || undefined,
-    status: statusFilter.value || undefined,
-  }, { preserveState: true })
+  router.get('/emr', queryParams({ visit: id }), { preserveState: true })
 }
 
 /* ── New visit modal ──────────────────────────────── */
@@ -543,12 +555,18 @@ const soapHints = computed(() => ({
       </div>
 
       <!-- Pagination -->
-      <div v-if="visits?.last_page > 1" class="pagination" style="border-top:1px solid var(--border)">
-        <button v-for="link in visits.links" :key="link.label"
-                :disabled="!link.url"
-                :class="['page-btn', link.active ? 'active':'']"
-                @click="link.url && router.get(link.url, {search: search||undefined, status: statusFilter||undefined}, {preserveState:true})"
-                v-html="link.label" />
+      <div v-if="visits?.data?.length" class="pagination" style="border-top:1px solid var(--border)">
+        <select v-model.number="perPage" @change="setPerPage" class="per-page-select" :title="t('pg_per_page')">
+          <option v-for="n in PER_PAGE_OPTIONS" :key="n" :value="n">{{ n }}/{{ t('pg_per_page') }}</option>
+        </select>
+        <span class="emr-pg-count">{{ visits.from }}–{{ visits.to }} {{ t('pg_of') }} {{ visits.total }}</span>
+        <template v-if="visits.last_page > 1">
+          <button v-for="link in visits.links" :key="link.label"
+                  :disabled="!link.url"
+                  :class="['page-btn', link.active ? 'active':'']"
+                  @click="goToPage(link.url)"
+                  v-html="link.label" />
+        </template>
       </div>
     </div>
 
@@ -2043,7 +2061,8 @@ const soapHints = computed(() => ({
 .popt:hover { background: var(--bg-soft); }
 
 /* Pagination */
-.pagination { display: flex; gap: 4px; padding: 8px 12px; justify-content: center; }
+.pagination { display: flex; gap: 4px; padding: 8px 12px; align-items: center; flex-wrap: wrap; }
+.emr-pg-count { font: 500 11px var(--font-sans); color: var(--fg3); margin-right: auto; }
 .page-btn { min-width: 28px; height: 28px; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--fg2); font: 500 11px var(--font-sans); cursor: pointer; padding: 0 6px; }
 .page-btn.active { background: var(--brand-green); border-color: var(--brand-green); color: #fff; font-weight: 700; }
 .page-btn:disabled { opacity: .4; cursor: default; }

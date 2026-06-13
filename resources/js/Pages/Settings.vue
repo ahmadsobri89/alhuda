@@ -16,10 +16,25 @@ const props = defineProps({
   auditLogs:        { type: Object, default: () => ({ data: [], links: [] }) },
   clinic:           { type: Object, default: () => ({}) },
   lookupCategories: { type: Array,  default: () => [] },
+  filters:          { type: Object, default: () => ({}) },
 })
 
 const { t } = useLocale()
 const tab = ref('users')
+
+// ─── Audit log pagination ────────────────────────────────────────────────────
+const auditPerPage = ref(props.filters?.per_page ?? 20)
+const PER_PAGE_OPTIONS = [20, 50, 100]
+
+function auditQuery (extra = {}) {
+  return { per_page: auditPerPage.value !== 20 ? auditPerPage.value : undefined, ...extra }
+}
+function setAuditPerPage () {
+  router.get(route('settings'), auditQuery(), { preserveState: true, replace: true })
+}
+function goToAuditPage (url) {
+  if (url) router.get(url, auditQuery(), { preserveState: true, preserveScroll: true })
+}
 
 // ─── Label Designer — data contoh untuk demo/proposal ─────────────────────
 const labelPreviewData = computed(() => ({
@@ -541,8 +556,10 @@ function lkpDoDelete() {
     </div>
 
     <!-- ── Audit Tab ───────────────────────────────────────────────────── -->
-    <div v-if="tab==='audit'" class="card" style="overflow:hidden">
+    <div v-if="tab==='audit'" class="tab-panel">
+      <div class="card table-card">
       <div class="card__header"><h3 class="card__title">{{ t('set_audit_title') }}</h3></div>
+      <div class="table-scroll">
       <div class="table__head" style="grid-template-columns:140px 160px 160px 1fr 130px 90px">
         <div>{{ t('set_col_time') }}</div><div>{{ t('set_col_user') }}</div><div>{{ t('set_col_action') }}</div><div>{{ t('set_col_resource') }}</div><div>{{ t('set_col_ip') }}</div><div>{{ t('set_col_result') }}</div>
       </div>
@@ -561,15 +578,27 @@ function lkpDoDelete() {
       <div v-if="!auditLogs.data?.length" style="padding:24px;text-align:center;color:var(--fg3);font:500 13px var(--font-sans)">
         {{ t('set_no_audit') }}
       </div>
-      <!-- Pagination -->
-      <div v-if="auditLogs.last_page > 1" class="audit-pagination">
-        <button
-          v-for="link in auditLogs.links" :key="link.label"
-          :disabled="!link.url"
-          :class="['page-btn', link.active ? 'active':'']"
-          @click="link.url && router.get(link.url, {}, { preserveState:true })"
-          v-html="link.label"
-        ></button>
+      </div><!-- /.table-scroll -->
+      </div><!-- /.card -->
+
+      <!-- Pagination — bar sticky di bawah skrin -->
+      <div v-if="auditLogs.data?.length" class="pagination">
+        <div class="pagination__info">
+          {{ t('pg_show') }}
+          <select v-model.number="auditPerPage" @change="setAuditPerPage" class="per-page-select">
+            <option v-for="n in PER_PAGE_OPTIONS" :key="n" :value="n">{{ n }}</option>
+          </select>
+          / {{ t('pg_per_page') }} · {{ auditLogs.from }}–{{ auditLogs.to }} {{ t('pg_of') }} {{ auditLogs.total }}
+        </div>
+        <div v-if="auditLogs.last_page > 1" class="pagination__pages">
+          <button
+            v-for="link in auditLogs.links" :key="link.label"
+            :disabled="!link.url"
+            :class="['page-btn', link.active ? 'active':'']"
+            @click="goToAuditPage(link.url)"
+            v-html="link.label"
+          ></button>
+        </div>
       </div>
     </div>
   </div>
@@ -802,34 +831,7 @@ function lkpDoDelete() {
   margin-top: 2px;
 }
 
-.audit-pagination {
-  display: flex;
-  gap: 4px;
-  padding: 12px 16px;
-  border-top: 1px solid var(--border);
-  justify-content: center;
-}
-
-.page-btn {
-  min-width: 32px;
-  height: 32px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: #fff;
-  color: var(--fg2);
-  font: 500 12px var(--font-sans);
-  cursor: pointer;
-  padding: 0 8px;
-}
-
-.page-btn.active {
-  background: var(--brand-green);
-  border-color: var(--brand-green);
-  color: #fff;
-  font-weight: 700;
-}
-
-.page-btn:disabled { opacity: .4; cursor: default; }
+/* Pagination & datatable scroll styles kini global di app.css */
 
 /* ── Clinic Profile ── */
 .clinic-logo-section {

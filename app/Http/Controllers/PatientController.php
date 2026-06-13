@@ -16,6 +16,11 @@ class PatientController extends Controller
     {
         $search = $request->input('search');
 
+        $perPage = (int) $request->input('per_page', 15);
+        if (! in_array($perPage, [15, 30, 50, 100], true)) {
+            $perPage = 15;
+        }
+
         $patients = Patient::query()
             ->when($search, fn ($q) =>
                 $q->where('name', 'like', "%{$search}%")
@@ -23,7 +28,7 @@ class PatientController extends Controller
                   ->orWhere('patient_id', 'like', "%{$search}%")
             )
             ->orderByDesc('created_at')
-            ->paginate(15)
+            ->paginate($perPage)
             ->withQueryString()
             ->through(fn ($p) => [
                 'id'                      => $p->id,
@@ -57,7 +62,7 @@ class PatientController extends Controller
         return Inertia::render('Patients', [
             'currentRoute' => 'patients',
             'patients'     => $patients,
-            'filters'      => ['search' => $search],
+            'filters'      => ['search' => $search, 'per_page' => $perPage],
             'lookups'      => $lookups,
         ]);
     }
