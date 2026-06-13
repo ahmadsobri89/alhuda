@@ -38,6 +38,11 @@ class Visit extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function appointment(): BelongsTo
+    {
+        return $this->belongsTo(Appointment::class);
+    }
+
     public function vitals(): HasOne
     {
         return $this->hasOne(VisitVital::class);

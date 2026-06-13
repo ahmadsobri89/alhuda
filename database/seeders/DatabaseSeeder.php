@@ -27,6 +27,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(LookupSeeder::class);
+        $this->call(AppointmentEmrSeeder::class);
 
         // ── Staff ─────────────────────────────────────────────
         $staff = [

@@ -96,6 +96,11 @@ function updateStatus(appt, status) {
   })
 }
 
+/* ── Start / open EMR from appointment ───────────────── */
+function startEmr(appt) {
+  router.post(`/appointments/${appt.id}/emr`)
+}
+
 /* ── Create / Edit modal ─────────────────────────────── */
 const showModal  = ref(false)
 const editTarget = ref(null)
@@ -395,6 +400,15 @@ const weekLabel = computed(() => {
                   {{ t('appt_no_show_action') }}
                 </button>
               </div>
+            </div>
+
+            <!-- EMR -->
+            <div v-if="!['cancelled','no_show'].includes(viewAppt.status)">
+              <div class="hr" style="margin:18px 0 14px"></div>
+              <Btn variant="primary" style="width:100%" @click="startEmr(viewAppt)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6"/><path d="M12 12v6"/></svg>
+                {{ viewAppt.visit_id ? t('appt_open_emr') : t('appt_start_emr') }}
+              </Btn>
             </div>
 
             <div class="hr" style="margin:18px 0 14px"></div>

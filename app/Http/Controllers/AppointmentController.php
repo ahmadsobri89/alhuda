@@ -8,6 +8,7 @@ use App\Models\AuditLog;
 use App\Models\Appointment;
 use App\Models\LookupCategory;
 use App\Models\Patient;
+use App\Models\Visit;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -46,6 +47,7 @@ class AppointmentController extends Controller
             'reason'           => $a->reason,
             'status'           => $a->status,
             'notes'            => $a->notes,
+            'visit_id'         => $a->visit?->id,
         ];
     }
 
@@ -59,7 +61,7 @@ class AppointmentController extends Controller
         $weekEnd = $weekStart->copy()->addDays(6); // Mon–Sun
 
         // Fetch week's appointments
-        $weekAppts = Appointment::with('patient')
+        $weekAppts = Appointment::with('patient', 'visit')
             ->whereBetween('appointment_date', [$weekStart->format('Y-m-d'), $weekEnd->format('Y-m-d')])
             ->orderBy('appointment_time')
             ->get();
@@ -161,6 +163,36 @@ class AppointmentController extends Controller
         );
 
         return back()->with('success', 'Status temujanji dikemaskini.');
+    }
+
+    public function startEmr(Appointment $appointment)
+    {
+        // Reuse the existing EMR for this appointment, or open a new one.
+        $visit = Visit::firstOrCreate(
+            ['appointment_id' => $appointment->id],
+            [
+                'patient_id'      => $appointment->patient_id,
+                'user_id'         => Auth::id(),
+                'doctor_name'     => $appointment->doctor_name,
+                'visit_date'      => $appointment->appointment_date->format('Y-m-d'),
+                'chief_complaint' => $appointment->reason,
+                'status'          => 'open',
+            ]
+        );
+
+        if ($visit->wasRecentlyCreated) {
+            AuditLog::record(
+                'emr.create',
+                "{$appointment->patient->name} · {$appointment->appointment_date->format('d/m/Y')} (dari temujanji)"
+            );
+
+            // Mark the appointment as in-consultation when a record is first opened.
+            if (! in_array($appointment->status, ['done', 'cancelled', 'no_show'])) {
+                $appointment->update(['status' => 'in_room']);
+            }
+        }
+
+        return redirect()->route('emr', ['visit' => $visit->id]);
     }
 
     public function destroy(Appointment $appointment)

@@ -209,6 +209,8 @@
   "appt_no_show_action": "No Show",
   "appt_edit": "Edit Appointment",
   "appt_delete": "Delete",
+  "appt_start_emr": "Start EMR",
+  "appt_open_emr": "Open EMR",
   "appt_modal_create": "New Appointment",
   "appt_modal_edit": "Edit Appointment",
   "appt_sec_patient": "Patient",

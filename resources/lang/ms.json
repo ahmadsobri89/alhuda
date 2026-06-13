@@ -209,6 +209,8 @@
   "appt_no_show_action": "Tidak Hadir",
   "appt_edit": "Edit Temujanji",
   "appt_delete": "Padam",
+  "appt_start_emr": "Masukkan EMR",
+  "appt_open_emr": "Buka EMR",
   "appt_modal_create": "Temujanji Baru",
   "appt_modal_edit": "Edit Temujanji",
   "appt_sec_patient": "Pesakit",

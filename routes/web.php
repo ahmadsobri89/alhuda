@@ -45,6 +45,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/appointments',                       [AppointmentController::class, 'store'])->name('appointments.store');
     Route::put('/appointments/{appointment}',          [AppointmentController::class, 'update'])->name('appointments.update');
     Route::patch('/appointments/{appointment}/status', [AppointmentController::class, 'updateStatus'])->name('appointments.status');
+    Route::post('/appointments/{appointment}/emr',     [AppointmentController::class, 'startEmr'])->name('appointments.emr');
     Route::delete('/appointments/{appointment}',       [AppointmentController::class, 'destroy'])->name('appointments.destroy');
     // EMR — CRUD
     Route::get('/emr',                                         [EMRController::class, 'index'])->name('emr');
