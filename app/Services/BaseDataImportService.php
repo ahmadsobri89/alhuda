@@ -103,7 +103,7 @@ class BaseDataImportService
                     'unit'           => $this->clean($row['UOM'] ?? null) ?? 'unit',
                     'unit_cost'      => $this->decimal($row['Cost Price'] ?? null),
                     'selling_price'  => $this->decimal($row['Selling Price'] ?? null),
-                    'stock_quantity' => $this->int($row['Stock Balance'] ?? null),
+                    'stock_quantity' => max(0, $this->int($row['Stock Balance'] ?? null)),
                     'notes'          => $code ? "Kod preskripsi: {$code}" : null,
                     'status'         => 'active',
                 ],
