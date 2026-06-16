@@ -9,6 +9,16 @@ const page = usePage()
 const currentRoute = computed(() => page.props.currentRoute || 'dashboard')
 const { t, locale, switchLocale } = useLocale()
 
+const user = computed(() => page.props.auth?.user ?? null)
+const userName = computed(() => user.value?.name ?? '')
+const userRole = computed(() => {
+  const role = user.value?.role
+  return role ? role.charAt(0).toUpperCase() + role.slice(1) : ''
+})
+const userMeta = computed(() =>
+  [user.value?.mmc_number, userRole.value].filter(Boolean).join(' · ')
+)
+
 const navItems = computed(() => [
   { id: 'dashboard',     icon: 'home',     label: t('nav_dashboard') },
   { id: 'queue',         icon: 'queue',    label: t('nav_queue'),         count: 12 },
@@ -53,10 +63,10 @@ function navigate(item) {
         </button>
       </nav>
       <div class="sidebar__user">
-        <Avatar name="Aiman Rashid" />
+        <Avatar :name="userName" />
         <div style="flex:1;min-width:0">
-          <div style="font:600 12.5px var(--font-sans); color: var(--fg1)">Dr. Aiman Rashid</div>
-          <div style="font:500 11px var(--font-mono); color: var(--fg3)">MMC-87231 · Doctor</div>
+          <div style="font:600 12.5px var(--font-sans); color: var(--fg1)">{{ user?.role === 'doctor' ? 'Dr. ' : '' }}{{ userName }}</div>
+          <div style="font:500 11px var(--font-mono); color: var(--fg3)">{{ userMeta }}</div>
         </div>
         <button class="logout-btn" :title="t('layout_logout')" @click="router.post('/logout')">
           <Icon name="logout" :size="16" />
