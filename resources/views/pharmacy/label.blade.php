@@ -420,8 +420,8 @@ $mealMap = [
         {{-- Date --}}
         <div class="t-tarikh">{{ $rx->created_at->format('d/m/Y') }}</div>
 
-        {{-- Drug name / Kegunaan --}}
-        <div class="t-ubat">{{ $item->drug_name }}@if($item->kegunaan) / {{ $item->kegunaan }}@endif</div>
+        {{-- Kegunaan sahaja (fallback ke nama ubat jika kegunaan kosong) --}}
+        <div class="t-ubat">{{ $item->kegunaan ?: $item->drug_name }}</div>
 
         {{-- Dose number (left box) --}}
         <div class="t-dose-num">{{ $doseNum }}</div>
