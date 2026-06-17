@@ -20,9 +20,30 @@ use App\Http\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+// Landing page (awam — sebelum log masuk)
 Route::get('/', function () {
-    return redirect()->route('dashboard');
-});
+    if (auth()->check()) {
+        return redirect()->route('dashboard');
+    }
+
+    $clinic = \App\Models\ClinicProfile::current();
+
+    return Inertia::render('Landing', [
+        'canLogin' => Route::has('login'),
+        'clinic'   => [
+            'name'         => $clinic->name,
+            'tagline'      => $clinic->tagline,
+            'reg_number'   => $clinic->reg_number,
+            'ckaps_number' => $clinic->ckaps_number,
+            'address_full' => $clinic->address_full,
+            'phone'        => $clinic->phone,
+            'fax'          => $clinic->fax,
+            'email'        => $clinic->email,
+            'website'      => $clinic->website,
+            'logo_url'     => $clinic->logo_url,
+        ],
+    ]);
+})->name('landing');
 
 // Public document verification (no auth required)
 Route::get('/verify/timeslip/{token}',   [TimeSlipController::class, 'verify'])->name('timeslip.verify');
