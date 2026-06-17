@@ -78,7 +78,7 @@ body {
     top: 47.5%;
     left: 33.5%;
     right: 2%;
-    font-size: 2.33cqw;
+    font-size: 2.50cqw;
     font-weight: 700;
     white-space: nowrap;
     overflow: hidden;
