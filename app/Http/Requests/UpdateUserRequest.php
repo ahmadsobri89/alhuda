@@ -17,7 +17,7 @@ class UpdateUserRequest extends FormRequest
             'name'        => ['required', 'string', 'max:255'],
             'email'       => ['required', 'email', "unique:users,email,{$userId}"],
             'roles'       => ['required', 'array', 'min:1'],
-            'roles.*'     => ['in:doctor,nurse,pharmacist,receptionist,admin'],
+            'roles.*'     => ['in:doctor,nurse,pharmacist,receptionist,finance,admin'],
             'mmc_number'  => ['nullable', 'string', 'max:50'],
             'mfa_enabled' => ['boolean'],
             'status'      => ['required', 'in:active,inactive'],

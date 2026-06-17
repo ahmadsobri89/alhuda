@@ -62,12 +62,14 @@ const roleLabels = computed(() => ({
   nurse:        t('set_role_nurse'),
   pharmacist:   t('set_role_pharmacist'),
   receptionist: t('set_role_receptionist'),
+  finance:      t('set_role_finance'),
   admin:        t('set_role_admin'),
 }))
 
 function roleTone(role) {
-  if (role === 'admin')  return 'red'
-  if (role === 'doctor') return 'green'
+  if (role === 'admin')   return 'red'
+  if (role === 'doctor')  return 'green'
+  if (role === 'finance') return 'orange'
   return 'blue'
 }
 
@@ -85,7 +87,7 @@ const userForm = useForm({
   password:    '',
 })
 
-const allRoles = ['doctor', 'nurse', 'pharmacist', 'receptionist', 'admin']
+const allRoles = ['doctor', 'nurse', 'pharmacist', 'receptionist', 'finance', 'admin']
 
 function toggleRole(role) {
   const i = userForm.roles.indexOf(role)

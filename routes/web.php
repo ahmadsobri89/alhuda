@@ -3,6 +3,7 @@
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\LookupController;
 use App\Http\Controllers\ReportsController;
+use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\QueueController;
 use App\Http\Controllers\BillingController;
@@ -106,6 +107,9 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureModuleAccess::
     Route::delete('/billing/{invoice}',                   [BillingController::class, 'destroy'])->name('billing.destroy');
     Route::get('/billing/{invoice}/print',                [BillingController::class, 'print'])->name('billing.print');
     Route::get('/reports', [ReportsController::class, 'index'])->name('reports');
+
+    // Finance — pemantauan pembayaran (harian/bulanan/tahunan)
+    Route::get('/finance', [FinanceController::class, 'index'])->name('finance');
 
     // Settings — CRUD
     Route::get('/settings',                [SettingsController::class, 'index'])->name('settings');

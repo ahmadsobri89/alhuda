@@ -32,6 +32,7 @@ const allNavItems = computed(() => [
   { id: 'pharmacy',      icon: 'pill',     label: t('nav_pharmacy') },
   { id: 'inventory',     icon: 'flask',    label: t('nav_inventory') },
   { id: 'billing',       icon: 'invoice',  label: t('nav_billing') },
+  { id: 'finance',       icon: 'chart',    label: t('nav_finance') },
   { id: 'reports',       icon: 'chart',    label: t('nav_reports') },
   { id: 'settings',      icon: 'settings', label: t('nav_settings') },
 ])

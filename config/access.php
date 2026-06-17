@@ -12,7 +12,7 @@
 
 return [
 
-    'roles' => ['doctor', 'nurse', 'pharmacist', 'receptionist', 'admin'],
+    'roles' => ['doctor', 'nurse', 'pharmacist', 'receptionist', 'finance', 'admin'],
 
     // Modul → peranan yang dibenarkan
     'modules' => [
@@ -25,6 +25,7 @@ return [
         'pharmacy'     => ['pharmacist', 'admin'],
         'inventory'    => ['pharmacist', 'admin'],
         'billing'      => ['receptionist', 'admin'],
+        'finance'      => ['finance', 'admin'],
         'reports'      => ['admin', 'doctor'],
         'settings'     => ['admin'],
         'profile'      => ['*'],
@@ -49,6 +50,7 @@ return [
         'pharmacy'         => 'pharmacy',
         'inventory'        => 'inventory',
         'billing'          => 'billing',
+        'finance'          => 'finance',
         'reports'          => 'reports',
         'settings'         => 'settings',
         'lookup'           => 'settings',
