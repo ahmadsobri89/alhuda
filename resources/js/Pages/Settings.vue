@@ -78,12 +78,20 @@ const editingUser = ref(null)
 const userForm = useForm({
   name:        '',
   email:       '',
-  role:        'receptionist',
+  roles:       ['receptionist'],
   mmc_number:  '',
   mfa_enabled: false,
   status:      'active',
   password:    '',
 })
+
+const allRoles = ['doctor', 'nurse', 'pharmacist', 'receptionist', 'admin']
+
+function toggleRole(role) {
+  const i = userForm.roles.indexOf(role)
+  if (i === -1) userForm.roles.push(role)
+  else if (userForm.roles.length > 1) userForm.roles.splice(i, 1)
+}
 
 function openCreate() {
   editingUser.value = null
@@ -95,7 +103,7 @@ function openEdit(u) {
   editingUser.value = u
   userForm.name        = u.name
   userForm.email       = u.email
-  userForm.role        = u.role
+  userForm.roles       = (u.roles && u.roles.length) ? [...u.roles] : (u.role ? [u.role] : ['receptionist'])
   userForm.mmc_number  = u.mmc_number ?? ''
   userForm.mfa_enabled = u.mfa_enabled
   userForm.status      = u.status
@@ -426,7 +434,9 @@ function lkpDoDelete() {
               <div v-if="u.mmc_number" style="font:500 11px var(--font-mono);color:var(--fg3)">{{ u.mmc_number }}</div>
             </div>
           </div>
-          <div><Badge :tone="roleTone(u.role)">{{ roleLabels[u.role] ?? u.role }}</Badge></div>
+          <div class="row" style="flex-wrap:wrap;gap:3px">
+            <Badge v-for="r in ((u.roles && u.roles.length) ? u.roles : [u.role])" :key="r" :tone="roleTone(r)">{{ roleLabels[r] ?? r }}</Badge>
+          </div>
           <div class="mono" style="font:500 12px var(--font-mono);color:var(--fg3)">{{ u.email }}</div>
           <div><Badge :tone="u.mfa_enabled?'green':'orange'">{{ u.mfa_enabled ? '✓ TOTP' : 'Off' }}</Badge></div>
           <div><Badge :tone="u.status==='active'?'green':'neutral'">{{ u.status }}</Badge></div>
@@ -625,16 +635,19 @@ function lkpDoDelete() {
             </div>
             <div class="field">
               <label class="field__label">{{ t('set_lbl_role') }}</label>
-              <select v-model="userForm.role" class="select">
-                <option value="doctor">{{ t('set_role_doctor') }}</option>
-                <option value="nurse">{{ t('set_role_nurse') }}</option>
-                <option value="pharmacist">{{ t('set_role_pharmacist') }}</option>
-                <option value="receptionist">{{ t('set_role_receptionist') }}</option>
-                <option value="admin">{{ t('set_role_admin') }}</option>
-              </select>
-              <span v-if="userForm.errors.role" class="field__error">{{ userForm.errors.role }}</span>
+              <div class="row" style="flex-wrap:wrap;gap:8px">
+                <button
+                  v-for="r in allRoles" :key="r" type="button"
+                  :class="['chip', userForm.roles.includes(r) ? 'chip--on' : '']"
+                  @click="toggleRole(r)"
+                >
+                  <span class="chip__tick">{{ userForm.roles.includes(r) ? '✓' : '' }}</span>
+                  {{ roleLabels[r] }}
+                </button>
+              </div>
+              <span v-if="userForm.errors.roles" class="field__error">{{ userForm.errors.roles }}</span>
             </div>
-            <div class="field" v-if="userForm.role === 'doctor'">
+            <div class="field" v-if="userForm.roles.includes('doctor')">
               <label class="field__label">{{ t('set_lbl_mmc') }}</label>
               <input v-model="userForm.mmc_number" class="input" placeholder="MMC-XXXXX" />
             </div>
@@ -830,6 +843,28 @@ function lkpDoDelete() {
   color: var(--brand-red);
   margin-top: 2px;
 }
+
+/* ── Role multi-select chips ── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg1);
+  color: var(--fg2);
+  font: 600 12px var(--font-sans);
+  cursor: pointer;
+  transition: all .12s ease;
+}
+.chip:hover { border-color: var(--brand-green); }
+.chip--on {
+  background: color-mix(in srgb, var(--brand-green) 14%, transparent);
+  border-color: var(--brand-green);
+  color: var(--brand-green);
+}
+.chip__tick { font-size: 11px; min-width: 8px; }
 
 /* Pagination & datatable scroll styles kini global di app.css */
 

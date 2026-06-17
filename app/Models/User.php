@@ -14,7 +14,7 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     protected $fillable = [
-        'name', 'email', 'password', 'role', 'mmc_number', 'mfa_enabled', 'status', 'google_id',
+        'name', 'email', 'password', 'role', 'roles', 'mmc_number', 'mfa_enabled', 'status', 'google_id',
     ];
 
     /**
@@ -25,7 +25,7 @@ class User extends Authenticatable
     {
         return Attribute::get(function () {
             $name = trim((string) $this->name);
-            if ($this->role === 'doctor' && $name !== '' && ! preg_match('/^dr\.?\s/i', $name)) {
+            if ($this->hasRole('doctor') && $name !== '' && ! preg_match('/^dr\.?\s/i', $name)) {
                 return "Dr. {$name}";
             }
             return $name;
@@ -40,6 +40,50 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password'          => 'hashed',
             'mfa_enabled'       => 'boolean',
+            'roles'             => 'array',
         ];
+    }
+
+    // ── Peranan berbilang ────────────────────────────────────────────────
+
+    /** Senarai peranan; fallback ke lajur `role` tunggal jika kosong. */
+    public function rolesList(): array
+    {
+        $roles = $this->roles;
+        if (is_array($roles) && count($roles) > 0) {
+            return $roles;
+        }
+        return $this->role ? [$this->role] : [];
+    }
+
+    public function hasRole(string $role): bool
+    {
+        return in_array($role, $this->rolesList(), true);
+    }
+
+    public function hasAnyRole(array $roles): bool
+    {
+        return count(array_intersect($roles, $this->rolesList())) > 0;
+    }
+
+    public function canAccessModule(string $module): bool
+    {
+        if ($this->hasRole('admin')) {
+            return true;
+        }
+        $allowed = config("access.modules.{$module}");
+        if ($allowed === null) {
+            return true; // modul tak dikategori → tidak disekat
+        }
+        return in_array('*', $allowed, true) || $this->hasAnyRole($allowed);
+    }
+
+    /** Senarai modul yang pengguna ini boleh akses (untuk gating menu). */
+    public function accessibleModules(): array
+    {
+        return array_values(array_filter(
+            array_keys(config('access.modules', [])),
+            fn ($m) => $this->canAccessModule($m)
+        ));
     }
 }

@@ -19,7 +19,10 @@ const userMeta = computed(() =>
   [user.value?.mmc_number, userRole.value].filter(Boolean).join(' · ')
 )
 
-const navItems = computed(() => [
+// Modul yang pengguna boleh akses (dikongsi dari backend ikut peranan)
+const modules = computed(() => page.props.auth?.modules ?? [])
+
+const allNavItems = computed(() => [
   { id: 'dashboard',     icon: 'home',     label: t('nav_dashboard') },
   { id: 'queue',         icon: 'queue',    label: t('nav_queue'),         count: 12 },
   { id: 'register',      icon: 'plus',     label: t('nav_register'),      routeName: 'register-patient' },
@@ -32,6 +35,11 @@ const navItems = computed(() => [
   { id: 'reports',       icon: 'chart',    label: t('nav_reports') },
   { id: 'settings',      icon: 'settings', label: t('nav_settings') },
 ])
+
+// Tapis menu ikut modul yang dibenarkan untuk peranan pengguna
+const navItems = computed(() =>
+  allNavItems.value.filter(item => modules.value.includes(item.id))
+)
 
 const title    = computed(() => t(`page_title_${currentRoute.value}`))
 const subtitle = computed(() => page.props.pageSubtitle ?? '')

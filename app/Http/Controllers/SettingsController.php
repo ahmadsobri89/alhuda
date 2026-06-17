@@ -17,7 +17,7 @@ class SettingsController extends Controller
 {
     public function index(Request $request)
     {
-        $users = User::orderBy('name')->get(['id', 'name', 'email', 'role', 'mmc_number', 'mfa_enabled', 'status']);
+        $users = User::orderBy('name')->get(['id', 'name', 'email', 'role', 'roles', 'mmc_number', 'mfa_enabled', 'status']);
 
         $policies = SecurityPolicy::orderBy('id')->get(['id', 'key', 'label', 'enabled']);
 
@@ -93,6 +93,7 @@ class SettingsController extends Controller
     public function storeUser(StoreUserRequest $request)
     {
         $data = $request->validated();
+        $data['role'] = $data['roles'][0]; // peranan utama (untuk paparan/Dr.)
         $user = User::create($data);
 
         AuditLog::record('user.create', "User #{$user->id} · {$user->name} ({$user->role})");
@@ -106,6 +107,7 @@ class SettingsController extends Controller
         if (empty($data['password'])) {
             unset($data['password']);
         }
+        $data['role'] = $data['roles'][0]; // peranan utama (untuk paparan/Dr.)
         $user->update($data);
 
         AuditLog::record('user.update', "User #{$user->id} · {$user->name}");

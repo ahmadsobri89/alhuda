@@ -31,7 +31,7 @@ Route::get('/verify/quarantine/{token}', [QuarantineController::class, 'verify']
 
 Route::post('/locale', [\App\Http\Controllers\LocaleController::class, 'switch'])->name('locale.switch');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureModuleAccess::class])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/queue', [QueueController::class, 'index'])->name('queue');
     Route::get('/register-patient', [\App\Http\Controllers\RegisterController::class, 'index'])->name('register-patient');
