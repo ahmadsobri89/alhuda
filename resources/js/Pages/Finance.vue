@@ -47,6 +47,15 @@ function setPeriod(p) {
 
 function applyFilter() { setPeriod(props.period) }
 
+/* ── audit export (CSV) — ikut penapis semasa ── */
+const exportUrl = computed(() => {
+  const params = new URLSearchParams({ period: props.period })
+  if (props.period === 'day')   params.set('date', fDate.value)
+  if (props.period === 'month') { params.set('month', fMonth.value); params.set('year', fYear.value) }
+  if (props.period === 'year')  params.set('year', fYear.value)
+  return '/finance/export?' + params.toString()
+})
+
 /* ── labels & helpers ── */
 const methodLabel = computed(() => ({
   cash: t('method_cash'), card: t('method_card'), duitnow: t('method_duitnow'),
@@ -96,6 +105,15 @@ function barH(v) { return Math.max(3, Math.round((v / maxTrend.value) * 90)) + '
           <option v-for="y in filterYears" :key="y" :value="y">{{ y }}</option>
         </select>
       </template>
+
+      <a :href="exportUrl" class="btn-export" download>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        {{ t('fin_export') }}
+      </a>
     </div>
 
     <!-- KPI cards -->
@@ -182,8 +200,16 @@ function barH(v) { return Math.max(3, Math.round((v / maxTrend.value) * 90)) + '
 .seg__btn { border: none; background: transparent; padding: 7px 16px; border-radius: 7px; font: 600 12.5px var(--font-sans); color: var(--fg2); cursor: pointer; }
 .seg__btn.on { background: var(--brand-green); color: #fff; }
 
-.fin__filter { display: flex; gap: 8px; }
+.fin__filter { display: flex; gap: 8px; align-items: center; }
 .inp { border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font: 500 13px var(--font-sans); background: #fff; color: var(--fg1); }
+.btn-export {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 16px; border-radius: 8px; border: 1px solid var(--brand-green);
+  background: var(--brand-green-light); color: var(--brand-green-dark);
+  font: 700 12.5px var(--font-sans); text-decoration: none; cursor: pointer;
+  transition: all .12s;
+}
+.btn-export:hover { background: var(--brand-green); color: #fff; }
 
 .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .kpi { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 18px; box-shadow: var(--shadow-sm); }

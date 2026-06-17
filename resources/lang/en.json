@@ -62,6 +62,7 @@
   "fin_col_time": "Paid At",
   "fin_col_by": "Received By",
   "fin_empty": "No payments in this period.",
+  "fin_export": "Export Audit (CSV)",
   "gender_male": "Male",
   "gender_female": "Female",
   "btn_save": "Save",

@@ -109,7 +109,8 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureModuleAccess::
     Route::get('/reports', [ReportsController::class, 'index'])->name('reports');
 
     // Finance — pemantauan pembayaran (harian/bulanan/tahunan)
-    Route::get('/finance', [FinanceController::class, 'index'])->name('finance');
+    Route::get('/finance',        [FinanceController::class, 'index'])->name('finance');
+    Route::get('/finance/export', [FinanceController::class, 'export'])->name('finance.export');
 
     // Settings — CRUD
     Route::get('/settings',                [SettingsController::class, 'index'])->name('settings');

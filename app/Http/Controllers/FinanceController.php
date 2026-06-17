@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\Invoice;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -10,10 +11,17 @@ use Inertia\Inertia;
 
 class FinanceController extends Controller
 {
-    /** Kaedah pembayaran yang dipantau (selari dengan BillingController::pay). */
-    private const METHODS = ['cash', 'card', 'duitnow', 'panel', 'insurance'];
+    /** Label BM untuk jenis pembayaran (dikongsi index/export); kekunci = kaedah. */
+    private const METHOD_LABELS = [
+        'cash' => 'Tunai', 'card' => 'Kad', 'duitnow' => 'DuitNow',
+        'panel' => 'Panel', 'insurance' => 'Insurans',
+    ];
 
-    public function index(Request $request)
+    /**
+     * Selesaikan tempoh terpilih + closure penapis. Dikongsi oleh index() &
+     * export() supaya penapis (dan sekatan admin) sentiasa konsisten.
+     */
+    private function resolvePeriod(Request $request): array
     {
         $isAdmin = Auth::user()->hasRole('admin');
 
@@ -32,7 +40,6 @@ class FinanceController extends Controller
         }
         $date = $dateC->format('Y-m-d');
 
-        // Penapis julat untuk tempoh terpilih (paid invoices sahaja)
         $scope = function ($q) use ($period, $date, $month, $year) {
             $q->where('status', 'paid');
             if ($period === 'day') {
@@ -45,11 +52,22 @@ class FinanceController extends Controller
             return $q;
         };
 
-        $periodLabel = match ($period) {
+        $label = match ($period) {
             'month' => Carbon::create($year, $month)->isoFormat('MMMM YYYY'),
             'year'  => (string) $year,
             default => $dateC->isoFormat('dddd, D MMMM YYYY'),
         };
+
+        return compact('isAdmin', 'period', 'date', 'month', 'year', 'dateC', 'scope', 'label');
+    }
+
+    public function index(Request $request)
+    {
+        [
+            'isAdmin' => $isAdmin, 'period' => $period, 'date' => $date,
+            'month'   => $month,   'year'   => $year,   'dateC'  => $dateC,
+            'scope'   => $scope,   'label'  => $periodLabel,
+        ] = $this->resolvePeriod($request);
 
         // ── Ringkasan ──
         $total = (float) $scope(Invoice::query())->sum('total_amount');
@@ -62,7 +80,7 @@ class FinanceController extends Controller
             ->get()
             ->keyBy('payment_method');
 
-        $byMethod = collect(self::METHODS)->map(fn ($m) => [
+        $byMethod = collect(array_keys(self::METHOD_LABELS))->map(fn ($m) => [
             'method' => $m,
             'total'  => (float) ($raw[$m]->total ?? 0),
             'count'  => (int) ($raw[$m]->cnt ?? 0),
@@ -129,6 +147,84 @@ class FinanceController extends Controller
             'selectedMonth' => $month,
             'selectedYear'  => $year,
             'filterYears'   => range((int) now()->year, 2015),
+        ]);
+    }
+
+    /**
+     * Eksport CSV pembayaran untuk tujuan audit (mengikut tempoh terpilih).
+     * Termasuk butiran penuh tiap transaksi + pecahan jenis bayaran + jejak audit.
+     */
+    public function export(Request $request)
+    {
+        $p = $this->resolvePeriod($request);
+
+        $rows = $p['scope'](Invoice::with('patient:id,name'))
+            ->orderBy('paid_at')
+            ->get();
+
+        AuditLog::record('finance.export', "Eksport audit kewangan · {$p['label']} · {$rows->count()} transaksi");
+
+        $safeLabel = trim(preg_replace('/[^A-Za-z0-9]+/', '-', $p['label']), '-');
+        $filename  = "audit-kewangan-{$p['period']}-{$safeLabel}.csv";
+        $generated = now();
+        $by        = Auth::user()->name;
+
+        return response()->streamDownload(function () use ($rows, $p, $generated, $by) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF"); // BOM — pastikan aksara UTF-8 betul dalam Excel
+
+            // Tulis satu baris CSV (escape '' = standard CSV, elak deprecation PHP 8.4)
+            $put = fn (array $row) => fputcsv($out, $row, ',', '"', '');
+
+            // ── Kepala laporan ──
+            $put(['LAPORAN KEWANGAN UNTUK AUDIT']);
+            $put(['Tempoh',      $p['label']]);
+            $put(['Dijana pada', $generated->format('d/m/Y H:i:s')]);
+            $put(['Dijana oleh', $by]);
+            $put([]);
+
+            // ── Lajur transaksi ──
+            $put([
+                'Bil', 'No. Invois', 'Tarikh Invois', 'Pesakit', 'Jenis Bayaran',
+                'Subtotal (RM)', 'Diskaun (RM)', 'Jumlah (RM)', 'Masa Bayar', 'Diterima Oleh',
+            ]);
+
+            $i = 1;
+            $grand = 0.0;
+            foreach ($rows as $r) {
+                $grand += (float) $r->total_amount;
+                $put([
+                    $i++,
+                    $r->invoice_number,
+                    optional($r->invoice_date)->format('d/m/Y'),
+                    $r->patient->name ?? '',
+                    self::METHOD_LABELS[$r->payment_method] ?? $r->payment_method,
+                    number_format((float) $r->subtotal, 2, '.', ''),
+                    number_format((float) $r->discount_amount, 2, '.', ''),
+                    number_format((float) $r->total_amount, 2, '.', ''),
+                    optional($r->paid_at)->format('d/m/Y H:i'),
+                    $r->paid_by,
+                ]);
+            }
+            $put([]);
+            $put(['', '', '', '', '', '', 'JUMLAH BESAR', number_format($grand, 2, '.', ''), '', '']);
+
+            // ── Pecahan ikut jenis bayaran ──
+            $put([]);
+            $put(['PECAHAN IKUT JENIS BAYARAN']);
+            $put(['Jenis', 'Bilangan', 'Jumlah (RM)']);
+            foreach (self::METHOD_LABELS as $key => $label) {
+                $sub = $rows->where('payment_method', $key);
+                if ($sub->isEmpty()) {
+                    continue;
+                }
+                $put([$label, $sub->count(), number_format((float) $sub->sum('total_amount'), 2, '.', '')]);
+            }
+
+            fclose($out);
+        }, $filename, [
+            'Content-Type'  => 'text/csv; charset=UTF-8',
+            'Cache-Control' => 'no-store, no-cache',
         ]);
     }
 }
