@@ -234,7 +234,7 @@ class EMRController extends Controller
             $rx = Prescription::create([
                 'patient_id'         => $visit->patient_id,
                 'visit_id'           => $visit->id,
-                'prescribing_doctor' => $visit->doctor_name,
+                'prescribing_doctor' => Auth::user()?->display_name ?? $visit->doctor_name,
                 'user_id'            => Auth::id(),
                 'status'             => 'draft',
                 'notes'              => $data['notes'] ?? null,

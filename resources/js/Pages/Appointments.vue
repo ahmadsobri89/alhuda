@@ -25,6 +25,12 @@ const props = defineProps({
 
 const flash = computed(() => usePage().props.flash?.success)
 
+const defaultDoctor = computed(() => {
+  const u = usePage().props.auth?.user
+  if (!u?.name) return ''
+  return u.role === 'doctor' ? `Dr. ${u.name}` : u.name
+})
+
 /* ── Week navigation ─────────────────────────────────── */
 function goWeek(offset) {
   const d = new Date(props.weekStart)
@@ -107,7 +113,7 @@ const editTarget = ref(null)
 
 const form = useForm({
   patient_id:       '',
-  doctor_name:      'Dr. Aiman Rashid',
+  doctor_name:      defaultDoctor.value,
   appointment_date: props.today,
   appointment_time: '08:00',
   duration_minutes: 30,
@@ -122,7 +128,7 @@ function openCreate(date = null, time = null) {
   form.reset()
   form.appointment_date     = date ?? props.today
   form.appointment_time     = time ?? '08:00'
-  form.doctor_name          = 'Dr. Aiman Rashid'
+  form.doctor_name          = defaultDoctor.value
   form.duration_minutes     = 30
   form.type                 = 'follow_up'
   form.status               = 'confirmed'

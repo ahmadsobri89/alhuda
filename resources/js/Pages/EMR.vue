@@ -23,6 +23,12 @@ const props = defineProps({
 const flash = computed(() => usePage().props.flash?.success)
 const { t } = useLocale()
 
+const defaultDoctor = computed(() => {
+  const u = usePage().props.auth?.user
+  if (!u?.name) return ''
+  return u.role === 'doctor' ? `Dr. ${u.name}` : u.name
+})
+
 /* ── Visit list navigation ────────────────────────── */
 const search     = ref(props.filters?.search ?? '')
 const statusFilter = ref(props.filters?.status ?? '')
@@ -75,7 +81,7 @@ const patientResults = computed(() => {
 
 const newForm = useForm({
   patient_id:      '',
-  doctor_name:     'Dr. Aiman Rashid',
+  doctor_name:     defaultDoctor.value,
   visit_date:      props.today,
   chief_complaint: '',
 })
@@ -87,7 +93,7 @@ function selectNewPatient(p) {
 function openNewModal() {
   newForm.reset()
   newForm.visit_date   = props.today
-  newForm.doctor_name  = 'Dr. Aiman Rashid'
+  newForm.doctor_name  = defaultDoctor.value
   patientSearch.value  = ''
   showNewModal.value   = true
 }

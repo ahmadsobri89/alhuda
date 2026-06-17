@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\TimeSlip;
 use App\Models\Visit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class TimeSlipController extends Controller
 {
@@ -21,7 +22,7 @@ class TimeSlipController extends Controller
         $slip = TimeSlip::create(array_merge($data, [
             'patient_id' => $visit->patient_id,
             'visit_id'   => $visit->id,
-            'issued_by'  => $visit->doctor_name,
+            'issued_by'  => Auth::user()?->display_name ?? $visit->doctor_name,
             'slip_date'  => now()->toDateString(),
         ]));
 

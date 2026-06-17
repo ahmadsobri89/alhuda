@@ -23,6 +23,12 @@ const props = defineProps({
 const page  = usePage()
 const flash = computed(() => page.props.flash?.success)
 const { t } = useLocale()
+
+const defaultDoctor = computed(() => {
+  const u = page.props.auth?.user
+  if (!u?.name) return ''
+  return u.role === 'doctor' ? `Dr. ${u.name}` : u.name
+})
 const tab   = ref('queue')
 
 // ─── History search & pagination ─────────────────────────────────────────────
@@ -92,7 +98,7 @@ function emptyItem() {
 
 const rxForm = useForm({
   patient_id:         '',
-  prescribing_doctor: 'Dr. Aiman Rashid',
+  prescribing_doctor: defaultDoctor.value,
   notes:              '',
   items:              [emptyItem()],
 })
@@ -141,7 +147,7 @@ function openCreate() {
   patientSearch.value = ''
   rxForm.reset()
   rxForm.items = [emptyItem()]
-  rxForm.prescribing_doctor = 'Dr. Aiman Rashid'
+  rxForm.prescribing_doctor = defaultDoctor.value
   rxForm.clearErrors()
   resetDrugSearchArrays(1)
   showModal.value = true

@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\ReferralLetter;
 use App\Models\Visit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ReferralController extends Controller
 {
@@ -23,7 +24,7 @@ class ReferralController extends Controller
         $ref = ReferralLetter::create(array_merge($data, [
             'patient_id' => $visit->patient_id,
             'visit_id'   => $visit->id,
-            'issued_by'  => $visit->doctor_name,
+            'issued_by'  => Auth::user()?->display_name ?? $visit->doctor_name,
             'issue_date' => now()->toDateString(),
         ]));
 

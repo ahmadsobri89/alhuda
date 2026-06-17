@@ -7,6 +7,7 @@ use App\Models\QuarantineLetter;
 use App\Models\Visit;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class QuarantineController extends Controller
 {
@@ -26,7 +27,7 @@ class QuarantineController extends Controller
         $qn = QuarantineLetter::create([
             'patient_id'       => $visit->patient_id,
             'visit_id'         => $visit->id,
-            'issued_by'        => $visit->doctor_name,
+            'issued_by'        => Auth::user()?->display_name ?? $visit->doctor_name,
             'issue_date'       => now()->toDateString(),
             'quarantine_start' => $start->toDateString(),
             'quarantine_end'   => $end->toDateString(),
