@@ -265,8 +265,18 @@ body {
 
     .label-wrap {
         display: block !important;
+        /* Lock to the exact roll size — the % aspect ratio rounds to
+           50.03mm and spills a blank 2nd page; fixed mm prevents that. */
+        width: 80mm;
+        height: 50mm;
+        overflow: hidden;
         page-break-after: always;
         break-after: page;
+    }
+    .label-wrap-inner {
+        width: 80mm;
+        height: 50mm;
+        padding-bottom: 0 !important;
     }
     .label-wrap:last-child {
         page-break-after: avoid;
