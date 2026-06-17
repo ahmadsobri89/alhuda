@@ -409,7 +409,7 @@ $mealMap = [
 <div class="label-wrap-inner">
 
     {{-- Background image (the full label design) --}}
-    <img class="label-bg" src="{{ asset('images/label-medicine.png') }}" alt="" />
+    <img class="label-bg" src="{{ asset('images/label-medicine.png') }}?v={{ @filemtime(public_path('images/label-medicine.png')) ?: '1' }}" alt="" />
 
     {{-- Dynamic text overlaid on top --}}
     <div class="label-text">
