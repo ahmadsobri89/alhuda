@@ -9,7 +9,9 @@
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-@page { margin: 0; }
+/* Vozy U9 thermal label — roll 80 × 50 mm.
+   Artwork label-medicine.png is 945×591px = exactly 80×50mm @ 300 DPI. */
+@page { size: 80mm 50mm; margin: 0; }
 
 body {
     font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
@@ -27,6 +29,9 @@ body {
     position: relative;
     width: 100%;
     padding-bottom: 62.54%; /* maintains 945:591 ratio */
+    /* Make font sizes scale with the label width (cqw units below),
+       so the screen preview (≈945px) and the 80mm print match exactly. */
+    container-type: inline-size;
 }
 
 .label-bg {
@@ -51,7 +56,7 @@ body {
     top: 32%;
     left: 12%;
     right: 2%;
-    font-size: 29px;
+    font-size: 2.33cqw;
     font-weight: 600;
     white-space: nowrap;
     line-height: 1;
@@ -62,7 +67,7 @@ body {
     top: 39.6%;
     left: 12%;
     right: 2%;
-    font-size: 29px;
+    font-size: 2.33cqw;
     font-weight: 600;
     white-space: nowrap;
     line-height: 1;
@@ -73,7 +78,7 @@ body {
     top: 47.5%;
     left: 33.5%;
     right: 2%;
-    font-size: 29px;
+    font-size: 2.33cqw;
     font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
@@ -88,7 +93,7 @@ body {
     left: 9.8%;
     width: 7.5%;
     text-align: center;
-    font-size: 33px;
+    font-size: 3.49cqw;
     font-weight: 900;
     line-height: 1;
 }
@@ -98,7 +103,7 @@ body {
     left: 47%;
     width: 7.5%;
     text-align: center;
-    font-size: 33px;
+    font-size: 3.49cqw;
     font-weight: 900;
     line-height: 1;
 }
@@ -108,7 +113,7 @@ body {
     position: absolute;
     top: 59%;
     left: 20%;
-    font-size: 23px;
+    font-size: 2.43cqw;
     font-weight: bold;
     line-height: 1;
     display: flex;
@@ -120,7 +125,7 @@ body {
     position: absolute;
     top: 67%;
     left: 20%;
-    font-size: 23px;
+    font-size: 2.43cqw;
     font-weight: bold;
     line-height: 1;
     display: flex;
@@ -134,7 +139,7 @@ body {
     top: 58%;
     left: 73%;
     right: 2%;
-    font-size: 26px;
+    font-size: 2.75cqw;
     line-height: 1;
     white-space: nowrap;
 }
@@ -143,7 +148,7 @@ body {
     top: 67%;
     left: 73%;
     right: 2%;
-    font-size: 26px;
+    font-size: 2.75cqw;
     line-height: 1;
     white-space: nowrap;
 }
@@ -154,7 +159,7 @@ body {
     top: 81.5%;
     left: 3%;
     right: 3%;
-    font-size: 20px;
+    font-size: 2.12cqw;
     line-height: 1.3;
     color: #333;
     white-space: pre-wrap;
@@ -166,7 +171,7 @@ body {
     position: absolute;
     top: 81%;
     left: 3.8%;
-    font-size: 40px;
+    font-size: 4.23cqw;
     font-weight: 900;
     line-height: 1;
 }
@@ -174,7 +179,7 @@ body {
     position: absolute;
     top: 81%;
     left: 45.8%;
-    font-size: 40px;
+    font-size: 4.23cqw;
     font-weight: 900;
     line-height: 1;
 }
@@ -328,10 +333,11 @@ $mealMap = [
 </div>
 
 <div class="print-hint">
-    ⚙️ <span>Tetapan cetak:
-    <b>Saiz kertas → 70 × 40 mm</b> &nbsp;·&nbsp;
+    ⚙️ <span>Tetapan cetak (Vozy U9):
+    <b>Printer → Vozy U9</b> &nbsp;·&nbsp;
+    <b>Saiz kertas → 80 × 50 mm</b> &nbsp;·&nbsp;
     <b>Jidar → Tiada (None)</b> &nbsp;·&nbsp;
-    <b>Skala → 100%</b> &nbsp;·&nbsp;
+    <b>Skala → 100% (Default)</b> &nbsp;·&nbsp;
     Nyahpilih "Header and footers"</span>
 </div>
 
