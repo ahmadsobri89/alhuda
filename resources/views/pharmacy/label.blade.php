@@ -57,7 +57,7 @@ body {
     left: 12%;
     right: 2%;
     font-size: 2.33cqw;
-    font-weight: 600;
+    font-weight: 700;
     white-space: nowrap;
     line-height: 1;
 }
@@ -68,7 +68,7 @@ body {
     left: 12%;
     right: 2%;
     font-size: 2.33cqw;
-    font-weight: 600;
+    font-weight: 700;
     white-space: nowrap;
     line-height: 1;
 }
@@ -79,7 +79,7 @@ body {
     left: 33.5%;
     right: 2%;
     font-size: 2.33cqw;
-    font-weight: 600;
+    font-weight: 700;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -140,6 +140,7 @@ body {
     left: 73%;
     right: 2%;
     font-size: 2.75cqw;
+    font-weight: bold;
     line-height: 1;
     white-space: nowrap;
 }
@@ -149,6 +150,7 @@ body {
     left: 73%;
     right: 2%;
     font-size: 2.75cqw;
+    font-weight: bold;
     line-height: 1;
     white-space: nowrap;
 }
@@ -160,8 +162,9 @@ body {
     left: 3%;
     right: 3%;
     font-size: 2.12cqw;
+    font-weight: bold;
     line-height: 1.3;
-    color: #333;
+    color: #000;
     white-space: pre-wrap;
     word-break: break-word;
 }
