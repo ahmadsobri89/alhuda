@@ -5,9 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class QuarantineLetter extends Model
 {
+    use LogsActivity;
+
     protected $fillable = [
         'qn_number', 'patient_id', 'visit_id', 'issued_by',
         'issue_date', 'quarantine_start', 'quarantine_end', 'days',
@@ -17,9 +21,9 @@ class QuarantineLetter extends Model
     protected function casts(): array
     {
         return [
-            'issue_date'       => 'date',
+            'issue_date' => 'date',
             'quarantine_start' => 'date',
-            'quarantine_end'   => 'date',
+            'quarantine_end' => 'date',
         ];
     }
 
@@ -27,7 +31,7 @@ class QuarantineLetter extends Model
     {
         static::creating(function (QuarantineLetter $qn) {
             if (! $qn->qn_number) {
-                $year  = (int) now()->format('Y');
+                $year = (int) now()->format('Y');
                 $count = static::whereYear('created_at', $year)->count() + 1;
                 $qn->qn_number = sprintf('QN-%d-%04d', $year, $count);
             }
@@ -46,5 +50,14 @@ class QuarantineLetter extends Model
     public function visit(): BelongsTo
     {
         return $this->belongsTo(Visit::class);
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->logExcept(['updated_at', 'verify_token'])
+            ->useLogName('QuarantineLetter');
     }
 }

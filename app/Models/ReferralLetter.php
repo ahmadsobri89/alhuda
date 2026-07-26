@@ -5,9 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class ReferralLetter extends Model
 {
+    use LogsActivity;
+
     protected $fillable = [
         'ref_number', 'patient_id', 'visit_id', 'issued_by',
         'issue_date', 'referred_to', 'referred_to_dept',
@@ -26,7 +30,7 @@ class ReferralLetter extends Model
     {
         static::creating(function (ReferralLetter $ref) {
             if (! $ref->ref_number) {
-                $year  = (int) now()->format('Y');
+                $year = (int) now()->format('Y');
                 $count = static::whereYear('created_at', $year)->count() + 1;
                 $ref->ref_number = sprintf('REF-%d-%04d', $year, $count);
             }
@@ -45,5 +49,14 @@ class ReferralLetter extends Model
     public function visit(): BelongsTo
     {
         return $this->belongsTo(Visit::class);
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->logExcept(['updated_at', 'verify_token'])
+            ->useLogName('ReferralLetter');
     }
 }

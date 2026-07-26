@@ -7,10 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class Visit extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $fillable = [
         'patient_id', 'user_id', 'appointment_id', 'doctor_name',
@@ -22,8 +24,8 @@ class Visit extends Model
     protected function casts(): array
     {
         return [
-            'visit_date'  => 'date',
-            'signed_at'   => 'datetime',
+            'visit_date' => 'date',
+            'signed_at' => 'datetime',
             'reopened_at' => 'datetime',
         ];
     }
@@ -76,5 +78,14 @@ class Visit extends Model
     public function prescriptions(): HasMany
     {
         return $this->hasMany(Prescription::class)->orderByDesc('id');
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->logExcept(['updated_at'])
+            ->useLogName('Visit');
     }
 }

@@ -782,7 +782,6 @@
   "lkp_del_body": "Nilai ':label' akan dipadam secara kekal.",
   "lkp_del_yes": "Ya, Padam",
   "lkp_values_count": ":count nilai",
-
   "reg_title": "Daftar Pesakit Baru",
   "reg_subtitle": "Isikan maklumat pesakit untuk mendaftar ke dalam sistem.",
   "reg_section_personal": "Maklumat Peribadi",
@@ -790,5 +789,7 @@
   "reg_section_medical": "Maklumat Perubatan",
   "reg_section_emg": "Kenalan Kecemasan",
   "reg_registering": "Mendaftar...",
-  "reg_register_btn": "Daftar Pesakit"
+  "reg_register_btn": "Daftar Pesakit",
+  "nav_audit_log": "Log Audit",
+  "page_title_audit-log": "Log Audit"
 }

@@ -782,7 +782,6 @@
   "lkp_del_body": "Value ':label' will be permanently deleted.",
   "lkp_del_yes": "Yes, Delete",
   "lkp_values_count": ":count values",
-
   "reg_title": "Register New Patient",
   "reg_subtitle": "Fill in the patient details to register them into the system.",
   "reg_section_personal": "Personal Information",
@@ -790,5 +789,7 @@
   "reg_section_medical": "Medical Information",
   "reg_section_emg": "Emergency Contact",
   "reg_registering": "Registering...",
-  "reg_register_btn": "Register Patient"
+  "reg_register_btn": "Register Patient",
+  "nav_audit_log": "Audit Log",
+  "page_title_audit-log": "Audit Log"
 }

@@ -3,9 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class ClinicProfile extends Model
 {
+    use LogsActivity;
+
     protected $fillable = [
         'name', 'tagline', 'reg_number', 'ckaps_number',
         'address', 'postcode', 'city', 'state',
@@ -15,21 +19,22 @@ class ClinicProfile extends Model
     public static function current(): static
     {
         return static::firstOrCreate(['id' => 1], [
-            'name'    => 'Poliklinik Al-Huda',
+            'name' => 'Poliklinik Al-Huda',
             'tagline' => 'Klinik Perubatan Berdaftar',
             'address' => 'No. 1, Jalan Al-Huda, Taman Harmoni',
             'postcode' => '47500',
-            'city'    => 'Subang Jaya',
-            'state'   => 'Selangor',
-            'phone'   => '03-8888 0000',
+            'city' => 'Subang Jaya',
+            'state' => 'Selangor',
+            'phone' => '03-8888 0000',
         ]);
     }
 
     public function getLogoUrlAttribute(): string
     {
         if ($this->logo_path) {
-            return asset('storage/' . $this->logo_path);
+            return asset('storage/'.$this->logo_path);
         }
+
         return asset('logo.png');
     }
 
@@ -37,8 +42,17 @@ class ClinicProfile extends Model
     {
         return implode(', ', array_filter([
             $this->address,
-            $this->postcode . ' ' . $this->city,
+            $this->postcode.' '.$this->city,
             $this->state,
         ]));
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->logExcept(['updated_at'])
+            ->useLogName('ClinicProfile');
     }
 }

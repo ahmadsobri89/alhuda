@@ -29,6 +29,7 @@ return [
         'reports'      => ['admin', 'doctor'],
         'settings'     => ['admin'],
         'profile'      => ['*'],
+        'audit-log'    => ['admin'],
     ],
 
     /*
@@ -56,5 +57,6 @@ return [
         'lookup'           => 'settings',
         'profile'          => 'profile',
         'locale'           => 'profile',
+        'audit-log'        => 'audit-log',
     ],
 ];

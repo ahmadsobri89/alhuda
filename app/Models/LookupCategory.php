@@ -4,9 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class LookupCategory extends Model
 {
+    use LogsActivity;
+
     protected $fillable = [
         'group', 'slug', 'name_ms', 'name_en',
         'description_ms', 'description_en', 'sort_order',
@@ -28,12 +32,14 @@ class LookupCategory extends Model
     public static function forSlug(string $slug): array
     {
         $cat = static::where('slug', $slug)->first();
-        if (!$cat) return [];
+        if (! $cat) {
+            return [];
+        }
 
         return $cat->activeValues()
             ->get(['code', 'label_ms', 'label_en'])
             ->map(fn ($v) => [
-                'code'     => $v->code,
+                'code' => $v->code,
                 'label_ms' => $v->label_ms,
                 'label_en' => $v->label_en,
             ])
@@ -46,5 +52,14 @@ class LookupCategory extends Model
         return collect($slugs)->mapWithKeys(
             fn ($slug) => [$slug => static::forSlug($slug)]
         )->toArray();
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->logExcept(['updated_at'])
+            ->useLogName('LookupCategory');
     }
 }

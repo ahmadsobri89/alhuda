@@ -4,10 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\InventoryItem;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class PrescriptionItem extends Model
 {
+    use LogsActivity;
+
     protected $fillable = [
         'prescription_id', 'inventory_item_id', 'drug_name', 'kegunaan', 'drug_unit', 'dosage',
         'frequency', 'duration', 'quantity', 'instructions', 'item_note',
@@ -15,7 +18,7 @@ class PrescriptionItem extends Model
     ];
 
     protected $casts = [
-        'is_prn'          => 'boolean',
+        'is_prn' => 'boolean',
         'complete_course' => 'boolean',
     ];
 
@@ -27,5 +30,14 @@ class PrescriptionItem extends Model
     public function inventoryItem(): BelongsTo
     {
         return $this->belongsTo(InventoryItem::class);
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->logExcept(['updated_at'])
+            ->useLogName('PrescriptionItem');
     }
 }

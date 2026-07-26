@@ -6,10 +6,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class Invoice extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $fillable = [
         'patient_id', 'visit_id', 'invoice_number', 'invoice_date',
@@ -21,11 +23,11 @@ class Invoice extends Model
     protected function casts(): array
     {
         return [
-            'invoice_date'    => 'date',
-            'paid_at'         => 'datetime',
-            'subtotal'        => 'float',
+            'invoice_date' => 'date',
+            'paid_at' => 'datetime',
+            'subtotal' => 'float',
             'discount_amount' => 'float',
-            'total_amount'    => 'float',
+            'total_amount' => 'float',
         ];
     }
 
@@ -33,7 +35,7 @@ class Invoice extends Model
     {
         static::creating(function (Invoice $inv) {
             if (! $inv->invoice_number) {
-                $year  = now()->year;
+                $year = now()->year;
                 $count = static::whereYear('created_at', $year)->count() + 1;
                 $inv->invoice_number = sprintf('INV-%d-%06d', $year, $count);
             }
@@ -53,7 +55,16 @@ class Invoice extends Model
     public function recalc(): void
     {
         $subtotal = round($this->items()->sum('total_price'), 2);
-        $total    = round($subtotal - ($this->discount_amount ?? 0), 2);
+        $total = round($subtotal - ($this->discount_amount ?? 0), 2);
         $this->update(['subtotal' => $subtotal, 'total_amount' => $total]);
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->logExcept(['updated_at'])
+            ->useLogName('Invoice');
     }
 }

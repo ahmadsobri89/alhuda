@@ -25,6 +25,10 @@ jobs:
 
           git pull origin main
 
+          composer install --optimize-autoloader
+
+          php artisan migrate --force
+
           npm run build
-          
+
           php artisan optimize:clear'

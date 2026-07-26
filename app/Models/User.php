@@ -7,11 +7,15 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
+    use LogsActivity;
 
     protected $fillable = [
         'name', 'email', 'password', 'role', 'roles', 'mmc_number', 'mfa_enabled', 'status', 'google_id',
@@ -28,6 +32,7 @@ class User extends Authenticatable
             if ($this->hasRole('doctor') && $name !== '' && ! preg_match('/^dr\.?\s/i', $name)) {
                 return "Dr. {$name}";
             }
+
             return $name;
         });
     }
@@ -38,9 +43,9 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password'          => 'hashed',
-            'mfa_enabled'       => 'boolean',
-            'roles'             => 'array',
+            'password' => 'hashed',
+            'mfa_enabled' => 'boolean',
+            'roles' => 'array',
         ];
     }
 
@@ -53,6 +58,7 @@ class User extends Authenticatable
         if (is_array($roles) && count($roles) > 0) {
             return $roles;
         }
+
         return $this->role ? [$this->role] : [];
     }
 
@@ -75,6 +81,7 @@ class User extends Authenticatable
         if ($allowed === null) {
             return true; // modul tak dikategori → tidak disekat
         }
+
         return in_array('*', $allowed, true) || $this->hasAnyRole($allowed);
     }
 
@@ -85,5 +92,14 @@ class User extends Authenticatable
             array_keys(config('access.modules', [])),
             fn ($m) => $this->canAccessModule($m)
         ));
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->logExcept(['updated_at', 'password', 'remember_token'])
+            ->useLogName('User');
     }
 }

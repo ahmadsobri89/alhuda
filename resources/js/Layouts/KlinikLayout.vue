@@ -35,6 +35,7 @@ const allNavItems = computed(() => [
   { id: 'finance',       icon: 'chart',    label: t('nav_finance') },
   { id: 'reports',       icon: 'chart',    label: t('nav_reports') },
   { id: 'settings',      icon: 'settings', label: t('nav_settings') },
+  { id: 'audit-log',     icon: 'shield',   label: t('nav_audit_log') },
 ])
 
 // Tapis menu ikut modul yang dibenarkan untuk peranan pengguna

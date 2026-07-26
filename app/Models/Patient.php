@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class Patient extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $fillable = [
         'patient_id', 'name', 'ic_number', 'date_of_birth', 'gender', 'race',
@@ -22,7 +24,7 @@ class Patient extends Model
         return [
             'date_of_birth' => 'date',
             'last_visit_at' => 'datetime',
-            'conditions'    => 'array',
+            'conditions' => 'array',
         ];
     }
 
@@ -30,7 +32,7 @@ class Patient extends Model
     {
         static::creating(function (Patient $patient) {
             if (! $patient->patient_id) {
-                $year  = now()->year;
+                $year = now()->year;
                 $count = static::whereYear('created_at', $year)->count() + 1;
                 $patient->patient_id = sprintf('P-%d-%05d', $year, $count);
             }
@@ -45,6 +47,16 @@ class Patient extends Model
     public function getAgeGenderAttribute(): string
     {
         $gender = $this->gender === 'male' ? 'L' : 'P';
-        return $this->age . $gender;
+
+        return $this->age.$gender;
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->logExcept(['updated_at'])
+            ->useLogName('Patient');
     }
 }

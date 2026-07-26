@@ -2,14 +2,15 @@
 
 namespace App\Models;
 
-use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class InventoryItem extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $fillable = [
         'name', 'generic_name', 'form', 'category', 'classification',
@@ -21,11 +22,11 @@ class InventoryItem extends Model
     protected function casts(): array
     {
         return [
-            'expiry_date'    => 'date',
-            'unit_cost'      => 'decimal:2',
-            'selling_price'  => 'decimal:2',
+            'expiry_date' => 'date',
+            'unit_cost' => 'decimal:2',
+            'selling_price' => 'decimal:2',
             'stock_quantity' => 'integer',
-            'reorder_level'  => 'integer',
+            'reorder_level' => 'integer',
         ];
     }
 
@@ -52,17 +53,38 @@ class InventoryItem extends Model
     public function getFlagsAttribute(): array
     {
         $flags = [];
-        if ($this->is_low_stock) $flags[] = 'low';
-        if ($this->is_expired)   $flags[] = 'expired';
-        elseif ($this->is_expiring) $flags[] = 'expiring';
-        if ($this->classification === 'poison_b') $flags[] = 'poison_b';
-        if ($this->classification === 'poison_c') $flags[] = 'poison_c';
-        if ($this->classification === 'controlled') $flags[] = 'controlled';
+        if ($this->is_low_stock) {
+            $flags[] = 'low';
+        }
+        if ($this->is_expired) {
+            $flags[] = 'expired';
+        } elseif ($this->is_expiring) {
+            $flags[] = 'expiring';
+        }
+        if ($this->classification === 'poison_b') {
+            $flags[] = 'poison_b';
+        }
+        if ($this->classification === 'poison_c') {
+            $flags[] = 'poison_c';
+        }
+        if ($this->classification === 'controlled') {
+            $flags[] = 'controlled';
+        }
+
         return $flags;
     }
 
     public function getStockValueAttribute(): float
     {
         return round($this->stock_quantity * $this->unit_cost, 2);
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->logExcept(['updated_at'])
+            ->useLogName('InventoryItem');
     }
 }
