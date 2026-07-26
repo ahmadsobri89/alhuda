@@ -19,6 +19,7 @@ class StoreAppointmentRequest extends FormRequest
             'type'             => ['required', 'in:new,follow_up,annual_checkup,procedure,antenatal,teleconsult'],
             'reason'           => ['nullable', 'string', 'max:255'],
             'notes'            => ['nullable', 'string', 'max:1000'],
+            'consent_pdpa'     => ['required', 'accepted'],
         ];
     }
 }

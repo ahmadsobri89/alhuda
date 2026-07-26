@@ -121,7 +121,10 @@ const form = useForm({
   reason:           '',
   status:           'confirmed',
   notes:            '',
+  consent_pdpa:     false,
 })
+
+const showPrivacyNotice = ref(false)
 
 function openCreate(date = null, time = null) {
   editTarget.value          = null
@@ -146,6 +149,7 @@ function openEdit(appt) {
   form.reason               = appt.reason ?? ''
   form.status               = appt.status
   form.notes                = appt.notes ?? ''
+  form.consent_pdpa         = true
   showModal.value           = true
   viewAppt.value            = null
 }
@@ -517,13 +521,57 @@ const weekLabel = computed(() => {
               </div>
             </div>
 
+            <div v-if="!editTarget" class="modal-section-title">{{ t('appt_sec_consent') }}</div>
+            <div v-if="!editTarget" class="field" style="margin-bottom:14px">
+              <label style="display:flex;align-items:flex-start;gap:8px;font:500 12.5px var(--font-sans);color:var(--fg2);cursor:pointer">
+                <input v-model="form.consent_pdpa" type="checkbox" style="margin-top:2px;flex-shrink:0" required />
+                <span>{{ t('appt_consent_pdpa') }}</span>
+              </label>
+              <button type="button" class="link-btn" style="margin-top:6px;font:600 12px var(--font-sans);color:var(--brand-primary);background:none;border:none;padding:0;cursor:pointer;text-decoration:underline"
+                      @click="showPrivacyNotice = true">
+                {{ t('appt_read_privacy_notice') }}
+              </button>
+              <span v-if="form.errors.consent_pdpa" class="field__error">{{ form.errors.consent_pdpa }}</span>
+            </div>
+
             <div class="modal__footer">
               <Btn variant="secondary" type="button" @click="closeModal">{{ t('btn_cancel') }}</Btn>
-              <Btn variant="primary" type="submit" :disabled="form.processing || !form.patient_id">
+              <Btn variant="primary" type="submit" :disabled="form.processing || !form.patient_id || (!editTarget && !form.consent_pdpa)">
                 {{ form.processing ? t('btn_saving') : (editTarget ? t('btn_update') : t('appt_save')) }}
               </Btn>
             </div>
           </form>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- ── Privacy Notice (PDPA) ────────────────────── -->
+    <Teleport to="body">
+      <div v-if="showPrivacyNotice" class="modal-backdrop" @click.self="showPrivacyNotice = false">
+        <div class="modal modal--lg">
+          <div class="modal__header">
+            <h3 class="modal__title">{{ t('privacy_notice_title') }}</h3>
+            <button class="modal__close" @click="showPrivacyNotice = false">✕</button>
+          </div>
+          <div class="modal__body">
+            <p style="font:400 14px var(--font-sans);color:var(--fg2);margin:0 0 16px">{{ t('privacy_notice_intro') }}</p>
+
+            <div class="modal-section-title">{{ t('privacy_notice_collect_title') }}</div>
+            <p style="font:400 13px var(--font-sans);color:var(--fg2);margin:6px 0 16px">{{ t('privacy_notice_collect_body') }}</p>
+
+            <div class="modal-section-title">{{ t('privacy_notice_purpose_title') }}</div>
+            <p style="font:400 13px var(--font-sans);color:var(--fg2);margin:6px 0 16px">{{ t('privacy_notice_purpose_body') }}</p>
+
+            <div class="modal-section-title">{{ t('privacy_notice_sharing_title') }}</div>
+            <p style="font:400 13px var(--font-sans);color:var(--fg2);margin:6px 0 16px">{{ t('privacy_notice_sharing_body') }}</p>
+
+            <div class="modal-section-title">{{ t('privacy_notice_rights_title') }}</div>
+            <p style="font:400 13px var(--font-sans);color:var(--fg2);margin:6px 0 0">{{ t('privacy_notice_rights_body') }}</p>
+
+            <div class="modal__footer">
+              <Btn variant="primary" type="button" @click="showPrivacyNotice = false">{{ t('privacy_notice_close') }}</Btn>
+            </div>
+          </div>
         </div>
       </div>
     </Teleport>

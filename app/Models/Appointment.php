@@ -14,13 +14,14 @@ class Appointment extends Model
     protected $fillable = [
         'patient_id', 'doctor_name', 'user_id',
         'appointment_date', 'appointment_time', 'duration_minutes',
-        'type', 'reason', 'status', 'notes',
+        'type', 'reason', 'status', 'notes', 'consent_pdpa',
     ];
 
     protected function casts(): array
     {
         return [
             'appointment_date' => 'date',
+            'consent_pdpa'     => 'boolean',
         ];
     }
 
