@@ -70,37 +70,7 @@ body {
     margin-top: 3px;
 }
 
-/* ── Ref + nature row ── */
-.ref-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-    font: 400 10.5px 'Times New Roman', Times, serif;
-}
-.nature-check { display: flex; align-items: center; gap: 14px; }
-.nature-check__lbl {
-    font: 700 8.5px 'Times New Roman', Times, serif;
-    text-transform: uppercase; letter-spacing: .06em; color: #777; margin-right: 2px;
-}
-.chk-box {
-    display: inline-block; width: 9px; height: 9px;
-    border: 1.2px solid #000; margin-right: 4px; vertical-align: middle;
-}
-
-/* ── Blank fill-in fields ── */
-.field-row { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 9px; }
-.field-row--full { margin-bottom: 9px; }
-.field-lbl {
-    font: 700 10px 'Times New Roman', Times, serif;
-    text-transform: uppercase; letter-spacing: .05em; color: #555;
-    white-space: nowrap;
-}
-.field-lbl::after { content: ':'; margin-right: 2px; }
-.blank-line { flex: 1; border-bottom: 1px solid #000; height: 13px; }
-.field-split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 9px; }
-.field-split .field-row { margin-bottom: 0; }
-
+/* ── Patient reference ── */
 .patient-ref {
     font: 400 10px 'Times New Roman', Times, serif;
     color: #555;
@@ -113,7 +83,10 @@ body {
     gap: 6px 18px;
 }
 .patient-ref b { color: #000; font-weight: 700; }
-.patient-ref .blank-line { display: inline-block; width: 32mm; flex: none; vertical-align: bottom; }
+.patient-ref .blank-line {
+    display: inline-block; width: 32mm;
+    border-bottom: 1px solid #000; height: 13px; vertical-align: bottom;
+}
 
 /* ── Closing paragraph ── */
 .closing {
@@ -235,30 +208,6 @@ body {
         <div class="doc-title">
             <h1>Memo</h1>
             <div class="bilingual">Memo Dalaman / Internal Memorandum — Templat Kosong</div>
-        </div>
-
-        {{-- Ref + nature checkboxes --}}
-        <div class="ref-row">
-            <div>No. Rujukan: <span class="blank-line" style="display:inline-block;width:28mm;height:11px"></span></div>
-            <div class="nature-check">
-                <span class="nature-check__lbl">Sifat</span>
-                <span><span class="chk-box"></span>Biasa</span>
-                <span><span class="chk-box"></span>Segera</span>
-                <span><span class="chk-box"></span>Sulit</span>
-            </div>
-        </div>
-
-        {{-- Blank fields --}}
-        <div class="field-split">
-            <div class="field-row"><span class="field-lbl">Kepada</span><span class="blank-line"></span></div>
-            <div class="field-row"><span class="field-lbl">Tarikh</span><span class="blank-line"></span></div>
-        </div>
-        <div class="field-split">
-            <div class="field-row"><span class="field-lbl">Daripada</span><span class="blank-line"></span></div>
-            <div class="field-row"><span class="field-lbl">Rujukan Tuan/Puan</span><span class="blank-line"></span></div>
-        </div>
-        <div class="field-row field-row--full">
-            <span class="field-lbl">Perkara</span><span class="blank-line"></span>
         </div>
 
         {{-- Optional patient reference --}}
