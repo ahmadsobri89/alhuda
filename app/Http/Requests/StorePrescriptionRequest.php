@@ -12,7 +12,8 @@ class StorePrescriptionRequest extends FormRequest
     {
         return [
             'patient_id'          => ['required', 'exists:patients,id'],
-            'prescribing_doctor'  => ['required', 'string', 'max:255'],
+            'is_otc'              => ['boolean'],
+            'prescribing_doctor'  => ['required_if:is_otc,false', 'nullable', 'string', 'max:255'],
             'notes'               => ['nullable', 'string', 'max:1000'],
             'items'                        => ['required', 'array', 'min:1'],
             'items.*.inventory_item_id'    => ['nullable', 'exists:inventory_items,id'],

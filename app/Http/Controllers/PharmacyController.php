@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StorePatientRequest;
 use App\Http\Requests\StorePrescriptionRequest;
 use App\Http\Requests\UpdatePrescriptionRequest;
 use App\Models\AuditLog;
@@ -110,14 +111,21 @@ class PharmacyController extends Controller
 
     public function store(StorePrescriptionRequest $request)
     {
-        DB::transaction(function () use ($request) {
+        $isOtc = $request->boolean('is_otc');
+
+        DB::transaction(function () use ($request, $isOtc) {
             $rx = Prescription::create([
                 'patient_id'         => $request->patient_id,
-                'prescribing_doctor' => $request->prescribing_doctor,
+                'prescribing_doctor' => $request->prescribing_doctor ?: 'Jualan Terus (Tanpa Preskripsi Doktor)',
                 'user_id'            => Auth::id(),
                 'notes'              => $request->notes,
                 'drug_check_passed'  => true,
                 'drug_check_notes'   => 'Tiada interaksi kritikal dikesan.',
+                ...($isOtc ? [
+                    'status'       => 'dispensed',
+                    'dispensed_at' => now(),
+                    'dispensed_by' => Auth::user()?->name ?? 'Pharmacist',
+                ] : []),
             ]);
 
             foreach ($request->items as $item) {
@@ -125,9 +133,23 @@ class PharmacyController extends Controller
             }
 
             AuditLog::record('rx.create', "{$rx->rx_number} · {$rx->patient->name} · " . count($request->items) . ' ubat');
+
+            if ($isOtc) {
+                $this->autoPopulateBill($rx);
+                AuditLog::record('rx.dispensed', "{$rx->rx_number} · {$rx->patient->name}");
+            }
         });
 
         return back()->with('success', 'Preskripsi berjaya dibuat.');
+    }
+
+    public function quickCreatePatient(StorePatientRequest $request)
+    {
+        $patient = Patient::create($request->validated());
+        AuditLog::record('patient.create', "{$patient->patient_id} · {$patient->name}");
+
+        return back()->with('success', "Pesakit {$patient->name} berjaya didaftarkan.")
+            ->with('quickPatientId', $patient->id);
     }
 
     public function update(UpdatePrescriptionRequest $request, Prescription $prescription)

@@ -117,6 +117,7 @@ Route::middleware(['auth', 'verified', EnsureModuleAccess::class])->group(functi
     // Pharmacy — CRUD
     Route::get('/pharmacy', [PharmacyController::class, 'index'])->name('pharmacy');
     Route::post('/pharmacy/prescriptions', [PharmacyController::class, 'store'])->name('pharmacy.store');
+    Route::post('/pharmacy/quick-patient', [PharmacyController::class, 'quickCreatePatient'])->name('pharmacy.quickPatient');
     Route::put('/pharmacy/prescriptions/{prescription}', [PharmacyController::class, 'update'])->name('pharmacy.update');
     Route::patch('/pharmacy/prescriptions/{prescription}/status', [PharmacyController::class, 'updateStatus'])->name('pharmacy.status');
     Route::delete('/pharmacy/prescriptions/{prescription}', [PharmacyController::class, 'destroy'])->name('pharmacy.destroy');

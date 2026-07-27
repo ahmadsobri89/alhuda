@@ -86,6 +86,34 @@ function selectPatient(p) {
   rxForm.patient_id = p.id
   patientSearch.value = p.name
   patientDropdown.value = false
+  showQuickPatient.value = false
+}
+
+// ─── Quick-add walk-in patient (beli ubat sahaja) ─────────────────────────
+const showQuickPatient = ref(false)
+
+function emptyQuickPatient() {
+  return { name: '', ic_number: '', date_of_birth: '', gender: '', phone: '' }
+}
+
+const quickPatientForm = useForm(emptyQuickPatient())
+
+function openQuickPatient() {
+  quickPatientForm.reset()
+  quickPatientForm.clearErrors()
+  showQuickPatient.value = true
+}
+
+function submitQuickPatient() {
+  quickPatientForm.post(route('pharmacy.quickPatient'), {
+    preserveScroll: true,
+    onSuccess: () => {
+      const newId = page.props.flash?.quickPatientId
+      const p = newId ? props.patients.find(p => p.id === newId) : null
+      if (p) selectPatient(p)
+      showQuickPatient.value = false
+    },
+  })
 }
 
 // ─── Rx Form ──────────────────────────────────────────────────────────────
@@ -98,14 +126,23 @@ function emptyItem() {
 
 const rxForm = useForm({
   patient_id:         '',
+  is_otc:             false,
   prescribing_doctor: defaultDoctor.value,
   notes:              '',
   items:              [emptyItem()],
 })
 
+watch(() => rxForm.is_otc, (isOtc) => {
+  rxForm.prescribing_doctor = isOtc ? '' : defaultDoctor.value
+})
+
 // ─── Inventory drug search (per-item UI state, not submitted) ─────────────
 const itemDrugSearch   = ref([])
 const itemDrugDropdown = ref([])
+
+function hideDrugDropdown(i) {
+  setTimeout(() => { itemDrugDropdown.value[i] = false }, 180)
+}
 
 function filteredDrugsFor(i) {
   const q = (itemDrugSearch.value[i] ?? '').toLowerCase()
@@ -166,6 +203,7 @@ function openCreate() {
   editingRx.value = null
   selectedPatient.value = null
   patientSearch.value = ''
+  showQuickPatient.value = false
   rxForm.reset()
   rxForm.items = [emptyItem()]
   rxForm.prescribing_doctor = defaultDoctor.value
@@ -179,7 +217,9 @@ function openEdit(rx) {
   const p = props.patients.find(p => p.id === rx.patient_id)
   selectedPatient.value = p ?? null
   patientSearch.value = rx.patient_name
+  showQuickPatient.value = false
   rxForm.patient_id         = rx.patient_id
+  rxForm.is_otc             = false
   rxForm.prescribing_doctor = rx.prescribing_doctor
   rxForm.notes              = rx.notes ?? ''
   rxForm.items              = rx.items.map(i => ({
@@ -562,13 +602,65 @@ function doDispense() {
                   </div>
                 </div>
                 <span v-if="rxForm.errors.patient_id" class="rx-field__err">{{ rxForm.errors.patient_id }}</span>
+                <button v-if="!editingRx && !showQuickPatient" type="button" class="rx-quick-patient-btn" @click="openQuickPatient">
+                  + {{ t('rx_btn_quick_patient') }}
+                </button>
               </div>
-              <!-- Doctor -->
+              <!-- Doctor / OTC -->
               <div class="rx-field">
-                <label class="rx-field__lbl">{{ t('rx_lbl_doctor') }} <span class="req">*</span></label>
-                <input v-model="rxForm.prescribing_doctor" class="input" placeholder="Dr. Nama" />
+                <label class="rx-field__lbl">
+                  {{ t('rx_lbl_doctor') }} <span v-if="!rxForm.is_otc" class="req">*</span>
+                </label>
+                <input v-if="!rxForm.is_otc" v-model="rxForm.prescribing_doctor" class="input" placeholder="Dr. Nama" />
                 <span v-if="rxForm.errors.prescribing_doctor" class="rx-field__err">{{ rxForm.errors.prescribing_doctor }}</span>
+                <label class="rx-otc-check">
+                  <input type="checkbox" v-model="rxForm.is_otc" />
+                  {{ t('rx_lbl_otc') }}
+                </label>
               </div>
+            </div>
+
+            <!-- Quick-add walk-in patient -->
+            <div v-if="showQuickPatient" class="rx-quick-patient-card">
+              <div class="rx-quick-patient-card__head">
+                <span>{{ t('rx_quick_patient_title') }}</span>
+                <button type="button" class="rx-remove-btn" @click="showQuickPatient=false" :title="t('btn_cancel')">×</button>
+              </div>
+              <div class="rx-row rx-row--4">
+                <div class="rx-field">
+                  <label class="rx-field__lbl">{{ t('rx_quick_patient_name') }} <span class="req">*</span></label>
+                  <input v-model="quickPatientForm.name" class="input input--sm" />
+                  <span v-if="quickPatientForm.errors.name" class="rx-field__err">{{ quickPatientForm.errors.name }}</span>
+                </div>
+                <div class="rx-field">
+                  <label class="rx-field__lbl">{{ t('rx_quick_patient_ic') }} <span class="req">*</span></label>
+                  <input v-model="quickPatientForm.ic_number" class="input input--sm" placeholder="780229-08-5234" />
+                  <span v-if="quickPatientForm.errors.ic_number" class="rx-field__err">{{ quickPatientForm.errors.ic_number }}</span>
+                </div>
+                <div class="rx-field">
+                  <label class="rx-field__lbl">{{ t('rx_quick_patient_dob') }} <span class="req">*</span></label>
+                  <input v-model="quickPatientForm.date_of_birth" type="date" class="input input--sm" />
+                  <span v-if="quickPatientForm.errors.date_of_birth" class="rx-field__err">{{ quickPatientForm.errors.date_of_birth }}</span>
+                </div>
+                <div class="rx-field">
+                  <label class="rx-field__lbl">{{ t('rx_quick_patient_gender') }} <span class="req">*</span></label>
+                  <select v-model="quickPatientForm.gender" class="input input--sm">
+                    <option value="">— Pilih —</option>
+                    <option value="male">{{ t('gender_male') }}</option>
+                    <option value="female">{{ t('gender_female') }}</option>
+                  </select>
+                  <span v-if="quickPatientForm.errors.gender" class="rx-field__err">{{ quickPatientForm.errors.gender }}</span>
+                </div>
+              </div>
+              <div class="rx-row rx-row--4">
+                <div class="rx-field">
+                  <label class="rx-field__lbl">{{ t('rx_quick_patient_phone') }}</label>
+                  <input v-model="quickPatientForm.phone" class="input input--sm" />
+                </div>
+              </div>
+              <Btn type="button" variant="secondary" size="sm" :disabled="quickPatientForm.processing" @click="submitQuickPatient">
+                {{ t('rx_quick_patient_save') }}
+              </Btn>
             </div>
           </div>
 
@@ -612,7 +704,7 @@ function doDispense() {
                         autocomplete="off"
                         @input="itemDrugDropdown[i] = true; item.drug_name = itemDrugSearch[i]"
                         @focus="itemDrugDropdown[i] = true"
-                        @blur="setTimeout(() => { itemDrugDropdown[i] = false }, 180)"
+                        @blur="hideDrugDropdown(i)"
                       />
                       <div v-if="item.drug_name" class="drug-noprice-hint">Tiada harga inventori — ubat ini tidak link dengan stok</div>
                       <div v-if="itemDrugDropdown[i] && filteredDrugsFor(i).length" class="drug-dropdown">
@@ -915,6 +1007,28 @@ function doDispense() {
   font:700 10.5px var(--font-sans); text-transform:uppercase; letter-spacing:.07em;
   color:var(--brand-green-dark); background:var(--brand-green-light);
   padding:3px 10px; border-radius:999px;
+}
+
+/* ── Quick-add walk-in patient / OTC ── */
+.rx-quick-patient-btn {
+  margin-top:6px; background:none; border:none; padding:0; cursor:pointer;
+  font:600 11.5px var(--font-sans); color:var(--brand-green-dark);
+}
+.rx-quick-patient-btn:hover { text-decoration:underline; }
+.rx-otc-check {
+  display:flex; align-items:center; gap:6px; margin-top:8px; cursor:pointer;
+  font:500 12px var(--font-sans); color:var(--fg2);
+}
+.rx-quick-patient-card {
+  border: 1.5px dashed var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  margin-top: 4px;
+  background: var(--brand-green-light, #F3FAF6);
+}
+.rx-quick-patient-card__head {
+  display:flex; align-items:center; justify-content:space-between;
+  font:700 12px var(--font-sans); color:var(--brand-green-dark); margin-bottom:12px;
 }
 
 /* ── Rows inside card ── */
