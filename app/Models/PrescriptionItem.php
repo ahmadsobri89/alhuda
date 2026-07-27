@@ -13,13 +13,14 @@ class PrescriptionItem extends Model
 
     protected $fillable = [
         'prescription_id', 'inventory_item_id', 'drug_name', 'kegunaan', 'drug_unit', 'dosage',
-        'frequency', 'duration', 'quantity', 'instructions', 'item_note',
+        'frequency', 'duration', 'quantity', 'unit_price', 'instructions', 'item_note',
         'is_prn', 'complete_course',
     ];
 
     protected $casts = [
         'is_prn' => 'boolean',
         'complete_course' => 'boolean',
+        'unit_price' => 'float',
     ];
 
     public function prescription(): BelongsTo

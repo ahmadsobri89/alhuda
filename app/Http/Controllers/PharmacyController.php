@@ -45,6 +45,7 @@ class PharmacyController extends Controller
                 'frequency'           => $item->frequency,
                 'duration'            => $item->duration,
                 'quantity'            => $item->quantity,
+                'unit_price'          => $item->unit_price,
                 'instructions'        => $item->instructions,
                 'item_note'           => $item->item_note,
                 'is_prn'              => $item->is_prn,
@@ -224,7 +225,9 @@ class PharmacyController extends Controller
                 : ($invByName[strtolower($item->drug_name)]
                    ?? $invByName->first(fn ($i) => strtolower($i->generic_name) === strtolower($item->drug_name)));
 
-            $unitPrice = $inv ? (float) $inv->selling_price : 0.0;
+            $unitPrice = $item->unit_price !== null
+                ? (float) $item->unit_price
+                : ($inv ? (float) $inv->selling_price : 0.0);
             $qty       = (int) $item->quantity;
 
             $invoice->items()->create([

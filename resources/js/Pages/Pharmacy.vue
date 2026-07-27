@@ -93,7 +93,7 @@ const showModal    = ref(false)
 const editingRx    = ref(null)
 
 function emptyItem() {
-  return { inventory_item_id: null, drug_name: '', kegunaan: '', drug_unit: '', dosage: '', frequency: '', duration: '', quantity: 1, instructions: '', item_note: '', is_prn: false, complete_course: false }
+  return { inventory_item_id: null, drug_name: '', kegunaan: '', drug_unit: '', dosage: '', frequency: '', duration: '', quantity: 1, unit_price: null, instructions: '', item_note: '', is_prn: false, complete_course: false }
 }
 
 const rxForm = useForm({
@@ -120,6 +120,7 @@ function selectDrug(i, inv) {
   rxForm.items[i].inventory_item_id = inv.id
   rxForm.items[i].drug_name         = inv.name
   rxForm.items[i].drug_unit         = inv.form ?? ''
+  rxForm.items[i].unit_price        = inv.selling_price > 0 ? Number(inv.selling_price) : null
   itemDrugSearch.value[i]           = inv.name
   itemDrugDropdown.value[i]         = false
 }
@@ -136,17 +137,24 @@ function resolvedInvItem(item) {
   return props.drugItems.find(d => d.id === item.inventory_item_id) ?? null
 }
 
+function resolvedUnitPrice(item) {
+  const price = (item.unit_price != null && item.unit_price !== '')
+    ? Number(item.unit_price)
+    : resolvedInvItem(item)?.selling_price
+  return price > 0 ? Number(price) : null
+}
+
 function itemEstimate(item) {
-  const inv = resolvedInvItem(item)
-  if (!inv || !(inv.selling_price > 0)) return null
-  return (Number(item.quantity) || 0) * Number(inv.selling_price)
+  const price = resolvedUnitPrice(item)
+  if (price === null) return null
+  return (Number(item.quantity) || 0) * price
 }
 
 const rxEstimateTotal = computed(() =>
   rxForm.items.reduce((sum, item) => sum + (itemEstimate(item) ?? 0), 0)
 )
 const rxHasUnlinkedItems = computed(() =>
-  rxForm.items.some(item => item.drug_name && !resolvedInvItem(item))
+  rxForm.items.some(item => item.drug_name && itemEstimate(item) === null)
 )
 
 function resetDrugSearchArrays(len) {
@@ -178,7 +186,7 @@ function openEdit(rx) {
     inventory_item_id: i.inventory_item_id ?? null,
     drug_name: i.drug_name, kegunaan: i.kegunaan ?? '', drug_unit: i.drug_unit ?? '',
     dosage: i.dosage ?? '', frequency: i.frequency ?? '', duration: i.duration ?? '',
-    quantity: i.quantity, instructions: i.instructions ?? '', item_note: i.item_note ?? '',
+    quantity: i.quantity, unit_price: i.unit_price ?? null, instructions: i.instructions ?? '', item_note: i.item_note ?? '',
     is_prn: i.is_prn ?? false, complete_course: i.complete_course ?? false,
   }))
   rxForm.clearErrors()
@@ -459,10 +467,10 @@ function doDispense() {
                 <span class="drug-card__qty">{{ t('rx_draw_qty', { n: item.quantity }) }}</span>
                 <span v-if="item.instructions" class="drug-card__instr">{{ item.instructions }}</span>
               </div>
-              <div v-if="itemEstimate(item) !== null" class="drug-card__price">
-                RM {{ Number(resolvedInvItem(item).selling_price).toFixed(2) }}/unit · anggaran RM {{ itemEstimate(item).toFixed(2) }}
+              <div v-if="resolvedUnitPrice(item) !== null" class="drug-card__price">
+                RM {{ resolvedUnitPrice(item).toFixed(2) }}/unit · jumlah RM {{ itemEstimate(item).toFixed(2) }}
               </div>
-              <div v-else class="drug-card__noprice">Tiada harga inventori</div>
+              <div v-else class="drug-card__noprice">Tiada harga</div>
               <div v-if="item.item_note" class="drug-card__note">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                 {{ item.item_note }}
@@ -668,6 +676,10 @@ function doDispense() {
                   <label class="rx-field__lbl">{{ t('rx_lbl_qty') }}</label>
                   <input v-model.number="item.quantity" type="number" min="1" class="input input--sm" style="text-align:center" />
                 </div>
+                <div class="rx-field rx-field--price">
+                  <label class="rx-field__lbl">Harga (RM)</label>
+                  <input v-model.number="item.unit_price" type="number" min="0" step="0.01" class="input input--sm" style="text-align:center" placeholder="0.00" />
+                </div>
                 <div class="rx-field rx-field--instr">
                   <label class="rx-field__lbl">{{ t('rx_lbl_instruction') }}</label>
                   <input v-model="item.instructions" class="input input--sm" placeholder="Selepas makan" list="instr-list" />
@@ -721,7 +733,7 @@ function doDispense() {
             <div v-if="rxEstimateTotal > 0" class="rx-estimate-total">
               <span>Anggaran jumlah preskripsi</span>
               <strong>RM {{ rxEstimateTotal.toFixed(2) }}</strong>
-              <small v-if="rxHasUnlinkedItems">(tidak termasuk ubat yang tiada harga inventori)</small>
+              <small v-if="rxHasUnlinkedItems">(tidak termasuk ubat yang tiada harga)</small>
             </div>
           </div>
 
@@ -910,13 +922,14 @@ function doDispense() {
 .rx-row:last-child { margin-bottom:0; }
 .rx-row--2      { grid-template-columns: 1fr 1fr; }
 .rx-row--4      { grid-template-columns: 1.4fr 0.8fr 1.5fr 1fr; }
-.rx-row--footer { grid-template-columns: 80px 1fr auto auto; align-items:end; }
+.rx-row--footer { grid-template-columns: 80px 90px 1fr auto auto; align-items:end; }
 .rx-row--note   { grid-template-columns: 1fr; }
 .rx-item-note   { background:#FFFDF0; border-color:#E8D48A; }
 .rx-item-note:focus { border-color:#B08000; box-shadow:0 0 0 3px rgba(176,128,0,.12); }
 
 /* ── Qty/Instr in footer row ── */
 .rx-field--qty   { min-width:0; }
+.rx-field--price { min-width:0; }
 .rx-field--instr { min-width:0; }
 
 /* ── PRN / Habiskan toggles ── */
@@ -1078,7 +1091,7 @@ function doDispense() {
 @media (max-width: 900px) {
   .modal--xl { width: min(860px, 96vw); }
   .rx-row--4 { grid-template-columns: 1fr 1fr; }
-  .rx-row--footer { grid-template-columns: 70px 1fr auto auto; }
+  .rx-row--footer { grid-template-columns: 70px 85px 1fr auto auto; }
 }
 
 /* ── Mobile (≤ 640px) ── */
@@ -1101,7 +1114,10 @@ function doDispense() {
   /* Drug card rows: stack */
   .rx-row--2      { grid-template-columns: 1fr; }
   .rx-row--4      { grid-template-columns: 1fr 1fr; }
-  .rx-row--footer { grid-template-columns: 70px 1fr; gap: 8px; }
+  .rx-row--footer { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .rx-row--footer .rx-field--qty   { grid-column: 1; }
+  .rx-row--footer .rx-field--price { grid-column: 2; }
+  .rx-row--footer .rx-field--instr { grid-column: 1 / -1; }
 
   /* Toggles go to new row on mobile */
   .rx-toggle { width: 100%; }
