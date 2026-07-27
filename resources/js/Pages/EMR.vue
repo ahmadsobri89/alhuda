@@ -299,7 +299,7 @@ const rxDrugOpen    = ref([false])
 function emptyRxItem() {
   return {
     inventory_item_id: null, drug_name: '', kegunaan: '', drug_unit: '',
-    dosage: '', frequency: '', duration: '', quantity: 1,
+    dosage: '', frequency: '', duration: '', quantity: 1, unit_price: null,
     instructions: '', is_prn: false, complete_course: false, item_note: '',
   }
 }
@@ -328,6 +328,7 @@ function selectRxDrug(i, inv) {
   rxForm.items[i].inventory_item_id = inv.id
   rxForm.items[i].drug_name         = inv.name
   rxForm.items[i].drug_unit         = inv.form ?? ''
+  rxForm.items[i].unit_price        = inv.selling_price > 0 ? Number(inv.selling_price) : null
   rxDrugSearch.value[i]             = inv.name
   rxDrugOpen.value[i]               = false
 }
@@ -340,6 +341,13 @@ function resolvedRxInv(item) {
   return item.inventory_item_id
     ? props.drugItems.find(d => d.id === item.inventory_item_id) ?? null
     : null
+}
+function rxItemEstimate(item) {
+  const price = (item.unit_price != null && item.unit_price !== '')
+    ? Number(item.unit_price)
+    : resolvedRxInv(item)?.selling_price
+  if (!(price > 0)) return null
+  return (Number(item.quantity) || 0) * Number(price)
 }
 
 const RX_FREQS  = computed(() => (props.lookups?.kekerapan_dos ?? []).map(v => v.label_ms))
@@ -410,6 +418,7 @@ function openEditItem(item) {
     frequency:         item.frequency         ?? '',
     duration:          item.duration          ?? '',
     quantity:          item.quantity,
+    unit_price:        item.unit_price         ?? null,
     instructions:      item.instructions      ?? '',
     is_prn:            item.is_prn            ?? false,
     complete_course:   item.complete_course   ?? false,
@@ -442,6 +451,7 @@ function selectEditDrug(inv) {
   editForm.value.inventory_item_id = inv.id
   editForm.value.drug_name         = inv.name
   editForm.value.drug_unit         = inv.form ?? ''
+  editForm.value.unit_price        = inv.selling_price > 0 ? Number(inv.selling_price) : null
   editDrugSearch.value             = inv.name
   editDrugOpen.value               = false
 }
@@ -849,6 +859,10 @@ const soapHints = computed(() => ({
                             <label class="field__label">Kuantiti</label>
                             <input v-model.number="editForm.quantity" type="number" min="1" class="input input--sm" style="text-align:center" />
                           </div>
+                          <div class="field rx-field--price">
+                            <label class="field__label">Harga (RM)</label>
+                            <input v-model.number="editForm.unit_price" type="number" min="0" step="0.01" class="input input--sm" style="text-align:center" placeholder="0.00" />
+                          </div>
                           <div class="field rx-field--instr">
                             <label class="field__label">Arahan</label>
                             <input v-model="editForm.instructions" class="input input--sm" placeholder="Selepas makan" list="edit-instr-list" />
@@ -896,6 +910,7 @@ const soapHints = computed(() => ({
                         <span v-if="item.is_prn" class="rx-existing-drug__tag rx-existing-drug__tag--prn">PRN</span>
                         <span v-if="item.complete_course" class="rx-existing-drug__tag rx-existing-drug__tag--cc">Habis</span>
                         <span class="rx-existing-drug__qty">× {{ item.quantity }}</span>
+                        <span v-if="rxItemEstimate(item) !== null" class="rx-existing-drug__price">RM {{ rxItemEstimate(item).toFixed(2) }}</span>
                         <div v-if="rx.status === 'draft'" class="rx-existing-drug__actions">
                           <button class="rx-item-edit-btn" @click="openEditItem(item)" title="Edit ubat">
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -1008,6 +1023,10 @@ const soapHints = computed(() => ({
                         <label class="field__label">Kuantiti <span style="color:var(--brand-red)">*</span></label>
                         <input v-model.number="item.quantity" type="number" min="1" class="input input--sm" style="text-align:center" />
                       </div>
+                      <div class="field rx-field--price">
+                        <label class="field__label">Harga (RM)</label>
+                        <input v-model.number="item.unit_price" type="number" min="0" step="0.01" class="input input--sm" style="text-align:center" placeholder="0.00" />
+                      </div>
                       <div class="field rx-field--instr">
                         <label class="field__label">Arahan</label>
                         <input v-model="item.instructions" class="input input--sm" placeholder="Selepas makan" list="emr-instr-list" />
@@ -1029,6 +1048,10 @@ const soapHints = computed(() => ({
                           <small>Habiskan</small>
                         </span>
                       </label>
+                    </div>
+
+                    <div v-if="rxItemEstimate(item) !== null" class="rx-item-estimate">
+                      Anggaran: RM {{ rxItemEstimate(item).toFixed(2) }}
                     </div>
 
                     <!-- Row 4: Nota ubat -->
@@ -2334,6 +2357,7 @@ const soapHints = computed(() => ({
 .rx-existing-drug__use  { font: 400 11px var(--font-sans); color: var(--fg2); }
 .rx-existing-drug__meta { font: 400 11px var(--font-sans); color: var(--fg3); }
 .rx-existing-drug__qty  { font: 700 11px var(--font-mono); color: var(--brand-green-dark); margin-left: auto; }
+.rx-existing-drug__price { font: 600 11px var(--font-mono); color: var(--fg3); }
 .rx-existing-drug__tag  { font: 700 9px var(--font-sans); padding: 1px 5px; border-radius: 999px; }
 .rx-existing-drug__tag--prn { background:#FFF7ED; color:#C2410C; border:1px solid #FED7AA; }
 .rx-existing-drug__tag--cc  { background:#EFF6FF; color:#1D4ED8; border:1px solid #93C5FD; }
@@ -2362,9 +2386,16 @@ const soapHints = computed(() => ({
 .rx-row { display: grid; gap: 10px; margin-bottom: 10px; }
 .rx-row--2      { grid-template-columns: 1fr 1fr; }
 .rx-row--4      { grid-template-columns: 1fr 0.8fr 1.1fr 0.9fr; }
-.rx-row--footer { grid-template-columns: 70px 1fr auto auto; align-items: end; }
+.rx-row--footer { grid-template-columns: 70px 85px 1fr auto auto; align-items: end; }
 .rx-row--note   { grid-template-columns: 1fr; }
-.rx-field--qty  { max-width: 70px; }
+.rx-field--qty   { max-width: 70px; }
+.rx-field--price { max-width: 85px; }
+
+/* Per-item estimate line (matches Pharmacy) */
+.rx-item-estimate {
+  margin-top: -2px; margin-bottom: 10px;
+  font: 600 11.5px var(--font-mono); color: var(--brand-green-dark);
+}
 
 /* Linked drug bar */
 .drug-linked-bar {
@@ -2472,7 +2503,10 @@ const soapHints = computed(() => ({
 
 @media (max-width: 900px) {
   .rx-row--4      { grid-template-columns: 1fr 1fr; }
-  .rx-row--footer { grid-template-columns: 70px 1fr; }
+  .rx-row--footer { grid-template-columns: 1fr 1fr; }
+  .rx-row--footer .rx-field--qty,
+  .rx-row--footer .rx-field--price { max-width: none; }
+  .rx-row--footer .rx-field--instr { grid-column: 1 / -1; }
   .rx-toggle { margin-top: 8px; }
 }
 </style>
