@@ -1221,7 +1221,7 @@ const soapHints = computed(() => ({
                     </select>
                   </div>
                 </div>
-                <Btn variant="primary" size="sm" :disabled="dxForm.processing || !dxForm.icd_code || !dxForm.description" @click="addDiagnosis">
+                <Btn variant="primary" size="sm" :disabled="dxForm.processing || !dxForm.description" @click="addDiagnosis">
                   {{ t('emr_add_diagnosis') }}
                 </Btn>
               </div>
@@ -1230,7 +1230,7 @@ const soapHints = computed(() => ({
               <div v-if="selected.diagnoses?.length">
                 <div v-for="dx in selected.diagnoses" :key="dx.id"
                      class="row" style="padding:10px 18px;border-top:1px solid var(--border);gap:10px">
-                  <Badge :tone="dx.type === 'primary' ? 'blue' : 'neutral'" style="flex-shrink:0">
+                  <Badge v-if="dx.icd_code" :tone="dx.type === 'primary' ? 'blue' : 'neutral'" style="flex-shrink:0">
                     {{ dx.icd_code }}
                   </Badge>
                   <div style="flex:1;font:500 13px var(--font-sans);color:var(--fg1)">{{ dx.description }}</div>

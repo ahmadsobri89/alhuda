@@ -321,14 +321,14 @@ class EMRController extends Controller
     public function storeDiagnosis(Request $request, Visit $visit)
     {
         $data = $request->validate([
-            'icd_code'    => ['required', 'string', 'max:10'],
+            'icd_code'    => ['nullable', 'string', 'max:10'],
             'description' => ['required', 'string', 'max:255'],
             'type'        => ['required', 'in:primary,secondary'],
         ]);
 
         $visit->diagnoses()->create($data);
 
-        AuditLog::record('emr.diagnosis', "{$visit->patient->name} · {$data['icd_code']}");
+        AuditLog::record('emr.diagnosis', "{$visit->patient->name} · " . ($data['icd_code'] ?? $data['description']));
 
         return back()->with('success', 'Diagnosis ditambah.');
     }
