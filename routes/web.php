@@ -10,6 +10,7 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\LookupController;
 use App\Http\Controllers\MCController;
+use App\Http\Controllers\MemoController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\PharmacyController;
 use App\Http\Controllers\ProfileController;
@@ -55,6 +56,7 @@ Route::get('/verify/timeslip/{token}', [TimeSlipController::class, 'verify'])->n
 Route::get('/verify/mc/{token}', [MCController::class, 'verify'])->name('mc.verify');
 Route::get('/verify/referral/{token}', [ReferralController::class, 'verify'])->name('referral.verify');
 Route::get('/verify/quarantine/{token}', [QuarantineController::class, 'verify'])->name('quarantine.verify');
+Route::get('/verify/memo/{token}', [MemoController::class, 'verify'])->name('memo.verify');
 
 Route::post('/locale', [LocaleController::class, 'switch'])->name('locale.switch');
 
@@ -107,6 +109,11 @@ Route::middleware(['auth', 'verified', EnsureModuleAccess::class])->group(functi
     Route::post('/emr/{visit}/quarantine', [QuarantineController::class, 'store'])->name('quarantine.store');
     Route::delete('/quarantine/{quarantine}', [QuarantineController::class, 'destroy'])->name('quarantine.destroy');
     Route::get('/quarantine/{quarantine}/print', [QuarantineController::class, 'print'])->name('quarantine.print');
+    // Memos
+    Route::post('/emr/{visit}/memo', [MemoController::class, 'store'])->name('memo.store');
+    Route::delete('/memo/{memo}', [MemoController::class, 'destroy'])->name('memo.destroy');
+    Route::get('/memo/blank/print', [MemoController::class, 'printBlank'])->name('memo.print_blank');
+    Route::get('/memo/{memo}/print', [MemoController::class, 'print'])->name('memo.print');
     // Pharmacy — CRUD
     Route::get('/pharmacy', [PharmacyController::class, 'index'])->name('pharmacy');
     Route::post('/pharmacy/prescriptions', [PharmacyController::class, 'store'])->name('pharmacy.store');

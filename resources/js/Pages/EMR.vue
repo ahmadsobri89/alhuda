@@ -271,6 +271,27 @@ function deleteQuarantine(qnId) {
   router.delete(`/quarantine/${qnId}`, { preserveScroll: true, onSuccess: () => { showQnDelId.value = null } })
 }
 
+/* ── Memo ──────────────────────────────────────────── */
+const showMemoForm  = ref(false)
+const showMemoDelId = ref(null)
+const memoForm      = useForm({
+  addressed_to: '',
+  subject:      '',
+  nature:       'normal',
+  content:      '',
+  notes:        '',
+})
+
+function issueMemo() {
+  memoForm.post(`/emr/${props.selected.id}/memo`, {
+    preserveScroll: true,
+    onSuccess: () => { memoForm.reset(); memoForm.nature = 'normal'; showMemoForm.value = false },
+  })
+}
+function deleteMemo(memoId) {
+  router.delete(`/memo/${memoId}`, { preserveScroll: true, onSuccess: () => { showMemoDelId.value = null } })
+}
+
 /* ── Prescription from EMR ───────────────────────── */
 const rxDrugSearch  = ref([''])
 const rxDrugOpen    = ref([false])
@@ -1444,6 +1465,45 @@ const soapHints = computed(() => ({
               </div>
             </div>
 
+            <!-- Memo -->
+            <div class="card">
+              <div class="card__header">
+                <h3 class="card__title">{{ t('memo_section') }}</h3>
+                <div class="spacer"></div>
+                <a href="/memo/blank/print" target="_blank" class="mc-print-btn" style="color:#4338ca;border-color:#c7d2fe;background:#eef2ff">
+                  {{ t('memo_print_blank') }}
+                </a>
+                <Btn variant="ghost" size="sm" @click="showMemoForm = true">
+                  {{ t('memo_issue_btn') }}
+                </Btn>
+              </div>
+
+              <!-- Memo list -->
+              <div v-if="selected.memos?.length">
+                <div v-for="memo in selected.memos" :key="memo.id"
+                     style="padding:10px 14px;border-top:1px solid var(--border)">
+                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                    <span style="font:700 11px var(--font-mono);color:#4338ca">{{ memo.memo_number }}</span>
+                    <span :class="['ref-urgency-chip', `memo-nature-${memo.nature}`]">{{ t(`memo_nature_${memo.nature}`) }}</span>
+                    <span style="font:500 10px var(--font-sans);color:var(--fg3);margin-left:auto">{{ memo.issue_date }}</span>
+                  </div>
+                  <div style="font:600 12px var(--font-sans);color:var(--fg1);margin-bottom:2px">{{ memo.addressed_to }}</div>
+                  <div style="font:500 11px var(--font-sans);color:var(--fg2);margin-bottom:2px">{{ memo.subject }}</div>
+                  <div style="font:400 11px var(--font-sans);color:var(--fg2);margin-bottom:6px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">{{ memo.content }}</div>
+                  <div style="display:flex;gap:6px">
+                    <a :href="`/memo/${memo.id}/print`" target="_blank" class="mc-print-btn" style="color:#4338ca;border-color:#c7d2fe;background:#eef2ff">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                      {{ t('memo_print') }}
+                    </a>
+                    <button class="mc-del-btn" @click="showMemoDelId = memo.id">{{ t('memo_delete') }}</button>
+                  </div>
+                </div>
+              </div>
+              <div v-else style="padding:16px 14px;font:500 12px var(--font-sans);color:var(--fg3)">
+                {{ t('memo_no_records') }}
+              </div>
+            </div>
+
           </div>
         </div>
       </template>
@@ -1624,6 +1684,53 @@ const soapHints = computed(() => ({
       </div>
     </Teleport>
 
+    <!-- ── Issue Memo Modal ──────────────────────────────── -->
+    <Teleport to="body">
+      <div v-if="showMemoForm" class="modal-backdrop" @click.self="showMemoForm = false; memoForm.clearErrors()">
+        <div class="modal">
+          <div class="modal__header">
+            <h3 class="modal__title">{{ t('memo_issue_btn') }}</h3>
+            <button class="modal__close" @click="showMemoForm = false; memoForm.clearErrors()">✕</button>
+          </div>
+          <div class="modal__body">
+            <div class="field" style="margin-bottom:12px">
+              <label class="field__label">{{ t('memo_lbl_to') }} *</label>
+              <input v-model="memoForm.addressed_to" type="text" class="input" :placeholder="t('memo_ph_to')" maxlength="255" />
+              <span v-if="memoForm.errors.addressed_to" class="field__error">{{ memoForm.errors.addressed_to }}</span>
+            </div>
+            <div class="field" style="margin-bottom:12px">
+              <label class="field__label">{{ t('memo_lbl_subject') }} *</label>
+              <input v-model="memoForm.subject" type="text" class="input" :placeholder="t('memo_ph_subject')" maxlength="255" />
+              <span v-if="memoForm.errors.subject" class="field__error">{{ memoForm.errors.subject }}</span>
+            </div>
+            <div class="field" style="margin-bottom:12px">
+              <label class="field__label">{{ t('memo_lbl_nature') }}</label>
+              <select v-model="memoForm.nature" class="select">
+                <option value="normal">{{ t('memo_nature_normal') }}</option>
+                <option value="urgent">{{ t('memo_nature_urgent') }}</option>
+                <option value="confidential">{{ t('memo_nature_confidential') }}</option>
+              </select>
+            </div>
+            <div class="field" style="margin-bottom:12px">
+              <label class="field__label">{{ t('memo_lbl_content') }} *</label>
+              <textarea v-model="memoForm.content" class="input" rows="4" :placeholder="t('memo_ph_content')" maxlength="2000" style="resize:vertical"></textarea>
+              <span v-if="memoForm.errors.content" class="field__error">{{ memoForm.errors.content }}</span>
+            </div>
+            <div class="field" style="margin-bottom:16px">
+              <label class="field__label">{{ t('memo_lbl_notes') }}</label>
+              <input v-model="memoForm.notes" type="text" class="input" :placeholder="t('memo_ph_notes')" maxlength="500" />
+            </div>
+            <div class="modal__footer">
+              <Btn variant="secondary" type="button" @click="showMemoForm = false; memoForm.clearErrors()">{{ t('btn_cancel') }}</Btn>
+              <Btn variant="primary" :disabled="memoForm.processing || !memoForm.addressed_to || !memoForm.subject || !memoForm.content" @click="issueMemo">
+                {{ memoForm.processing ? t('memo_submitting') : t('memo_issue_btn') }}
+              </Btn>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- ── MC Delete confirm ───────────────────────────── -->
     <Teleport to="body">
       <div v-if="showMcDelId !== null" class="modal-backdrop" @click.self="showMcDelId = null">
@@ -1755,6 +1862,27 @@ const soapHints = computed(() => ({
             <div class="modal__footer">
               <Btn variant="secondary" @click="showQnDelId = null">{{ t('btn_cancel') }}</Btn>
               <Btn variant="primary" style="background:var(--brand-red)" @click="deleteQuarantine(showQnDelId)">{{ t('qn_del_yes') }}</Btn>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- ── Memo Delete confirm ─────────────────────────── -->
+    <Teleport to="body">
+      <div v-if="showMemoDelId !== null" class="modal-backdrop" @click.self="showMemoDelId = null">
+        <div class="modal modal--sm">
+          <div class="modal__header">
+            <h3 class="modal__title" style="color:var(--brand-red)">{{ t('memo_del_confirm') }}</h3>
+            <button class="modal__close" @click="showMemoDelId = null">✕</button>
+          </div>
+          <div class="modal__body">
+            <p style="font:400 14px var(--font-sans);color:var(--fg2);margin:0 0 16px">
+              {{ t('memo_del_body', { memo_number: selected?.memos?.find(m => m.id === showMemoDelId)?.memo_number }) }}
+            </p>
+            <div class="modal__footer">
+              <Btn variant="secondary" @click="showMemoDelId = null">{{ t('btn_cancel') }}</Btn>
+              <Btn variant="primary" style="background:var(--brand-red)" @click="deleteMemo(showMemoDelId)">{{ t('memo_del_yes') }}</Btn>
             </div>
           </div>
         </div>
@@ -2098,6 +2226,11 @@ const soapHints = computed(() => ({
 .ref-urgency-routine   { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
 .ref-urgency-urgent    { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
 .ref-urgency-emergency { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; }
+
+/* Memo nature chips */
+.memo-nature-normal       { background: #eef2ff; border: 1px solid #c7d2fe; color: #3730a3; }
+.memo-nature-urgent       { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
+.memo-nature-confidential { background: #111827; border: 1px solid #111827; color: #fff; }
 
 /* ── Rx status chip ── */
 .rx-status-chip {
