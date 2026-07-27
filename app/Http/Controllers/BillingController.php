@@ -159,6 +159,24 @@ class BillingController extends Controller
         return back()->with('success', 'Item ditambah.');
     }
 
+    public function updateItem(Request $request, Invoice $invoice, InvoiceItem $item)
+    {
+        abort_if(! in_array($invoice->status, ['draft', 'unpaid']), 403, 'Invois tidak boleh diedit.');
+
+        $data = $request->validate([
+            'quantity'   => ['required', 'numeric', 'min:0.01'],
+            'unit_price' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        $data['total_price'] = round($data['quantity'] * $data['unit_price'], 2);
+        $item->update($data);
+        $invoice->recalc();
+
+        AuditLog::record('billing.item_update', "{$invoice->invoice_number} · {$item->description}");
+
+        return back()->with('success', 'Item dikemaskini.');
+    }
+
     public function destroyItem(Invoice $invoice, InvoiceItem $item)
     {
         abort_if(! in_array($invoice->status, ['draft', 'unpaid']), 403);

@@ -136,6 +136,19 @@ function resolvedInvItem(item) {
   return props.drugItems.find(d => d.id === item.inventory_item_id) ?? null
 }
 
+function itemEstimate(item) {
+  const inv = resolvedInvItem(item)
+  if (!inv || !(inv.selling_price > 0)) return null
+  return (Number(item.quantity) || 0) * Number(inv.selling_price)
+}
+
+const rxEstimateTotal = computed(() =>
+  rxForm.items.reduce((sum, item) => sum + (itemEstimate(item) ?? 0), 0)
+)
+const rxHasUnlinkedItems = computed(() =>
+  rxForm.items.some(item => item.drug_name && !resolvedInvItem(item))
+)
+
 function resetDrugSearchArrays(len) {
   itemDrugSearch.value   = Array(len).fill('')
   itemDrugDropdown.value = Array(len).fill(false)
@@ -446,6 +459,10 @@ function doDispense() {
                 <span class="drug-card__qty">{{ t('rx_draw_qty', { n: item.quantity }) }}</span>
                 <span v-if="item.instructions" class="drug-card__instr">{{ item.instructions }}</span>
               </div>
+              <div v-if="itemEstimate(item) !== null" class="drug-card__price">
+                RM {{ Number(resolvedInvItem(item).selling_price).toFixed(2) }}/unit · anggaran RM {{ itemEstimate(item).toFixed(2) }}
+              </div>
+              <div v-else class="drug-card__noprice">Tiada harga inventori</div>
               <div v-if="item.item_note" class="drug-card__note">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                 {{ item.item_note }}
@@ -570,6 +587,9 @@ function doDispense() {
                     <!-- Linked inventory badge + clear -->
                     <div v-if="item.inventory_item_id" class="drug-linked-bar">
                       <span class="drug-linked-name">{{ item.drug_name }}</span>
+                      <span v-if="resolvedInvItem(item)?.selling_price > 0" class="drug-option__price">
+                        RM {{ Number(resolvedInvItem(item).selling_price).toFixed(2) }}
+                      </span>
                       <span v-if="resolvedInvItem(item)" :class="['drug-stock-badge', resolvedInvItem(item).stock_quantity <= 0 ? 'drug-stock-badge--out' : resolvedInvItem(item).stock_quantity <= 10 ? 'drug-stock-badge--low' : 'drug-stock-badge--ok']">
                         Stok: {{ resolvedInvItem(item).stock_quantity }}
                       </span>
@@ -586,6 +606,7 @@ function doDispense() {
                         @focus="itemDrugDropdown[i] = true"
                         @blur="setTimeout(() => { itemDrugDropdown[i] = false }, 180)"
                       />
+                      <div v-if="item.drug_name" class="drug-noprice-hint">Tiada harga inventori — ubat ini tidak link dengan stok</div>
                       <div v-if="itemDrugDropdown[i] && filteredDrugsFor(i).length" class="drug-dropdown">
                         <button
                           v-for="inv in filteredDrugsFor(i)" :key="inv.id"
@@ -670,6 +691,10 @@ function doDispense() {
                 </label>
               </div>
 
+              <div v-if="itemEstimate(item) !== null" class="rx-item-estimate">
+                Anggaran: RM {{ itemEstimate(item).toFixed(2) }}
+              </div>
+
               <!-- Row 4: Nota ubat (optional) -->
               <div class="rx-row rx-row--note">
                 <div class="rx-field">
@@ -692,6 +717,12 @@ function doDispense() {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               {{ t('rx_add_drug') }}
             </button>
+
+            <div v-if="rxEstimateTotal > 0" class="rx-estimate-total">
+              <span>Anggaran jumlah preskripsi</span>
+              <strong>RM {{ rxEstimateTotal.toFixed(2) }}</strong>
+              <small v-if="rxHasUnlinkedItems">(tidak termasuk ubat yang tiada harga inventori)</small>
+            </div>
           </div>
 
           <!-- ③ Nota -->
@@ -964,6 +995,8 @@ function doDispense() {
 .drug-card__footer { display:flex; justify-content:space-between; margin-top:6px; }
 .drug-card__qty    { font:700 12px var(--font-mono); color:var(--brand-green-dark); background:var(--brand-green-light); padding:2px 8px; border-radius:999px; }
 .drug-card__instr  { font:500 11.5px var(--font-sans); color:var(--fg2); font-style:italic; }
+.drug-card__price   { margin-top:6px; font:600 11px var(--font-mono); color:var(--brand-green-dark); }
+.drug-card__noprice { margin-top:6px; font:500 11px var(--font-sans); color:#92400E; }
 .drug-card__note   {
   display:flex; align-items:flex-start; gap:5px; margin-top:7px;
   padding:6px 8px; background:#FFF9E6; border:1px solid #F0C040;
@@ -1009,6 +1042,28 @@ function doDispense() {
   border-radius:4px; opacity:.7;
 }
 .drug-clear-btn:hover { opacity:1; background:rgba(0,0,0,.06); }
+
+/* No-price hint for free-text drugs */
+.drug-noprice-hint {
+  margin-top:4px; font:500 11px var(--font-sans); color:#92400E;
+}
+
+/* Per-item estimate line */
+.rx-item-estimate {
+  margin-top:-2px; margin-bottom:10px;
+  font:600 11.5px var(--font-mono); color:var(--brand-green-dark);
+}
+
+/* Overall estimated total for prescription */
+.rx-estimate-total {
+  display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;
+  margin-top:10px; padding:10px 14px;
+  background:var(--brand-green-light); border:1px solid var(--brand-green);
+  border-radius:9px;
+}
+.rx-estimate-total span { font:600 12px var(--font-sans); color:var(--brand-green-dark); }
+.rx-estimate-total strong { font:800 15px var(--font-mono); color:var(--brand-green-dark); }
+.rx-estimate-total small { font:500 10.5px var(--font-sans); color:var(--fg3); }
 
 /* Allergy alert */
 .allergy-alert {

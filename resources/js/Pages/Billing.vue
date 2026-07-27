@@ -125,6 +125,26 @@ function removeItem (itemId) {
   router.delete(`/billing/${props.selected.id}/items/${itemId}`, { preserveScroll: true })
 }
 
+/* ── inline edit item (qty/price) ── */
+const editingItemId = ref(null)
+const editForm = useForm({ quantity: 1, unit_price: 0 })
+const editLiveTotal = computed(() =>
+  (parseFloat(editForm.quantity) || 0) * (parseFloat(editForm.unit_price) || 0)
+)
+function startEdit (item) {
+  editForm.clearErrors()
+  editForm.quantity   = item.quantity
+  editForm.unit_price = item.unit_price
+  editingItemId.value = item.id
+}
+function cancelEdit () { editingItemId.value = null }
+function saveItemEdit (item) {
+  editForm.patch(`/billing/${props.selected.id}/items/${item.id}`, {
+    preserveScroll: true,
+    onSuccess: () => { editingItemId.value = null },
+  })
+}
+
 /* ── discount ── */
 const discountEdit = ref(false)
 const discountForm = useForm({ discount_amount: 0 })
@@ -303,19 +323,32 @@ function submitNew () {
               <div>{{ t('bill_col_type') }}</div><div>{{ t('bill_col_desc') }}</div><div>{{ t('bill_col_qty') }}</div><div>{{ t('bill_col_price') }}</div><div>{{ t('bill_total') }}</div><div></div>
             </div>
             <div v-for="item in selected.items" :key="item.id"
-              class="table__row" style="grid-template-columns:90px 1fr 60px 90px 90px 32px">
+              class="table__row" :style="editingItemId===item.id ? 'grid-template-columns:90px 1fr 60px 90px 90px 60px' : 'grid-template-columns:90px 1fr 60px 90px 90px 32px'">
               <div><Badge :tone="typeTone(item.type)" size="xs">{{ typeLabel[item.type] }}</Badge></div>
               <div>
                 <div style="font:500 12.5px var(--font-sans);color:var(--fg1)">{{ item.description }}</div>
                 <div v-if="item.code" style="font:400 11px var(--font-mono);color:var(--fg3)">{{ item.code }}</div>
               </div>
-              <div style="font:500 12px var(--font-mono);color:var(--fg2)">{{ item.quantity }}</div>
-              <div style="font:500 12px var(--font-mono);color:var(--fg2)">{{ Number(item.unit_price).toFixed(2) }}</div>
-              <div style="font:700 13px var(--font-mono);color:var(--fg1)">{{ Number(item.total_price).toFixed(2) }}</div>
-              <div>
-                <button v-if="['draft','unpaid'].includes(selected.status)"
-                  class="rm-btn" @click="removeItem(item.id)" title="Padam item">✕</button>
-              </div>
+              <template v-if="editingItemId===item.id">
+                <div><input v-model.number="editForm.quantity" type="number" min="0.01" step="1" class="input" style="width:100%;font-size:12px;padding:3px 6px" /></div>
+                <div><input v-model.number="editForm.unit_price" type="number" min="0" step="0.01" class="input" style="width:100%;font-size:12px;padding:3px 6px" /></div>
+                <div style="font:700 13px var(--font-mono);color:var(--fg1)">{{ editLiveTotal.toFixed(2) }}</div>
+                <div style="display:flex;gap:2px">
+                  <button class="rm-btn" style="color:var(--brand-green)" @click="saveItemEdit(item)" title="Simpan">✓</button>
+                  <button class="rm-btn" @click="cancelEdit" title="Batal">✕</button>
+                </div>
+              </template>
+              <template v-else>
+                <div style="font:500 12px var(--font-mono);color:var(--fg2)">{{ item.quantity }}</div>
+                <div style="font:500 12px var(--font-mono);color:var(--fg2)">{{ Number(item.unit_price).toFixed(2) }}</div>
+                <div style="font:700 13px var(--font-mono);color:var(--fg1)">{{ Number(item.total_price).toFixed(2) }}</div>
+                <div style="display:flex;gap:2px">
+                  <template v-if="['draft','unpaid'].includes(selected.status)">
+                    <button class="rm-btn" @click="startEdit(item)" title="Adjust harga/kuantiti">✎</button>
+                    <button class="rm-btn" @click="removeItem(item.id)" title="Padam item">✕</button>
+                  </template>
+                </div>
+              </template>
             </div>
 
             <p v-if="!selected.items.length"

@@ -132,6 +132,7 @@ Route::middleware(['auth', 'verified', EnsureModuleAccess::class])->group(functi
     Route::get('/billing', [BillingController::class, 'index'])->name('billing');
     Route::post('/billing', [BillingController::class, 'store'])->name('billing.store');
     Route::post('/billing/{invoice}/items', [BillingController::class, 'storeItem'])->name('billing.items.store');
+    Route::patch('/billing/{invoice}/items/{item}', [BillingController::class, 'updateItem'])->name('billing.items.update');
     Route::delete('/billing/{invoice}/items/{item}', [BillingController::class, 'destroyItem'])->name('billing.items.destroy');
     Route::patch('/billing/{invoice}/discount', [BillingController::class, 'updateDiscount'])->name('billing.discount');
     Route::patch('/billing/{invoice}/finalize', [BillingController::class, 'finalize'])->name('billing.finalize');
