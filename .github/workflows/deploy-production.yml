@@ -46,6 +46,7 @@ jobs:
 
           composer install --optimize-autoloader
           php artisan migrate --force
+          npm ci
           npm run build
 
           # ── TEMPORARY: one-time Reverb systemd/nginx bootstrap — DELETE this whole block after the first successful deploy ──
