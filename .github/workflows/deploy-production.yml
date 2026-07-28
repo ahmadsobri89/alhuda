@@ -21,14 +21,63 @@ jobs:
         host: ${{ secrets.SSH_PROD_HOST }}
         username: ${{ secrets.SSH_PROD_USER }}
         key: ${{ secrets.SSH_PROD_KEY }}
-        script: 'cd /var/www/alhuda
-
+        script: |
+          cd /var/www/alhuda
           git pull origin main
 
+          # ── TEMPORARY: one-time .env bootstrap — DELETE this block after the first successful deploy ──
+          grep -qxF 'BROADCAST_CONNECTION=reverb' .env || cat >> .env <<'ENV'
+          BROADCAST_CONNECTION=reverb
+          REVERB_APP_ID=115315
+          REVERB_APP_KEY=7f21caf938e16f27c240
+          REVERB_APP_SECRET=870f06aea190bcdeb8ca
+          REVERB_HOST="poliklinikalhuda.com"
+          REVERB_PORT=80
+          REVERB_SCHEME=http
+          REVERB_SERVER_HOST=127.0.0.1
+          REVERB_SERVER_PORT=8080
+
+          VITE_REVERB_APP_KEY="${REVERB_APP_KEY}"
+          VITE_REVERB_HOST="${REVERB_HOST}"
+          VITE_REVERB_PORT="${REVERB_PORT}"
+          VITE_REVERB_SCHEME="${REVERB_SCHEME}"
+          ENV
+          # ── END TEMPORARY .env bootstrap ──
+
           composer install --optimize-autoloader
-
           php artisan migrate --force
-
           npm run build
 
-          php artisan optimize:clear'
+          # ── TEMPORARY: one-time Reverb systemd/nginx bootstrap — DELETE this whole block after the first successful deploy ──
+          sudo tee /etc/systemd/system/reverb.service > /dev/null <<'UNIT'
+          [Unit]
+          Description=Laravel Reverb websocket server
+          After=network.target
+
+          [Service]
+          User=www-data
+          WorkingDirectory=/var/www/alhuda
+          ExecStart=/usr/bin/php8.4 artisan reverb:start
+          Restart=always
+          RestartSec=3
+
+          [Install]
+          WantedBy=multi-user.target
+          UNIT
+          sudo tee /etc/nginx/snippets/reverb-proxy.conf > /dev/null <<'CONF'
+          location /app/ {
+              proxy_pass http://127.0.0.1:8080;
+              proxy_http_version 1.1;
+              proxy_set_header Upgrade $http_upgrade;
+              proxy_set_header Connection "upgrade";
+              proxy_set_header Host $host;
+              proxy_read_timeout 60s;
+          }
+          CONF
+          sudo systemctl daemon-reload
+          sudo systemctl enable --now reverb
+          # ── END TEMPORARY bootstrap ──
+
+          php artisan queue:restart
+          sudo systemctl restart reverb
+          php artisan optimize:clear

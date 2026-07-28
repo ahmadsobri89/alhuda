@@ -13,6 +13,7 @@ use App\Models\PrescriptionItem;
 use App\Models\QuarantineLetter;
 use App\Models\Visit;
 use App\Models\VisitDiagnosis;
+use App\Services\TaskNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -358,6 +359,26 @@ class EMRController extends Controller
         $invoicePromoted = Invoice::where('visit_id', $visit->id)
             ->where('status', 'emr_draft')
             ->update(['status' => 'draft']);
+
+        if ($promoted > 0) {
+            TaskNotifier::notifyRole(
+                'pharmacist',
+                'pharmacy',
+                'Preskripsi baharu',
+                "{$promoted} preskripsi untuk {$visit->patient->name} sedia diproses.",
+                route('pharmacy'),
+            );
+        }
+
+        if ($invoicePromoted > 0) {
+            TaskNotifier::notifyRole(
+                'receptionist',
+                'billing',
+                'Bil perkhidmatan baharu',
+                "Bil untuk {$visit->patient->name} sedia diproses.",
+                route('billing'),
+            );
+        }
 
         AuditLog::record('emr.close', "{$visit->patient->name} · {$visit->visit_date->format('d/m/Y')}");
 

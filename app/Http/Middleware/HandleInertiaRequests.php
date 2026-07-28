@@ -40,6 +40,9 @@ class HandleInertiaRequests extends Middleware
                 'error'          => fn () => $request->session()->get('error'),
                 'quickPatientId' => fn () => $request->session()->get('quickPatientId'),
             ],
+            'notifications' => [
+                'unreadCount' => fn () => $request->user()?->unreadNotifications()->count() ?? 0,
+            ],
             'locale'       => app()->getLocale(),
             'translations' => fn () => $this->loadTranslations(app()->getLocale()),
         ];

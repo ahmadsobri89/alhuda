@@ -3,10 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\Patient;
+use App\Models\Prescription;
 use App\Models\User;
 use App\Models\Visit;
 use App\Models\VisitDiagnosis;
+use App\Notifications\PendingTaskNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class EMRTest extends TestCase
@@ -205,6 +208,30 @@ class EMRTest extends TestCase
         $this->assertEquals('closed', $visit->status);
         $this->assertNotNull($visit->signed_at);
         $this->assertEquals($this->user->name, $visit->signed_by);
+    }
+
+    public function test_closing_visit_with_draft_prescription_notifies_pharmacists(): void
+    {
+        Notification::fake();
+
+        $pharmacist = User::factory()->create(['role' => 'pharmacist']);
+
+        $visit = Visit::factory()->create([
+            'patient_id' => $this->patient->id,
+            'user_id'    => $this->user->id,
+        ]);
+
+        Prescription::factory()->create([
+            'patient_id' => $this->patient->id,
+            'visit_id'   => $visit->id,
+            'status'     => 'draft',
+        ]);
+
+        $this->actingAs($this->user)
+            ->patch("/emr/{$visit->id}/close")
+            ->assertSessionHas('success');
+
+        Notification::assertSentTo($pharmacist, PendingTaskNotification::class);
     }
 
     // ── Destroy Visit ────────────────────────────────────────────────────────

@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import Icon from '@/Components/Clinic/Icon.vue'
 import Avatar from '@/Components/Clinic/Avatar.vue'
+import NotificationBell from '@/Components/Clinic/NotificationBell.vue'
 import { useLocale } from '@/composables/useLocale'
 
 const page = usePage()
@@ -99,7 +100,7 @@ function navigate(item) {
         <button class="lang-btn" @click="switchLocale" :title="locale === 'ms' ? 'Switch to English' : 'Tukar ke Bahasa Malaysia'">
           {{ locale === 'ms' ? 'EN' : 'BM' }}
         </button>
-        <button class="topbar__bell"><Icon name="bell" :size="17" /></button>
+        <NotificationBell />
       </div>
 
       <!-- Page content -->

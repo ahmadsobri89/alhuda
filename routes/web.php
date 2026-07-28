@@ -11,6 +11,7 @@ use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\LookupController;
 use App\Http\Controllers\MCController;
 use App\Http\Controllers\MemoController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\PharmacyController;
 use App\Http\Controllers\ProfileController;
@@ -63,6 +64,9 @@ Route::post('/locale', [LocaleController::class, 'switch'])->name('locale.switch
 Route::middleware(['auth', 'verified', EnsureModuleAccess::class])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/queue', [QueueController::class, 'index'])->name('queue');
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications');
+    Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
+    Route::patch('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.readAll');
     Route::get('/register-patient', [RegisterController::class, 'index'])->name('register-patient');
     // Patients — CRUD
     Route::get('/patients', [PatientController::class, 'index'])->name('patients');
