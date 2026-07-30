@@ -395,6 +395,7 @@
   "rx_lbl_qty": "Kuantiti",
   "rx_lbl_instruction": "Arahan",
   "rx_lbl_notes": "Nota Tambahan",
+  "rx_dispensed_edit_warn": "Preskripsi ini telah didispenskan. Perubahan pada senarai ubat akan mengemaskini semula invois dan stok inventori berkaitan secara automatik. Maklumat pesakit dan doktor tidak boleh diubah.",
   "rx_dispense_confirm": "Sahkan Dispensing",
   "rx_dispense_body": "Sahkan dispensing preskripsi untuk :patient?",
   "rx_confirm_dispense": "Sahkan Dispens",

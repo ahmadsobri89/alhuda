@@ -7,7 +7,9 @@ use App\Http\Requests\StorePrescriptionRequest;
 use App\Http\Requests\UpdatePrescriptionRequest;
 use App\Models\AuditLog;
 use App\Models\InventoryItem;
+use App\Models\InventoryTransaction;
 use App\Models\Invoice;
+use App\Models\InvoiceItem;
 use App\Models\LookupCategory;
 use App\Models\Patient;
 use App\Models\Prescription;
@@ -154,24 +156,60 @@ class PharmacyController extends Controller
 
     public function update(UpdatePrescriptionRequest $request, Prescription $prescription)
     {
-        if (in_array($prescription->status, ['dispensed', 'cancelled'])) {
-            return back()->withErrors(['status' => 'Preskripsi yang telah diproses tidak boleh diedit.']);
+        if ($prescription->status === 'cancelled') {
+            return back()->withErrors(['status' => 'Preskripsi yang telah dibatalkan tidak boleh diedit.']);
         }
 
-        DB::transaction(function () use ($request, $prescription) {
-            $prescription->update([
-                'patient_id'         => $request->patient_id,
-                'prescribing_doctor' => $request->prescribing_doctor,
-                'notes'              => $request->notes,
-            ]);
+        try {
+            DB::transaction(function () use ($request, $prescription) {
+                $rx = Prescription::whereKey($prescription->id)->lockForUpdate()->firstOrFail();
+                $wasDispensed = $rx->status === 'dispensed';
+                $invoice = null;
 
-            $prescription->items()->delete();
-            foreach ($request->items as $item) {
-                $prescription->items()->create($item);
-            }
+                if ($wasDispensed) {
+                    $invoiceId = InvoiceItem::where('prescription_id', $rx->id)->value('invoice_id');
+                    if ($invoiceId) {
+                        $invoice = Invoice::whereKey($invoiceId)->lockForUpdate()->first();
+                        if ($invoice && in_array($invoice->status, ['paid', 'cancelled'])) {
+                            $reason = $invoice->status === 'paid' ? 'telah dibayar' : 'telah dibatalkan';
+                            throw new \RuntimeException("Invois {$invoice->invoice_number} {$reason}. Ubat untuk preskripsi ini tidak boleh diubah lagi.");
+                        }
+                    }
+                }
 
-            AuditLog::record('rx.update', "{$prescription->rx_number} · {$prescription->patient->name}");
-        });
+                $rx->update([
+                    'patient_id'         => $wasDispensed ? $rx->patient_id : $request->patient_id,
+                    'prescribing_doctor' => $wasDispensed ? $rx->prescribing_doctor : $request->prescribing_doctor,
+                    'notes'              => $request->notes,
+                ]);
+
+                if ($wasDispensed && $invoice) {
+                    $this->reverseDispenseEffects($rx, $invoice);
+                }
+
+                $oldItemsLog = $rx->items->map(fn ($i) => "{$i->drug_name} ×{$i->quantity}")->all();
+
+                $rx->items()->delete();
+                foreach ($request->items as $item) {
+                    $rx->items()->create($item);
+                }
+
+                if ($wasDispensed) {
+                    $this->autoPopulateBill($rx, $invoice);
+                }
+
+                $newItemsLog = collect($request->items)->map(fn ($i) => "{$i['drug_name']} ×{$i['quantity']}")->all();
+
+                AuditLog::record(
+                    $wasDispensed ? 'rx.update_dispensed' : 'rx.update',
+                    "{$rx->rx_number} · {$rx->patient->name}",
+                    true,
+                    ['ubat_lama' => $oldItemsLog, 'ubat_baru' => $newItemsLog, 'resynced' => $wasDispensed]
+                );
+            });
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['status' => $e->getMessage()]);
+        }
 
         return back()->with('success', 'Preskripsi berjaya dikemaskini.');
     }
@@ -182,31 +220,30 @@ class PharmacyController extends Controller
 
         $newStatus = $request->status;
 
-        $prescription->update(array_merge(
-            ['status' => $newStatus],
-            $newStatus === 'dispensed' ? [
-                'dispensed_at' => now(),
-                'dispensed_by' => Auth::user()?->name ?? 'Pharmacist',
-            ] : []
-        ));
+        DB::transaction(function () use ($prescription, $newStatus) {
+            $prescription->update(array_merge(
+                ['status' => $newStatus],
+                $newStatus === 'dispensed' ? [
+                    'dispensed_at' => now(),
+                    'dispensed_by' => Auth::user()?->name ?? 'Pharmacist',
+                ] : []
+            ));
 
-        if ($newStatus === 'dispensed' && $prescription->wasChanged('status')) {
-            $this->autoPopulateBill($prescription);
-        }
+            if ($newStatus === 'dispensed' && $prescription->wasChanged('status')) {
+                $this->autoPopulateBill($prescription);
+            }
+        });
 
         AuditLog::record("rx.{$newStatus}", "{$prescription->rx_number} · {$prescription->patient->name}");
 
         return back()->with('success', "Status preskripsi {$prescription->rx_number} dikemaskini.");
     }
 
-    private function autoPopulateBill(Prescription $prescription): void
+    private function resolveInvoiceForPrescription(Prescription $prescription): Invoice
     {
-        $prescription->loadMissing('items');
-        if ($prescription->items->isEmpty()) return;
-
         // Prescription from a visit → merge into the same draft invoice as the services
         if ($prescription->visit_id) {
-            $invoice = Invoice::firstOrCreate(
+            return Invoice::firstOrCreate(
                 ['visit_id' => $prescription->visit_id, 'status' => 'draft'],
                 [
                     'patient_id'   => $prescription->patient_id,
@@ -214,19 +251,66 @@ class PharmacyController extends Controller
                     'notes'        => "Auto-dijana daripada {$prescription->rx_number}",
                 ]
             );
-        } else {
-            // Standalone pharmacy prescription (no visit) — use old patient+date key
-            $invoice = Invoice::firstOrCreate(
-                ['patient_id' => $prescription->patient_id, 'status' => 'draft', 'invoice_date' => now()->toDateString()],
-                ['notes' => "Auto-dijana daripada {$prescription->rx_number}"]
-            );
         }
+
+        // Standalone pharmacy prescription (no visit) — use old patient+date key
+        return Invoice::firstOrCreate(
+            ['patient_id' => $prescription->patient_id, 'status' => 'draft', 'invoice_date' => now()->toDateString()],
+            ['notes' => "Auto-dijana daripada {$prescription->rx_number}"]
+        );
+    }
+
+    /**
+     * Reverse the invoice items and stock deduction a previous dispense/resync created for
+     * this prescription, so the edited item list can be re-billed and re-deducted cleanly.
+     * Stock is restored from the InventoryTransaction ledger (not the PrescriptionItem
+     * snapshot) so it reflects what was actually deducted, even if that deduction was
+     * clamped by insufficient stock.
+     */
+    private function reverseDispenseEffects(Prescription $prescription, Invoice $invoice): void
+    {
+        $actor = Auth::user()?->name ?? 'System';
+
+        InvoiceItem::where('prescription_id', $prescription->id)->delete();
+
+        $netByItem = InventoryTransaction::where('reference', $prescription->rx_number)
+            ->selectRaw('inventory_item_id, SUM(quantity_delta) as net')
+            ->groupBy('inventory_item_id')
+            ->havingRaw('SUM(quantity_delta) != 0')
+            ->pluck('net', 'inventory_item_id');
+
+        foreach ($netByItem as $inventoryItemId => $net) {
+            $inv = InventoryItem::whereKey($inventoryItemId)->lockForUpdate()->first();
+            if (! $inv) continue;
+
+            $restore = -$net;
+            $newStock = max(0, $inv->stock_quantity + $restore);
+            $inv->update(['stock_quantity' => $newStock]);
+            $inv->transactions()->create([
+                'type'           => 'adjustment',
+                'quantity_delta' => $restore,
+                'quantity_after' => $newStock,
+                'reference'      => $prescription->rx_number,
+                'notes'          => "Diedit selepas dispense — stok diselaraskan semula",
+                'performed_by'   => $actor,
+            ]);
+        }
+    }
+
+    private function autoPopulateBill(Prescription $prescription, ?Invoice $invoice = null): void
+    {
+        // Always reload — a caller may have deleted/recreated items on this same
+        // instance earlier in the request, which leaves a stale cached relation.
+        $prescription->load('items');
+        if ($prescription->items->isEmpty()) return;
+
+        $invoice ??= $this->resolveInvoiceForPrescription($prescription);
 
         // Pre-load inventory items by FK; fall back to name-match for items without FK
         $linkedIds  = $prescription->items->pluck('inventory_item_id')->filter()->unique()->values()->all();
         $drugNames  = $prescription->items->whereNull('inventory_item_id')->map(fn ($i) => strtolower($i->drug_name))->all();
 
-        $invById   = InventoryItem::whereIn('id', $linkedIds)->get()->keyBy('id');
+        $invById   = InventoryItem::whereIn('id', $linkedIds)->lockForUpdate()->get()->keyBy('id');
         $invByName = collect();
         if (count($drugNames)) {
             $invByName = InventoryItem::where('status', 'active')
@@ -234,6 +318,7 @@ class PharmacyController extends Controller
                     $q->whereIn(DB::raw('LOWER(name)'), $drugNames)
                       ->orWhereIn(DB::raw('LOWER(generic_name)'), $drugNames);
                 })
+                ->lockForUpdate()
                 ->get()
                 ->keyBy(fn ($i) => strtolower($i->name));
         }
@@ -253,6 +338,7 @@ class PharmacyController extends Controller
             $qty       = (int) $item->quantity;
 
             $invoice->items()->create([
+                'prescription_id' => $prescription->id,
                 'type'        => 'drug',
                 'code'        => null,
                 'description' => $item->drug_name,

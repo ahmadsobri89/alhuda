@@ -235,6 +235,8 @@ function openEdit(rx) {
   showModal.value = true
 }
 
+const isEditingDispensed = computed(() => editingRx.value?.status === 'dispensed')
+
 function closeModal() { showModal.value = false }
 
 function submitRx() {
@@ -538,7 +540,7 @@ function doDispense() {
               <Btn variant="ghost" size="sm" @click="setStatus(viewRx,'verifying');viewRx=null">← {{ t('btn_back') }}</Btn>
               <Btn variant="primary" style="flex:1" @click="confirmDispense(viewRx);viewRx=null">{{ t('rx_dispense') }}</Btn>
             </template>
-            <Btn v-if="viewRx.status !== 'dispensed' && viewRx.status !== 'cancelled'" variant="ghost" size="sm" @click="openEdit(viewRx);viewRx=null">{{ t('btn_edit') }}</Btn>
+            <Btn v-if="viewRx.status !== 'cancelled'" variant="ghost" size="sm" @click="openEdit(viewRx);viewRx=null">{{ t('btn_edit') }}</Btn>
             <a :href="`/pharmacy/prescriptions/${viewRx.id}/print`" target="_blank" class="rx-print-btn">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
               {{ t('rx_print') }}
@@ -572,6 +574,16 @@ function doDispense() {
 
         <form @submit.prevent="submitRx" class="modal__body">
 
+          <!-- Amaran: preskripsi dah dispensed -->
+          <div v-if="isEditingDispensed" class="dispensed-edit-warn">
+            ⚠ {{ t('rx_dispensed_edit_warn') }}
+          </div>
+
+          <!-- Ralat blok edit (cth: invois dah dibayar/dibatalkan) -->
+          <div v-if="rxForm.errors.status" class="allergy-alert">
+            ⚠ {{ rxForm.errors.status }}
+          </div>
+
           <!-- ① Maklumat Asas -->
           <div class="rx-section">
             <div class="rx-section__title">{{ t('rx_sec_info') }}</div>
@@ -584,6 +596,7 @@ function doDispense() {
                     v-model="patientSearch"
                     class="input"
                     :placeholder="t('bill_ph_patient')"
+                    :disabled="isEditingDispensed"
                     @input="patientDropdown=true"
                     @focus="patientDropdown=true"
                     autocomplete="off"
@@ -611,10 +624,10 @@ function doDispense() {
                 <label class="rx-field__lbl">
                   {{ t('rx_lbl_doctor') }} <span v-if="!rxForm.is_otc" class="req">*</span>
                 </label>
-                <input v-if="!rxForm.is_otc" v-model="rxForm.prescribing_doctor" class="input" placeholder="Dr. Nama" />
+                <input v-if="!rxForm.is_otc" v-model="rxForm.prescribing_doctor" class="input" placeholder="Dr. Nama" :disabled="isEditingDispensed" />
                 <span v-if="rxForm.errors.prescribing_doctor" class="rx-field__err">{{ rxForm.errors.prescribing_doctor }}</span>
                 <label class="rx-otc-check">
-                  <input type="checkbox" v-model="rxForm.is_otc" />
+                  <input type="checkbox" v-model="rxForm.is_otc" :disabled="isEditingDispensed" />
                   {{ t('rx_lbl_otc') }}
                 </label>
               </div>
@@ -872,6 +885,7 @@ function doDispense() {
           </div>
           <div class="modal__footer">
             <Btn variant="secondary" @click="dispenseTarget=null">{{ t('btn_cancel') }}</Btn>
+            <Btn variant="ghost" @click="openEdit(dispenseTarget);dispenseTarget=null">{{ t('btn_edit') }}</Btn>
             <Btn variant="primary" @click="doDispense">{{ t('rx_confirm_dispense') }}</Btn>
           </div>
         </div>
@@ -1197,6 +1211,12 @@ function doDispense() {
   background:#FEE2E2; border:1px solid #FECACA; border-radius:8px;
   padding:8px 12px; font:600 12.5px var(--font-sans); color:#991B1B;
   margin-bottom:10px;
+}
+
+.dispensed-edit-warn {
+  background:#FEF3C7; border:1px solid #FDE68A; border-radius:8px;
+  padding:10px 14px; font:600 12.5px var(--font-sans); color:#92400E;
+  line-height:1.5; margin-bottom:16px;
 }
 
 /* Pagination & datatable scroll styles kini global di app.css */

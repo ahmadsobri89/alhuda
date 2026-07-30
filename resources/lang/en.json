@@ -395,6 +395,7 @@
   "rx_lbl_qty": "Quantity",
   "rx_lbl_instruction": "Instructions",
   "rx_lbl_notes": "Additional Notes",
+  "rx_dispensed_edit_warn": "This prescription has already been dispensed. Changes to the drug list will automatically re-sync the related invoice and inventory stock. Patient and doctor details cannot be changed.",
   "rx_dispense_confirm": "Confirm Dispensing",
   "rx_dispense_body": "Confirm dispensing prescription for :patient?",
   "rx_confirm_dispense": "Confirm Dispense",
