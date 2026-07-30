@@ -2,6 +2,10 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Appointment;
+use App\Models\Invoice;
+use App\Models\Prescription;
+use App\Models\Visit;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -42,6 +46,14 @@ class HandleInertiaRequests extends Middleware
             ],
             'notifications' => [
                 'unreadCount' => fn () => $request->user()?->unreadNotifications()->count() ?? 0,
+            ],
+            'pendingCounts' => [
+                'queue'    => fn () => Appointment::whereDate('appointment_date', now()->toDateString())
+                    ->whereIn('status', ['confirmed', 'waiting', 'in_room'])
+                    ->count(),
+                'emr'      => fn () => Visit::where('status', 'open')->count(),
+                'pharmacy' => fn () => Prescription::whereIn('status', ['pending', 'verifying'])->count(),
+                'billing'  => fn () => Invoice::whereIn('status', ['draft', 'unpaid'])->count(),
             ],
             'locale'       => app()->getLocale(),
             'translations' => fn () => $this->loadTranslations(app()->getLocale()),

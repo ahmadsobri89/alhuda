@@ -23,16 +23,19 @@ const userMeta = computed(() =>
 // Modul yang pengguna boleh akses (dikongsi dari backend ikut peranan)
 const modules = computed(() => page.props.auth?.modules ?? [])
 
+// Bilangan tugasan tertunggak per modul (dikongsi dari backend, sentiasa terkini)
+const pendingCounts = computed(() => page.props.pendingCounts ?? {})
+
 const allNavItems = computed(() => [
   { id: 'dashboard',     icon: 'home',     label: t('nav_dashboard') },
-  { id: 'queue',         icon: 'queue',    label: t('nav_queue'),         count: 12 },
+  { id: 'queue',         icon: 'queue',    label: t('nav_queue'),         count: pendingCounts.value.queue ?? 0 },
   { id: 'register',      icon: 'plus',     label: t('nav_register'),      routeName: 'register-patient' },
   { id: 'patients',      icon: 'users',    label: t('nav_patients') },
   { id: 'appointments',  icon: 'calendar', label: t('nav_appointments') },
-  { id: 'emr',           icon: 'emr',      label: t('nav_emr'),           badge: '3' },
-  { id: 'pharmacy',      icon: 'pill',     label: t('nav_pharmacy') },
+  { id: 'emr',           icon: 'emr',      label: t('nav_emr'),           badge: pendingCounts.value.emr ?? 0 },
+  { id: 'pharmacy',      icon: 'pill',     label: t('nav_pharmacy'),      badge: pendingCounts.value.pharmacy ?? 0 },
   { id: 'inventory',     icon: 'flask',    label: t('nav_inventory') },
-  { id: 'billing',       icon: 'invoice',  label: t('nav_billing') },
+  { id: 'billing',       icon: 'invoice',  label: t('nav_billing'),       badge: pendingCounts.value.billing ?? 0 },
   { id: 'finance',       icon: 'chart',    label: t('nav_finance') },
   { id: 'reports',       icon: 'chart',    label: t('nav_reports') },
   { id: 'settings',      icon: 'settings', label: t('nav_settings') },
