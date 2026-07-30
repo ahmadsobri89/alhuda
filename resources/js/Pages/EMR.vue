@@ -480,13 +480,59 @@ function deleteItem(itemId) {
 const svcForm      = useForm({ type: 'consultation', description: '', quantity: 1, unit_price: '' })
 const showSvcDelId = ref(null)
 
-const QUICK_SERVICES = computed(() =>
-  props.serviceItems.map(s => ({
-    type:        'procedure',
-    description: s.name,
-    unit_price:  parseFloat(s.price),
-  }))
+const svcSearch     = ref('')
+const svcSearchOpen = ref(false)
+const svcHighlight  = ref(0)
+
+const selectedSvcItem = computed(() =>
+  props.serviceItems.find(s => s.name === svcForm.description && parseFloat(s.price) === Number(svcForm.unit_price)) ?? null
 )
+
+const filteredSvcItems = computed(() => {
+  const q = svcSearch.value.trim().toLowerCase()
+  if (!q) return props.serviceItems.slice(0, 10)
+  return props.serviceItems.filter(s => s.name.toLowerCase().includes(q)).slice(0, 10)
+})
+
+watch(filteredSvcItems, () => { svcHighlight.value = 0 })
+
+function selectSvcItem(s) {
+  pickService({ type: 'procedure', description: s.name, unit_price: parseFloat(s.price) })
+  svcSearch.value     = ''
+  svcSearchOpen.value = false
+}
+
+function clearSvcSelection() {
+  svcForm.description = ''
+  svcForm.unit_price  = ''
+  svcSearch.value     = ''
+}
+
+function closeSvcSearch() {
+  setTimeout(() => { svcSearchOpen.value = false }, 180)
+}
+
+function onSvcSearchKeydown(e) {
+  if (!svcSearchOpen.value) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); svcSearchOpen.value = true; svcHighlight.value = 0 }
+    return
+  }
+  const opts = filteredSvcItems.value
+  if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    svcHighlight.value = Math.min(svcHighlight.value + 1, opts.length - 1)
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    svcHighlight.value = Math.max(svcHighlight.value - 1, 0)
+  } else if (e.key === 'Enter') {
+    e.preventDefault()
+    const opt = opts[svcHighlight.value]
+    if (opt) selectSvcItem(opt)
+  } else if (e.key === 'Escape') {
+    e.preventDefault()
+    svcSearchOpen.value = false
+  }
+}
 
 const SVC_TYPES = {
   consultation: 'Perundingan',
@@ -521,8 +567,10 @@ function deleteSvcItem(itemId) {
 
 watch(() => props.selected?.id, () => {
   svcForm.reset()
-  svcForm.type     = 'consultation'
-  svcForm.quantity = 1
+  svcForm.type        = 'consultation'
+  svcForm.quantity    = 1
+  svcSearch.value     = ''
+  svcSearchOpen.value = false
 })
 
 /* ── Close / Delete visit ─────────────────────────── */
@@ -1145,15 +1193,40 @@ const soapHints = computed(() => ({
                 <template v-if="selected.status === 'open' || selected.status === 'reopened'">
                   <div class="rx-inline-title">Tambah Perkhidmatan</div>
 
-                  <!-- Quick picks -->
-                  <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">
-                    <button v-for="s in QUICK_SERVICES" :key="s.description"
-                            type="button"
-                            :class="['svc-chip', svcForm.description === s.description ? 'svc-chip--active' : '']"
-                            @click="pickService(s)">
-                      {{ s.description }}
-                      <span class="svc-chip__price">RM {{ s.unit_price }}</span>
-                    </button>
+                  <!-- Quick pick: cari & pilih perkhidmatan -->
+                  <div class="field" style="max-width:420px;margin-bottom:12px">
+                    <label class="field__label">Cari Perkhidmatan</label>
+                    <div style="position:relative">
+                      <div v-if="selectedSvcItem" class="drug-linked-bar">
+                        <span class="drug-linked-name">{{ selectedSvcItem.name }}</span>
+                        <span class="drug-stock-badge drug-stock-badge--ok">RM {{ Number(selectedSvcItem.price).toFixed(2) }}</span>
+                        <button type="button" class="drug-clear-btn" @click="clearSvcSelection" title="Tukar perkhidmatan">✕</button>
+                      </div>
+                      <template v-else>
+                        <input v-model="svcSearch" class="input input--sm svc-search-input"
+                               placeholder="Cari perkhidmatan..."
+                               autocomplete="off"
+                               @focus="svcSearchOpen = true; svcHighlight = 0"
+                               @blur="closeSvcSearch"
+                               @keydown="onSvcSearchKeydown" />
+                        <svg v-if="!svcSearchOpen" class="svc-search-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        <div v-if="svcSearchOpen && filteredSvcItems.length" class="drug-dropdown">
+                          <button v-for="(s, i) in filteredSvcItems" :key="s.id"
+                                  type="button"
+                                  :class="['drug-option', i === svcHighlight ? 'drug-option--highlight' : '']"
+                                  @mousedown.prevent="selectSvcItem(s)"
+                                  @mouseenter="svcHighlight = i">
+                            <div class="drug-option__name">{{ s.name }}</div>
+                            <div class="drug-option__meta">
+                              <span class="drug-option__price">RM {{ Number(s.price).toFixed(2) }}</span>
+                            </div>
+                          </button>
+                        </div>
+                        <div v-else-if="svcSearchOpen && svcSearch" class="drug-dropdown">
+                          <div style="padding:10px 12px;font:500 12px var(--font-sans);color:var(--fg3)">Tiada perkhidmatan dijumpai</div>
+                        </div>
+                      </template>
+                    </div>
                   </div>
 
                   <!-- Form -->
@@ -2426,7 +2499,7 @@ const soapHints = computed(() => ({
   display: block; width: 100%; text-align: left; padding: 8px 12px;
   border: 0; background: transparent; cursor: pointer;
 }
-.drug-option:hover { background: var(--bg-soft); }
+.drug-option:hover, .drug-option--highlight { background: var(--bg-soft); }
 .drug-option + .drug-option { border-top: 1px solid var(--bg-muted); }
 .drug-option--out { opacity: .5; }
 .drug-option__name { display: block; font: 600 12.5px var(--font-sans); color: var(--fg1); }
@@ -2435,6 +2508,10 @@ const soapHints = computed(() => ({
 .drug-option__stock.low { background: #FEF3C7; color: #92400E; }
 .drug-option__stock.out { background: #FEE2E2; color: #991B1B; }
 .drug-option__price { color: var(--brand-green-dark); font-weight: 700; margin-left: auto; }
+
+/* Service search caret */
+.svc-search-input { padding-right: 26px !important; }
+.svc-search-caret { position: absolute; top: 50%; right: 10px; transform: translateY(-50%); color: var(--fg3); pointer-events: none; }
 
 /* Add drug button */
 .rx-add-btn {
@@ -2479,16 +2556,6 @@ const soapHints = computed(() => ({
 .svc-type-drug         { background: var(--brand-green-light); border: 1px solid var(--brand-green); color: var(--brand-green-dark); }
 .svc-type-lab          { background: #F5F3FF; border: 1px solid #C4B5FD; color: #5B21B6; }
 .svc-type-other        { background: var(--bg-soft); border: 1px solid var(--border); color: var(--fg2); }
-
-.svc-chip {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 3px 9px; border: 1px solid var(--border); border-radius: 999px;
-  background: #fff; color: var(--fg2); font: 400 11px var(--font-sans); cursor: pointer;
-}
-.svc-chip:hover      { border-color: var(--brand-green); color: var(--brand-green-dark); }
-.svc-chip--active    { background: var(--brand-green); border-color: var(--brand-green); color: #fff; }
-.svc-chip__price     { font: 700 10px var(--font-mono); opacity: .7; }
-.svc-chip--active .svc-chip__price { opacity: 1; }
 
 .svc-form-grid {
   display: grid;
