@@ -8,6 +8,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\LookupCategory;
 use App\Models\Patient;
+use App\Models\Service;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -79,6 +80,10 @@ class BillingController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'generic_name', 'form', 'unit', 'selling_price', 'stock_quantity']);
 
+        $serviceItems = Service::where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'code', 'name', 'category', 'price']);
+
         return Inertia::render('Billing', [
             'currentRoute' => 'billing',
             'invoices'     => $invoices,
@@ -89,6 +94,7 @@ class BillingController extends Controller
             'today'        => $today,
             'lookups'      => $lookups,
             'drugItems'    => $drugItems,
+            'serviceItems' => $serviceItems,
         ]);
     }
 

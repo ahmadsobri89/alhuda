@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\InventoryItem;
 use App\Models\Patient;
+use App\Models\Service;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -115,7 +116,8 @@ class BaseDataImportService
     }
 
     /**
-     * Prosedur / perkhidmatan — ExportProcedures.xlsx → inventory_items (form = service)
+     * Prosedur / perkhidmatan — ExportProcedures.xlsx → services (katalog servis,
+     * berasingan daripada inventori/stok ubat)
      * Lajur: Item ID, Item Code, Description, Price, Default Billing Item
      */
     public function importServices(): int
@@ -131,17 +133,13 @@ class BaseDataImportService
 
             $code = $this->clean($row['Item Code'] ?? null);
 
-            InventoryItem::updateOrCreate(
-                ['name' => $name, 'form' => 'service'],
+            Service::updateOrCreate(
+                ['name' => $name],
                 [
-                    'category'       => 'Perkhidmatan',
-                    'classification' => 'general',
-                    'unit'           => 'perkhidmatan',
-                    'unit_cost'      => 0,
-                    'selling_price'  => $this->decimal($row['Price'] ?? $row[' Price'] ?? null),
-                    'stock_quantity' => 0,
-                    'notes'          => $code ? "Kod item: {$code}" : null,
-                    'status'         => 'active',
+                    'code'     => $code,
+                    'category' => 'Perkhidmatan',
+                    'price'    => $this->decimal($row['Price'] ?? $row[' Price'] ?? null),
+                    'status'   => 'active',
                 ],
             );
             $count++;

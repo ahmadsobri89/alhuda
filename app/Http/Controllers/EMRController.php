@@ -11,6 +11,7 @@ use App\Models\InvoiceItem;
 use App\Models\Prescription;
 use App\Models\PrescriptionItem;
 use App\Models\QuarantineLetter;
+use App\Models\Service;
 use App\Models\Visit;
 use App\Models\VisitDiagnosis;
 use App\Services\TaskNotifier;
@@ -70,6 +71,10 @@ class EMRController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'generic_name', 'form', 'unit', 'selling_price', 'stock_quantity']);
 
+        $serviceItems = Service::where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'code', 'name', 'category', 'price']);
+
         return Inertia::render('EMR', [
             'currentRoute' => 'emr',
             'visits'       => $visits,
@@ -79,6 +84,7 @@ class EMRController extends Controller
             'today'        => now()->format('Y-m-d'),
             'lookups'      => $lookups,
             'drugItems'    => $drugItems,
+            'serviceItems' => $serviceItems,
         ]);
     }
 

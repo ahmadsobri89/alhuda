@@ -18,6 +18,7 @@ const props = defineProps({
   today:        String,
   lookups:      { type: Object, default: () => ({}) },
   drugItems:    { type: Array,  default: () => [] },
+  serviceItems: { type: Array,  default: () => [] },
 })
 
 const flash = computed(() => usePage().props.flash?.success)
@@ -479,15 +480,13 @@ function deleteItem(itemId) {
 const svcForm      = useForm({ type: 'consultation', description: '', quantity: 1, unit_price: '' })
 const showSvcDelId = ref(null)
 
-const QUICK_SERVICES = [
-  { type: 'consultation', description: 'Yuran Perundingan',   unit_price: 20 },
-  { type: 'consultation', description: 'Konsultasi Susulan',  unit_price: 15 },
-  { type: 'procedure',    description: 'Pembersihan Luka',    unit_price: 30 },
-  { type: 'procedure',    description: 'Suntikan',            unit_price: 25 },
-  { type: 'lab',          description: 'Ujian Darah (FBC)',   unit_price: 50 },
-  { type: 'lab',          description: 'Ujian Urin',          unit_price: 15 },
-  { type: 'other',        description: 'Dressing',            unit_price: 10 },
-]
+const QUICK_SERVICES = computed(() =>
+  props.serviceItems.map(s => ({
+    type:        'procedure',
+    description: s.name,
+    unit_price:  parseFloat(s.price),
+  }))
+)
 
 const SVC_TYPES = {
   consultation: 'Perundingan',

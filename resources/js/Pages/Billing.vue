@@ -15,8 +15,9 @@ const props = defineProps({
   stats:     Object,
   filters:   Object,
   today:     String,
-  lookups:   { type: Object, default: () => ({}) },
-  drugItems: { type: Array, default: () => [] },
+  lookups:      { type: Object, default: () => ({}) },
+  drugItems:    { type: Array, default: () => [] },
+  serviceItems: { type: Array, default: () => [] },
 })
 
 const page  = usePage()
@@ -76,18 +77,15 @@ const typeLabel = computed(() => {
 })
 const itemTypes = computed(() => (props.lookups?.jenis_item_bil ?? []).map(v => ({ value: v.code, label: v.label_ms })))
 
-/* ── quick service presets (non-drug) ── */
-const quickServices = [
-  { code:'CONS-001', description:'Konsultasi GP',           type:'consultation', unit_price:35 },
-  { code:'CONS-002', description:'Konsultasi Pakar',        type:'consultation', unit_price:80 },
-  { code:'PROC-001', description:'Cucian Luka',             type:'procedure',    unit_price:15 },
-  { code:'PROC-002', description:'Jahitan (per jahit)',     type:'procedure',    unit_price:20 },
-  { code:'PROC-003', description:'Swab Tekak',              type:'procedure',    unit_price:25 },
-  { code:'PROC-004', description:'Suntikan IM',             type:'procedure',    unit_price:10 },
-  { code:'LAB-001',  description:'Darah Lengkap (FBC)',     type:'lab',          unit_price:30 },
-  { code:'LAB-002',  description:'Gula Darah (HbA1c)',      type:'lab',          unit_price:45 },
-  { code:'LAB-003',  description:'Ujian Air Kencing',       type:'lab',          unit_price:15 },
-]
+/* ── service quick-select from the real Services catalog ── */
+const quickServices = computed(() =>
+  props.serviceItems.map(s => ({
+    code:        s.code ?? ('SVC-' + s.id),
+    description: s.name,
+    type:        'procedure',
+    unit_price:  parseFloat(s.price),
+  }))
+)
 
 /* ── drug quick-select from inventory ── */
 const quickDrugs = computed(() =>

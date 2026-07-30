@@ -20,6 +20,7 @@ use App\Http\Controllers\QueueController;
 use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\ReportsController;
+use App\Http\Controllers\ServicesController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TimeSlipController;
 use App\Http\Middleware\EnsureModuleAccess;
@@ -133,6 +134,11 @@ Route::middleware(['auth', 'verified', EnsureModuleAccess::class])->group(functi
     Route::put('/inventory/{inventoryItem}', [InventoryController::class, 'update'])->name('inventory.update');
     Route::patch('/inventory/{inventoryItem}/stock', [InventoryController::class, 'adjustStock'])->name('inventory.stock');
     Route::delete('/inventory/{inventoryItem}', [InventoryController::class, 'destroy'])->name('inventory.destroy');
+    // Services — CRUD (katalog perkhidmatan/prosedur)
+    Route::get('/services', [ServicesController::class, 'index'])->name('services');
+    Route::post('/services', [ServicesController::class, 'store'])->name('services.store');
+    Route::put('/services/{service}', [ServicesController::class, 'update'])->name('services.update');
+    Route::delete('/services/{service}', [ServicesController::class, 'destroy'])->name('services.destroy');
     // Billing — CRUD
     Route::get('/billing', [BillingController::class, 'index'])->name('billing');
     Route::post('/billing', [BillingController::class, 'store'])->name('billing.store');

@@ -35,6 +35,7 @@ const allNavItems = computed(() => [
   { id: 'emr',           icon: 'emr',      label: t('nav_emr'),           badge: pendingCounts.value.emr ?? 0 },
   { id: 'pharmacy',      icon: 'pill',     label: t('nav_pharmacy'),      badge: pendingCounts.value.pharmacy ?? 0 },
   { id: 'inventory',     icon: 'flask',    label: t('nav_inventory') },
+  { id: 'services',      icon: 'clipboard', label: t('nav_services') },
   { id: 'billing',       icon: 'invoice',  label: t('nav_billing'),       badge: pendingCounts.value.billing ?? 0 },
   { id: 'finance',       icon: 'chart',    label: t('nav_finance') },
   { id: 'reports',       icon: 'chart',    label: t('nav_reports') },
