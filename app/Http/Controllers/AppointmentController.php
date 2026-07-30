@@ -9,6 +9,7 @@ use App\Models\Appointment;
 use App\Models\LookupCategory;
 use App\Models\Patient;
 use App\Models\Visit;
+use App\Services\TaskNotifier;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -156,6 +157,16 @@ class AppointmentController extends Controller
         $request->validate(['status' => ['required', 'in:confirmed,waiting,in_room,done,cancelled,no_show']]);
 
         $appointment->update(['status' => $request->status]);
+
+        if ($request->status === 'waiting' && $appointment->wasChanged('status')) {
+            TaskNotifier::notifyRole(
+                'doctor',
+                'appointments',
+                'Pesakit menunggu',
+                "{$appointment->patient->name} sudah tiba dan menunggu konsultasi.",
+                route('queue'),
+            );
+        }
 
         AuditLog::record(
             "appointment.{$request->status}",

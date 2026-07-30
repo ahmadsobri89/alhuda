@@ -9,6 +9,7 @@ use App\Models\InvoiceItem;
 use App\Models\LookupCategory;
 use App\Models\Patient;
 use App\Models\Service;
+use App\Services\TaskNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -206,6 +207,15 @@ class BillingController extends Controller
         abort_if($invoice->status !== 'draft', 403);
         $invoice->update(['status' => 'unpaid']);
         AuditLog::record('billing.finalize', "{$invoice->patient->name} · {$invoice->invoice_number}");
+
+        TaskNotifier::notifyRole(
+            'finance',
+            'finance',
+            'Invois sedia dikutip',
+            "Invois {$invoice->invoice_number} untuk {$invoice->patient->name} sedia untuk pembayaran.",
+            route('finance'),
+        );
+
         return back()->with('success', 'Invois dimuktamadkan.');
     }
 
@@ -224,6 +234,14 @@ class BillingController extends Controller
         ]);
 
         AuditLog::record('billing.pay', "{$invoice->patient->name} · {$invoice->invoice_number} · {$data['payment_method']}");
+
+        TaskNotifier::notifyRole(
+            'finance',
+            'finance',
+            'Pembayaran diterima',
+            "Invois {$invoice->invoice_number} · RM " . number_format($invoice->total_amount, 2) . ' diterima.',
+            route('finance'),
+        );
 
         return back()->with('success', "Pembayaran RM " . number_format($invoice->total_amount, 2) . " diterima.");
     }
