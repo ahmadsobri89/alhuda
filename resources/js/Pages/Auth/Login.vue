@@ -1,10 +1,14 @@
 <script setup>
-import { Head, Link, useForm } from '@inertiajs/vue3'
+import { computed } from 'vue'
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3'
 
 defineProps({
     canResetPassword: Boolean,
     status: String,
 })
+
+const page = usePage()
+const clinicLogoUrl = computed(() => page.props.clinic?.logo_url ?? '/logo.png')
 
 const form = useForm({
     email: '',
@@ -29,7 +33,7 @@ const submit = () => {
             <div class="lr-aside__inner">
 
                 <div class="lr-brand">
-                    <img src="/logo.png" alt="" class="lr-brand__logo" />
+                    <img :src="clinicLogoUrl" alt="" class="lr-brand__logo" />
                     <div class="lr-brand__text">
                         <span class="lr-brand__sub">Poliklinik</span>
                         <span class="lr-brand__name">Al-Huda</span>
@@ -90,7 +94,7 @@ const submit = () => {
             <div class="lr-card">
 
                 <div class="lr-card__logo">
-                    <img src="/logo.png" alt="" />
+                    <img :src="clinicLogoUrl" alt="" />
                     <span>Poliklinik Al-Huda</span>
                 </div>
 
