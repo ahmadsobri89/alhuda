@@ -79,6 +79,11 @@ Route::get('/verify/memo/{token}', [MemoController::class, 'verify'])->name('mem
 
 Route::post('/locale', [LocaleController::class, 'switch'])->name('locale.switch');
 
+// Public testimonial submission (awam — tanpa log masuk, disemak admin dahulu)
+Route::post('/testimoni', [TestimonialController::class, 'submitPublic'])
+    ->middleware('throttle:5,1')
+    ->name('testimonials.submit');
+
 Route::middleware(['auth', 'verified', EnsureModuleAccess::class])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/queue', [QueueController::class, 'index'])->name('queue');

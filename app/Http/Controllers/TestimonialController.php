@@ -8,6 +8,29 @@ use Illuminate\Http\Request;
 
 class TestimonialController extends Controller
 {
+    public function submitPublic(Request $request)
+    {
+        $data = $request->validate([
+            'patient_name' => ['required', 'string', 'max:255'],
+            'patient_area' => ['nullable', 'string', 'max:255'],
+            'quote' => ['required', 'string', 'max:2000'],
+        ]);
+
+        // Honeypot — real visitors never see or fill this field (hidden via CSS).
+        if ($request->filled('website')) {
+            return back()->with('success', 'Terima kasih! Testimoni anda telah dihantar.');
+        }
+
+        $data['sort_order'] = (int) Testimonial::max('sort_order') + 1;
+        $data['is_active'] = false;
+
+        $testimonial = Testimonial::create($data);
+
+        AuditLog::record('testimonial.submit_public', "Testimoni awam: {$testimonial->patient_name}");
+
+        return back()->with('success', 'Terima kasih! Testimoni anda telah dihantar dan akan disemak sebelum dipaparkan.');
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([

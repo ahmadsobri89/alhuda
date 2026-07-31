@@ -1,5 +1,5 @@
 <script setup>
-import { Head, Link } from '@inertiajs/vue3'
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 const props = defineProps({
@@ -34,10 +34,39 @@ function openLightbox(tip) { lightboxTip.value = tip }
 function closeLightbox() { lightboxTip.value = null }
 
 function onKeydown(e) {
-    if (e.key === 'Escape') closeLightbox()
+    if (e.key === 'Escape') { closeLightbox(); closeTestiModal() }
 }
 onMounted(() => window.addEventListener('keydown', onKeydown))
 onUnmounted(() => window.removeEventListener('keydown', onKeydown))
+
+// ─── Public testimonial submission ──────────────────────────────────────
+const testiModalOpen = ref(false)
+const testiSubmitted = ref(false)
+
+const publicTestiForm = useForm({
+    patient_name: '',
+    patient_area: '',
+    quote: '',
+    website: '', // honeypot — kekal kosong, disembunyikan daripada pengguna sebenar
+})
+
+function openTestiModal() {
+    testiSubmitted.value = false
+    publicTestiForm.reset()
+    publicTestiForm.clearErrors()
+    testiModalOpen.value = true
+}
+
+function closeTestiModal() {
+    testiModalOpen.value = false
+}
+
+function submitPublicTesti() {
+    publicTestiForm.post(route('testimonials.submit'), {
+        preserveScroll: true,
+        onSuccess: () => { testiSubmitted.value = true },
+    })
+}
 </script>
 
 <template>
@@ -55,7 +84,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                     <a href="#perkhidmatan" @click="mobileNavOpen = false">Perkhidmatan</a>
                     <a href="#waktu-operasi" @click="mobileNavOpen = false">Waktu Operasi</a>
                     <a v-if="tips.length" href="#tips" @click="mobileNavOpen = false">Tips Kesihatan</a>
-                    <a v-if="testimonials.length" href="#testimoni" @click="mobileNavOpen = false">Testimoni</a>
+                    <a href="#testimoni" @click="mobileNavOpen = false">Testimoni</a>
                     <a href="#hubungi" @click="mobileNavOpen = false">Hubungi</a>
                 </nav>
                 <div class="header-actions">
@@ -203,14 +232,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         </section>
 
         <!-- ── Testimoni Pesakit ── -->
-        <section v-if="testimonials.length" class="testi" id="testimoni">
+        <section class="testi" id="testimoni">
             <div class="wrap">
                 <div class="testi-head">
                     <span class="eyebrow">Testimoni Pesakit</span>
                     <h2 class="section-title">Kata mereka yang pernah datang</h2>
                     <p class="section-sub center">Sedikit luahan hati daripada keluarga yang pernah mendapatkan rawatan di {{ clinic.name }}.</p>
                 </div>
-                <div class="testi-grid">
+                <div v-if="testimonials.length" class="testi-grid">
                     <div v-for="(item, i) in testimonials" :key="item.id" class="testi-card">
                         <span class="testi-quote-mark">&ldquo;</span>
                         <p class="quote">{{ item.quote }}</p>
@@ -219,6 +248,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                             <span class="info"><b>{{ item.patient_name }}</b><span v-if="item.patient_area">{{ item.patient_area }}</span></span>
                         </div>
                     </div>
+                </div>
+                <p v-else class="testi-empty">Jadilah yang pertama kongsi pengalaman anda bersama kami!</p>
+                <div class="testi-cta">
+                    <button type="button" class="btn btn-outline" @click="openTestiModal">Kongsikan Pengalaman Anda</button>
                 </div>
             </div>
         </section>
@@ -298,7 +331,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                             <li><a href="#perkhidmatan">Perkhidmatan</a></li>
                             <li><a href="#waktu-operasi">Waktu Operasi</a></li>
                             <li v-if="tips.length"><a href="#tips">Tips Kesihatan</a></li>
-                            <li v-if="testimonials.length"><a href="#testimoni">Testimoni</a></li>
+                            <li><a href="#testimoni">Testimoni</a></li>
                         </ul>
                     </div>
                     <div class="footer-col">
@@ -328,6 +361,52 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         <div class="lightbox" :class="{ open: lightboxTip }" @click="e => { if (e.target.classList.contains('lightbox')) closeLightbox() }">
             <span class="lightbox-close" @click="closeLightbox">✕</span>
             <img v-if="lightboxTip" :src="lightboxTip.image_url" :alt="`Infografik: ${lightboxTip.title}`" />
+        </div>
+    </Teleport>
+
+    <!-- ── Testimoni Public Submission Modal ── -->
+    <Teleport to="body">
+        <div v-if="testiModalOpen" class="testi-modal-backdrop" @click.self="closeTestiModal">
+            <div class="testi-modal">
+                <button type="button" class="testi-modal__close" @click="closeTestiModal">✕</button>
+
+                <template v-if="!testiSubmitted">
+                    <span class="eyebrow">Testimoni Pesakit</span>
+                    <h3>Kongsikan Pengalaman Anda</h3>
+                    <p class="testi-modal__sub">Testimoni anda akan disemak oleh klinik sebelum dipaparkan secara terbuka.</p>
+
+                    <form @submit.prevent="submitPublicTesti" class="testi-modal__form">
+                        <!-- Honeypot — disembunyikan daripada pengguna sebenar -->
+                        <input v-model="publicTestiForm.website" type="text" tabindex="-1" autocomplete="off" class="testi-honeypot" aria-hidden="true" />
+
+                        <div class="testi-field">
+                            <label>Nama Anda *</label>
+                            <input v-model="publicTestiForm.patient_name" type="text" placeholder="Pn. Zainab" />
+                            <span v-if="publicTestiForm.errors.patient_name" class="testi-field__error">{{ publicTestiForm.errors.patient_name }}</span>
+                        </div>
+                        <div class="testi-field">
+                            <label>Kawasan</label>
+                            <input v-model="publicTestiForm.patient_area" type="text" placeholder="Jitra" />
+                        </div>
+                        <div class="testi-field">
+                            <label>Testimoni Anda *</label>
+                            <textarea v-model="publicTestiForm.quote" rows="4" placeholder="Kongsikan pengalaman anda di klinik kami..."></textarea>
+                            <span v-if="publicTestiForm.errors.quote" class="testi-field__error">{{ publicTestiForm.errors.quote }}</span>
+                        </div>
+                        <button type="submit" class="btn btn-primary" :disabled="publicTestiForm.processing" style="width:100%;">
+                            {{ publicTestiForm.processing ? 'Menghantar...' : 'Hantar Testimoni' }}
+                        </button>
+                    </form>
+                </template>
+                <template v-else>
+                    <div class="testi-modal__success">
+                        <span class="dot"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="m5 13 4 4L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
+                        <h3>Terima kasih!</h3>
+                        <p>Testimoni anda telah dihantar dan akan disemak sebelum dipaparkan.</p>
+                        <button type="button" class="btn btn-primary" @click="closeTestiModal">Tutup</button>
+                    </div>
+                </template>
+            </div>
         </div>
     </Teleport>
 </template>
@@ -488,6 +567,43 @@ nav.links a:hover::after { transform: scaleX(1); }
 .testi-person .info { display: flex; flex-direction: column; }
 .testi-person .info b { font-size: 14.5px; color: var(--lp-fg1); }
 .testi-person .info span { font-size: 12.5px; color: var(--lp-fg3); }
+.testi-empty { text-align: center; color: var(--lp-fg3); font-size: 15px; margin: 0 0 8px; }
+.testi-cta { display: flex; justify-content: center; margin-top: 40px; }
+
+/* ── Testimoni public submission modal ── */
+.testi-honeypot { position: absolute !important; left: -9999px !important; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.testi-modal-backdrop {
+    /* Re-declare the .lp-scoped brand tokens here: this element is Teleported to <body>,
+       outside .lp's DOM subtree, so it can't inherit custom properties scoped to .lp. */
+    --brand-forest: #1A3423;
+    --brand-forest-dark: #12281A;
+    --brand-forest-light: #E7EEE8;
+    --brand-gold: #C9A768;
+    --bg-cream-soft: #FAF6F0;
+    --lp-fg1: #16241A;
+    --lp-fg2: #42513F;
+    --lp-fg3: #6E7A6A;
+    --lp-border: #E3DCC8;
+    --lp-shadow-md: 0 8px 24px rgba(20,30,20,.12);
+    position: fixed; inset: 0; background: rgba(18,28,20,.55); z-index: 10001; display: flex; align-items: center; justify-content: center; padding: 24px;
+}
+.testi-modal { position: relative; background: var(--bg-cream-soft); border-radius: 24px; padding: 36px; width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto; box-shadow: var(--lp-shadow-md); }
+.testi-modal h3 { font-size: 22px; margin: 0 0 8px; }
+.testi-modal__sub { font-size: 14px; color: var(--lp-fg3); margin: 0 0 22px; }
+.testi-modal__close { position: absolute; top: 18px; right: 18px; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--lp-border); background: #fff; color: var(--lp-fg2); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.testi-modal__close:hover { border-color: var(--brand-forest); color: var(--brand-forest); }
+.testi-modal__form { display: flex; flex-direction: column; gap: 16px; }
+.testi-field { display: flex; flex-direction: column; gap: 6px; }
+.testi-field label { font-size: 13px; font-weight: 700; color: var(--lp-fg1); }
+.testi-field input, .testi-field textarea {
+    font: 400 14.5px var(--lp-font-sans); color: var(--lp-fg1); background: #fff;
+    border: 1px solid var(--lp-border); border-radius: 12px; padding: 11px 14px; resize: vertical;
+}
+.testi-field input:focus, .testi-field textarea:focus { outline: none; border-color: var(--brand-forest); }
+.testi-field__error { font-size: 12px; color: #A33; }
+.testi-modal__success { text-align: center; padding: 12px 0 4px; }
+.testi-modal__success .dot { display: inline-flex; width: 56px; height: 56px; border-radius: 50%; background: var(--brand-forest-light); color: var(--brand-forest); align-items: center; justify-content: center; margin-bottom: 18px; }
+.testi-modal__success p { font-size: 14.5px; color: var(--lp-fg2); margin: 0 0 22px; }
 
 /* ── Contact ── */
 .contact { padding: 100px 0; background: var(--bg-cream); }
