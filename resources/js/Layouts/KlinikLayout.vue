@@ -10,6 +10,8 @@ const page = usePage()
 const currentRoute = computed(() => page.props.currentRoute || 'dashboard')
 const { t, locale, switchLocale } = useLocale()
 
+const clinicLogoUrl = computed(() => page.props.clinic?.logo_url ?? '/logo.png')
+
 const user = computed(() => page.props.auth?.user ?? null)
 const userName = computed(() => user.value?.name ?? '')
 const userRole = computed(() => {
@@ -61,7 +63,7 @@ function navigate(item) {
     <!-- Sidebar -->
     <aside class="sidebar">
       <div class="sidebar__brand">
-        <img src="/logo.png" alt="Al-Huda" />
+        <img :src="clinicLogoUrl" alt="Al-Huda" />
         <div class="sidebar__brand-name">Poliklinik<b>Al-Huda</b></div>
       </div>
       <nav class="sidebar__nav">

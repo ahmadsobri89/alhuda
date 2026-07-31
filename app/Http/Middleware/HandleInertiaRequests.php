@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Appointment;
+use App\Models\ClinicProfile;
 use App\Models\Invoice;
 use App\Models\Prescription;
 use App\Models\Visit;
@@ -57,6 +58,13 @@ class HandleInertiaRequests extends Middleware
             ],
             'locale'       => app()->getLocale(),
             'translations' => fn () => $this->loadTranslations(app()->getLocale()),
+            'clinic'       => function () {
+                $cp = ClinicProfile::current();
+                return [
+                    'name'     => $cp->name,
+                    'logo_url' => $cp->logo_url,
+                ];
+            },
         ];
     }
 
