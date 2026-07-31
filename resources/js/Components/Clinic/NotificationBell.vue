@@ -63,6 +63,14 @@ async function markAllRead() {
   await axios.patch(route('notifications.readAll'))
 }
 
+const hasRead = computed(() => items.value.some(i => i.read_at))
+
+async function clearRead() {
+  if (!hasRead.value) return
+  items.value = items.value.filter(i => !i.read_at)
+  await axios.delete(route('notifications.clearRead'))
+}
+
 function onNewNotification(payload) {
   items.value.unshift({
     id: payload.id,
@@ -103,9 +111,14 @@ onBeforeUnmount(() => {
     <div v-if="open" class="notif-panel">
       <div class="notif-panel__header">
         <span>{{ t('notif_title') }}</span>
-        <button v-if="unreadCount > 0" class="notif-mark-all" @click="markAllRead">
-          <Icon name="check" :size="12" />{{ t('notif_mark_all_read') }}
-        </button>
+        <div class="notif-panel__actions">
+          <button v-if="unreadCount > 0" class="notif-mark-all" @click="markAllRead">
+            <Icon name="check" :size="12" />{{ t('notif_mark_all_read') }}
+          </button>
+          <button v-if="hasRead" class="notif-mark-all" @click="clearRead">
+            <Icon name="trash" :size="12" />{{ t('notif_clear_read') }}
+          </button>
+        </div>
       </div>
       <div class="notif-panel__list">
         <div v-if="loading" class="notif-empty">…</div>
@@ -151,6 +164,8 @@ onBeforeUnmount(() => {
   padding: 10px 14px; border-bottom: 1px solid var(--border);
   font: 700 13px var(--font-sans); color: var(--fg1);
 }
+
+.notif-panel__actions { display: flex; align-items: center; gap: 4px; }
 
 .notif-mark-all {
   display: flex; align-items: center; gap: 4px; border: 0; background: transparent;

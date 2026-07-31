@@ -29,4 +29,11 @@ class NotificationController extends Controller
 
         return response()->noContent();
     }
+
+    public function clearRead(Request $request)
+    {
+        $request->user()->readNotifications()->delete();
+
+        return response()->noContent();
+    }
 }

@@ -68,6 +68,7 @@ Route::middleware(['auth', 'verified', EnsureModuleAccess::class])->group(functi
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications');
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
     Route::patch('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.readAll');
+    Route::delete('/notifications/read', [NotificationController::class, 'clearRead'])->name('notifications.clearRead');
     Route::get('/register-patient', [RegisterController::class, 'index'])->name('register-patient');
     // Patients — CRUD
     Route::get('/patients', [PatientController::class, 'index'])->name('patients');

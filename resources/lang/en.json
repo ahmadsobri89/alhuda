@@ -19,6 +19,7 @@
   "notif_title": "Notifications",
   "notif_mark_all_read": "Mark all as read",
   "notif_empty": "No new notifications.",
+  "notif_clear_read": "Clear read",
   "status_confirmed": "Confirmed",
   "status_waiting": "Waiting",
   "status_in_room": "In Room",
