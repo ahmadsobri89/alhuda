@@ -28,6 +28,8 @@ class DatabaseSeeder extends Seeder
     {
         $this->call(LookupSeeder::class);
         $this->call(AppointmentEmrSeeder::class);
+        $this->call(HealthTipSeeder::class);
+        $this->call(TestimonialSeeder::class);
 
         // ── Staff ─────────────────────────────────────────────
         $staff = [

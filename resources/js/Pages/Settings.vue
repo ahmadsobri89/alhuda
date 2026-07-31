@@ -17,6 +17,8 @@ const props = defineProps({
   clinic:           { type: Object, default: () => ({}) },
   lookupCategories: { type: Array,  default: () => [] },
   filters:          { type: Object, default: () => ({}) },
+  tips:             { type: Array,  default: () => [] },
+  testimonials:     { type: Array,  default: () => [] },
 })
 
 const { t } = useLocale()
@@ -167,6 +169,9 @@ const clinicForm = useForm({
   fax:        props.clinic.fax        ?? '',
   email:      props.clinic.email      ?? '',
   website:    props.clinic.website    ?? '',
+  latitude:   props.clinic.latitude   ?? '',
+  longitude:  props.clinic.longitude  ?? '',
+  google_maps_url: props.clinic.google_maps_url ?? '',
   logo:       null,
 })
 
@@ -181,6 +186,138 @@ function onLogoChange(e) {
 
 function saveClinic() {
   clinicForm.post(route('settings.clinic.update'), { preserveScroll: true })
+}
+
+// ─── Tips Kesihatan ────────────────────────────────────────────────────────
+const tipShowModal = ref(false)
+const tipEditing    = ref(null)
+const tipDeleteTarget = ref(null)
+const tipImagePreview = ref(null)
+
+const tipForm = useForm({
+  title: '',
+  sort_order: null,
+  is_active: true,
+  image: null,
+})
+
+function tipOpenCreate() {
+  tipEditing.value = null
+  tipForm.reset()
+  tipForm.is_active = true
+  tipImagePreview.value = null
+  tipShowModal.value = true
+}
+
+function tipOpenEdit(tip) {
+  tipEditing.value = tip
+  tipForm.title = tip.title
+  tipForm.sort_order = tip.sort_order
+  tipForm.is_active = tip.is_active
+  tipForm.image = null
+  tipImagePreview.value = tip.image_url
+  tipShowModal.value = true
+}
+
+function onTipImageChange(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  tipForm.image = file
+  tipImagePreview.value = URL.createObjectURL(file)
+}
+
+function tipCloseModal() {
+  tipShowModal.value = false
+  tipForm.clearErrors()
+}
+
+function tipSubmit() {
+  if (tipEditing.value) {
+    tipForm.post(route('settings.tips.update', tipEditing.value.id), {
+      preserveScroll: true,
+      onSuccess: () => tipCloseModal(),
+    })
+  } else {
+    tipForm.post(route('settings.tips.store'), {
+      preserveScroll: true,
+      onSuccess: () => tipCloseModal(),
+    })
+  }
+}
+
+function tipToggle(tip) {
+  router.patch(route('settings.tips.toggle', tip.id), {}, { preserveScroll: true })
+}
+
+function tipConfirmDelete(tip) { tipDeleteTarget.value = tip }
+
+function tipDoDelete() {
+  router.delete(route('settings.tips.destroy', tipDeleteTarget.value.id), {
+    preserveScroll: true,
+    onSuccess: () => { tipDeleteTarget.value = null },
+  })
+}
+
+// ─── Testimoni Pesakit ─────────────────────────────────────────────────────
+const testiShowModal = ref(false)
+const testiEditing = ref(null)
+const testiDeleteTarget = ref(null)
+
+const testiForm = useForm({
+  patient_name: '',
+  patient_area: '',
+  quote: '',
+  sort_order: null,
+  is_active: true,
+})
+
+function testiOpenCreate() {
+  testiEditing.value = null
+  testiForm.reset()
+  testiForm.is_active = true
+  testiShowModal.value = true
+}
+
+function testiOpenEdit(item) {
+  testiEditing.value = item
+  testiForm.patient_name = item.patient_name
+  testiForm.patient_area = item.patient_area
+  testiForm.quote = item.quote
+  testiForm.sort_order = item.sort_order
+  testiForm.is_active = item.is_active
+  testiShowModal.value = true
+}
+
+function testiCloseModal() {
+  testiShowModal.value = false
+  testiForm.clearErrors()
+}
+
+function testiSubmit() {
+  if (testiEditing.value) {
+    testiForm.put(route('settings.testimonials.update', testiEditing.value.id), {
+      preserveScroll: true,
+      onSuccess: () => testiCloseModal(),
+    })
+  } else {
+    testiForm.post(route('settings.testimonials.store'), {
+      preserveScroll: true,
+      onSuccess: () => testiCloseModal(),
+    })
+  }
+}
+
+function testiToggle(item) {
+  router.patch(route('settings.testimonials.toggle', item.id), {}, { preserveScroll: true })
+}
+
+function testiConfirmDelete(item) { testiDeleteTarget.value = item }
+
+function testiDoDelete() {
+  router.delete(route('settings.testimonials.destroy', testiDeleteTarget.value.id), {
+    preserveScroll: true,
+    onSuccess: () => { testiDeleteTarget.value = null },
+  })
 }
 
 // ─── Flash message ─────────────────────────────────────────────────────────
@@ -293,6 +430,8 @@ function lkpDoDelete() {
       <button :class="['tab', tab==='users'    ? 'active':'']" @click="tab='users'">{{ t('set_tab_users') }}</button>
       <button :class="['tab', tab==='security' ? 'active':'']" @click="tab='security'">{{ t('set_tab_security') }}</button>
       <button :class="['tab', tab==='lookup'   ? 'active':'']" @click="tab='lookup'">{{ t('set_tab_lookup') }}</button>
+      <button :class="['tab', tab==='tips'     ? 'active':'']" @click="tab='tips'">Tips Kesihatan</button>
+      <button :class="['tab', tab==='testimonials' ? 'active':'']" @click="tab='testimonials'">Testimoni Pesakit</button>
       <button :class="['tab', tab==='audit'    ? 'active':'']" @click="tab='audit'">{{ t('set_tab_audit') }}</button>
       <button :class="['tab', tab==='label'    ? 'active':'']" @click="tab='label'">Reka Bentuk Label Ubat</button>
     </div>
@@ -401,6 +540,23 @@ function lkpDoDelete() {
             <div class="field">
               <label class="field__label">{{ t('clinic_lbl_website') }}</label>
               <input v-model="clinicForm.website" class="input" placeholder="www.alhuda.my" />
+            </div>
+
+            <!-- Lokasi / Peta -->
+            <div class="field">
+              <label class="field__label">Latitud</label>
+              <input v-model="clinicForm.latitude" class="input" placeholder="6.236635" />
+              <span v-if="clinicForm.errors.latitude" class="field__error">{{ clinicForm.errors.latitude }}</span>
+            </div>
+            <div class="field">
+              <label class="field__label">Longitud</label>
+              <input v-model="clinicForm.longitude" class="input" placeholder="100.4235227" />
+              <span v-if="clinicForm.errors.longitude" class="field__error">{{ clinicForm.errors.longitude }}</span>
+            </div>
+            <div class="field" style="grid-column:1/-1">
+              <label class="field__label">Pautan Google Maps</label>
+              <input v-model="clinicForm.google_maps_url" class="input" placeholder="https://www.google.com/maps/..." />
+              <span v-if="clinicForm.errors.google_maps_url" class="field__error">{{ clinicForm.errors.google_maps_url }}</span>
             </div>
           </div>
 
@@ -554,6 +710,81 @@ function lkpDoDelete() {
 
           <div v-if="!selectedCategory.values.length" style="padding:24px;text-align:center;color:var(--fg3);font:500 13px var(--font-sans)">
             {{ t('lkp_no_values') }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Tips Kesihatan Tab ────────────────────────────────────────────── -->
+    <div v-if="tab==='tips'">
+      <div class="card">
+        <div class="card__header">
+          <h3 class="card__title" style="flex:1">Tips Kesihatan</h3>
+          <Btn variant="primary" size="sm" @click="tipOpenCreate">Tambah Tip</Btn>
+        </div>
+        <div class="card__body">
+          <div v-if="!tips.length" class="lookup-empty">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--border)"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <p>Belum ada tip kesihatan ditambah.</p>
+          </div>
+          <div v-else class="tips-grid">
+            <div v-for="tip in tips" :key="tip.id" class="tip-card" :style="{ opacity: tip.is_active ? 1 : 0.5 }">
+              <img :src="tip.image_url" :alt="tip.title" class="tip-card__img" />
+              <div class="tip-card__body">
+                <div class="tip-card__title">{{ tip.title }}</div>
+                <div class="row" style="gap:6px;margin-top:4px">
+                  <Badge :tone="tip.is_active ? 'green' : 'neutral'">{{ tip.is_active ? 'Aktif' : 'Tidak aktif' }}</Badge>
+                  <span style="font:500 11px var(--font-mono);color:var(--fg3)">#{{ tip.sort_order }}</span>
+                </div>
+                <div class="row" style="gap:4px;margin-top:10px">
+                  <Btn variant="ghost" size="sm" @click="tipOpenEdit(tip)">{{ t('btn_edit') }}</Btn>
+                  <button class="lookup-toggle-btn" :title="tip.is_active ? 'Nyahaktifkan' : 'Aktifkan'" @click="tipToggle(tip)">
+                    <svg v-if="tip.is_active" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                    <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  </button>
+                  <button class="lookup-delete-btn" @click="tipConfirmDelete(tip)">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Testimoni Pesakit Tab ─────────────────────────────────────────── -->
+    <div v-if="tab==='testimonials'">
+      <div class="card">
+        <div class="card__header">
+          <h3 class="card__title" style="flex:1">Testimoni Pesakit</h3>
+          <Btn variant="primary" size="sm" @click="testiOpenCreate">Tambah Testimoni</Btn>
+        </div>
+        <div class="card__body">
+          <div v-if="!testimonials.length" class="lookup-empty">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--border)"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+            <p>Belum ada testimoni ditambah.</p>
+          </div>
+          <div v-else style="display:flex;flex-direction:column;gap:10px">
+            <div v-for="item in testimonials" :key="item.id" class="testi-row" :style="{ opacity: item.is_active ? 1 : 0.5 }">
+              <div style="flex:1">
+                <p class="testi-row__quote">&ldquo;{{ item.quote }}&rdquo;</p>
+                <div class="testi-row__meta">
+                  <strong>{{ item.patient_name }}</strong><span v-if="item.patient_area">, {{ item.patient_area }}</span>
+                  <Badge :tone="item.is_active ? 'green' : 'neutral'" style="margin-left:8px">{{ item.is_active ? 'Aktif' : 'Tidak aktif' }}</Badge>
+                </div>
+              </div>
+              <div class="row" style="gap:4px">
+                <Btn variant="ghost" size="sm" @click="testiOpenEdit(item)">{{ t('btn_edit') }}</Btn>
+                <button class="lookup-toggle-btn" :title="item.is_active ? 'Nyahaktifkan' : 'Aktifkan'" @click="testiToggle(item)">
+                  <svg v-if="item.is_active" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                  <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </button>
+                <button class="lookup-delete-btn" @click="testiConfirmDelete(item)">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -754,6 +985,144 @@ function lkpDoDelete() {
           <div class="modal__footer">
             <Btn variant="secondary" @click="lkpDeleteTarget = null">{{ t('btn_cancel') }}</Btn>
             <Btn variant="primary" style="background:var(--brand-red)" @click="lkpDoDelete">{{ t('lkp_del_yes') }}</Btn>
+          </div>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
+  <!-- ── Tip Add/Edit Modal ─────────────────────────────────────────────── -->
+  <Teleport to="body">
+    <div v-if="tipShowModal" class="modal-backdrop" @click.self="tipCloseModal">
+      <div class="modal modal--sm">
+        <div class="modal__header">
+          <h3 class="modal__title">{{ tipEditing ? 'Kemaskini Tip' : 'Tip Baharu' }}</h3>
+          <button class="modal__close" @click="tipCloseModal">✕</button>
+        </div>
+        <form @submit.prevent="tipSubmit" class="modal__body">
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div class="clinic-logo-section" style="margin-bottom:0">
+              <div class="clinic-logo-preview">
+                <img v-if="tipImagePreview" :src="tipImagePreview" alt="" class="clinic-logo-img" />
+                <div v-else class="clinic-logo-empty">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--border)"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                </div>
+              </div>
+              <div>
+                <div style="font:600 12px var(--font-sans);color:var(--fg1);margin-bottom:4px">Imej Infografik</div>
+                <label class="logo-upload-btn">
+                  <input type="file" accept="image/png,image/jpeg,image/jpg" style="display:none" @change="onTipImageChange" />
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  {{ tipImagePreview ? 'Tukar Imej' : 'Muat Naik Imej' }}
+                </label>
+                <span v-if="tipForm.errors.image" class="field__error" style="display:block;margin-top:4px">{{ tipForm.errors.image }}</span>
+              </div>
+            </div>
+            <div class="field">
+              <label class="field__label">Tajuk *</label>
+              <input v-model="tipForm.title" class="input" placeholder="Air Sejuk Menyebabkan Batuk?" />
+              <span v-if="tipForm.errors.title" class="field__error">{{ tipForm.errors.title }}</span>
+            </div>
+            <div class="field">
+              <label class="field__label">Susunan (sort order)</label>
+              <input v-model.number="tipForm.sort_order" type="number" min="0" class="input" placeholder="Auto" />
+            </div>
+            <div class="row" style="gap:10px">
+              <button type="button" :class="['toggle', tipForm.is_active ? 'on':'']" @click="tipForm.is_active = !tipForm.is_active"></button>
+              <span style="font:500 13px var(--font-sans);color:var(--fg2)">Aktif</span>
+            </div>
+          </div>
+          <div class="modal__footer">
+            <Btn type="button" variant="secondary" @click="tipCloseModal">{{ t('btn_cancel') }}</Btn>
+            <Btn type="submit" variant="primary" :disabled="tipForm.processing">
+              {{ tipEditing ? t('btn_update') : t('btn_add') }}
+            </Btn>
+          </div>
+        </form>
+      </div>
+    </div>
+  </Teleport>
+
+  <!-- ── Tip Delete Confirmation ────────────────────────────────────────── -->
+  <Teleport to="body">
+    <div v-if="tipDeleteTarget" class="modal-backdrop" @click.self="tipDeleteTarget = null">
+      <div class="modal modal--sm">
+        <div class="modal__header">
+          <h3 class="modal__title" style="color:var(--brand-red)">Padam Tip?</h3>
+          <button class="modal__close" @click="tipDeleteTarget = null">✕</button>
+        </div>
+        <div class="modal__body">
+          <p style="font:400 13.5px var(--font-sans);color:var(--fg2);line-height:1.6;margin:0 0 16px">
+            Padam tip "{{ tipDeleteTarget.title }}"? Tindakan ini tidak boleh dibatalkan.
+          </p>
+          <div class="modal__footer">
+            <Btn variant="secondary" @click="tipDeleteTarget = null">{{ t('btn_cancel') }}</Btn>
+            <Btn variant="primary" style="background:var(--brand-red)" @click="tipDoDelete">Padam</Btn>
+          </div>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
+  <!-- ── Testimonial Add/Edit Modal ────────────────────────────────────── -->
+  <Teleport to="body">
+    <div v-if="testiShowModal" class="modal-backdrop" @click.self="testiCloseModal">
+      <div class="modal modal--sm">
+        <div class="modal__header">
+          <h3 class="modal__title">{{ testiEditing ? 'Kemaskini Testimoni' : 'Testimoni Baharu' }}</h3>
+          <button class="modal__close" @click="testiCloseModal">✕</button>
+        </div>
+        <form @submit.prevent="testiSubmit" class="modal__body">
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div class="field">
+              <label class="field__label">Nama Pesakit *</label>
+              <input v-model="testiForm.patient_name" class="input" placeholder="Pn. Zainab" />
+              <span v-if="testiForm.errors.patient_name" class="field__error">{{ testiForm.errors.patient_name }}</span>
+            </div>
+            <div class="field">
+              <label class="field__label">Kawasan</label>
+              <input v-model="testiForm.patient_area" class="input" placeholder="Jitra" />
+            </div>
+            <div class="field">
+              <label class="field__label">Petikan *</label>
+              <textarea v-model="testiForm.quote" class="input" rows="4" placeholder="Doktor sangat sabar terangkan..."></textarea>
+              <span v-if="testiForm.errors.quote" class="field__error">{{ testiForm.errors.quote }}</span>
+            </div>
+            <div class="field">
+              <label class="field__label">Susunan (sort order)</label>
+              <input v-model.number="testiForm.sort_order" type="number" min="0" class="input" placeholder="Auto" />
+            </div>
+            <div class="row" style="gap:10px">
+              <button type="button" :class="['toggle', testiForm.is_active ? 'on':'']" @click="testiForm.is_active = !testiForm.is_active"></button>
+              <span style="font:500 13px var(--font-sans);color:var(--fg2)">Aktif</span>
+            </div>
+          </div>
+          <div class="modal__footer">
+            <Btn type="button" variant="secondary" @click="testiCloseModal">{{ t('btn_cancel') }}</Btn>
+            <Btn type="submit" variant="primary" :disabled="testiForm.processing">
+              {{ testiEditing ? t('btn_update') : t('btn_add') }}
+            </Btn>
+          </div>
+        </form>
+      </div>
+    </div>
+  </Teleport>
+
+  <!-- ── Testimonial Delete Confirmation ───────────────────────────────── -->
+  <Teleport to="body">
+    <div v-if="testiDeleteTarget" class="modal-backdrop" @click.self="testiDeleteTarget = null">
+      <div class="modal modal--sm">
+        <div class="modal__header">
+          <h3 class="modal__title" style="color:var(--brand-red)">Padam Testimoni?</h3>
+          <button class="modal__close" @click="testiDeleteTarget = null">✕</button>
+        </div>
+        <div class="modal__body">
+          <p style="font:400 13.5px var(--font-sans);color:var(--fg2);line-height:1.6;margin:0 0 16px">
+            Padam testimoni "{{ testiDeleteTarget.patient_name }}"? Tindakan ini tidak boleh dibatalkan.
+          </p>
+          <div class="modal__footer">
+            <Btn variant="secondary" @click="testiDeleteTarget = null">{{ t('btn_cancel') }}</Btn>
+            <Btn variant="primary" style="background:var(--brand-red)" @click="testiDoDelete">Padam</Btn>
           </div>
         </div>
       </div>
@@ -1035,6 +1404,51 @@ function lkpDoDelete() {
 .lookup-delete-btn:hover {
   border-color: var(--brand-red);
   color: var(--brand-red);
+}
+
+/* ── Tips Kesihatan ── */
+.tips-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+.tip-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+}
+.tip-card__img {
+  width: 100%;
+  aspect-ratio: 1122 / 1402;
+  object-fit: cover;
+  display: block;
+}
+.tip-card__body { padding: 12px; }
+.tip-card__title {
+  font: 700 13px var(--font-sans);
+  color: var(--fg1);
+  line-height: 1.3;
+}
+
+/* ── Testimoni Pesakit ── */
+.testi-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+}
+.testi-row__quote {
+  font: 500 13.5px/1.6 var(--font-sans);
+  color: var(--fg1);
+  margin: 0 0 6px;
+}
+.testi-row__meta {
+  font: 500 12px var(--font-sans);
+  color: var(--fg3);
 }
 
 /* ── Label Designer ── */

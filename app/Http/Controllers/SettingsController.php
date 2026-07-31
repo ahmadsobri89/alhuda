@@ -6,8 +6,10 @@ use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Models\AuditLog;
 use App\Models\ClinicProfile;
+use App\Models\HealthTip;
 use App\Models\LookupCategory;
 use App\Models\SecurityPolicy;
+use App\Models\Testimonial;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -65,6 +67,16 @@ class SettingsController extends Controller
                 ]),
             ]);
 
+        $tips = HealthTip::ordered()->get()->map(fn ($tip) => [
+            'id' => $tip->id,
+            'title' => $tip->title,
+            'image_url' => $tip->image_url,
+            'sort_order' => $tip->sort_order,
+            'is_active' => $tip->is_active,
+        ]);
+
+        $testimonials = Testimonial::ordered()->get();
+
         return Inertia::render('Settings', [
             'currentRoute'     => 'settings',
             'users'            => $users,
@@ -72,6 +84,8 @@ class SettingsController extends Controller
             'auditLogs'        => $auditLogs,
             'lookupCategories' => $lookupCategories,
             'filters'          => ['per_page' => $perPage],
+            'tips'             => $tips,
+            'testimonials'     => $testimonials,
             'clinic'           => [
                 'name'         => $cp->name,
                 'tagline'      => $cp->tagline,
@@ -86,6 +100,9 @@ class SettingsController extends Controller
                 'email'      => $cp->email,
                 'website'    => $cp->website,
                 'logo_url'   => $cp->logo_url,
+                'latitude'   => $cp->latitude,
+                'longitude'  => $cp->longitude,
+                'google_maps_url' => $cp->google_maps_url,
             ],
         ]);
     }
@@ -141,6 +158,9 @@ class SettingsController extends Controller
             'email'      => ['nullable', 'email', 'max:255'],
             'website'    => ['nullable', 'string', 'max:255'],
             'logo'       => ['nullable', 'image', 'max:2048'],
+            'latitude'   => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude'  => ['nullable', 'numeric', 'between:-180,180'],
+            'google_maps_url' => ['nullable', 'string', 'max:2000'],
         ]);
 
         $cp = ClinicProfile::firstOrCreate(['id' => 1]);

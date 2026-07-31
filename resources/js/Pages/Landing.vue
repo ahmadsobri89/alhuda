@@ -1,222 +1,261 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 
-defineProps({
+const props = defineProps({
     canLogin: { type: Boolean, default: true },
     clinic: { type: Object, required: true },
+    tips: { type: Array, default: () => [] },
+    testimonials: { type: Array, default: () => [] },
 })
 
-const services = [
-    {
-        title: 'Konsultasi & Rawatan',
-        desc: 'Pemeriksaan kesihatan, diagnosis dan rawatan oleh doktor berdaftar.',
-        icon: 'M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z',
-    },
-    {
-        title: 'Farmasi & Preskripsi',
-        desc: 'Pendispensan ubat dengan label preskripsi digital yang jelas.',
-        icon: 'M4.5 8.5 19 23M9 11l4.5-4.5a4.95 4.95 0 0 0-7-7L2 4a4.95 4.95 0 0 0 7 7Z',
-    },
-    {
-        title: 'Temujanji & Giliran',
-        desc: 'Tempahan temujanji dan sistem giliran masa nyata tanpa menunggu lama.',
-        icon: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z',
-    },
-    {
-        title: 'Sijil & Dokumen',
-        desc: 'Sijil cuti sakit (MC), surat rujukan dan slip masa yang sah.',
-        icon: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8',
-    },
-    {
-        title: 'Rekod Perubatan Elektronik',
-        desc: 'Sejarah rawatan tersimpan selamat dengan akses mudah & teratur.',
-        icon: 'M22 12h-4l-3 9L9 3l-3 9H2',
-    },
-    {
-        title: 'Bil & Bayaran',
-        desc: 'Pengeluaran invois telus serta resit bayaran untuk setiap rawatan.',
-        icon: 'M2 7h20v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2zM2 11h20M6 15h4',
-    },
-]
+const telHref = computed(() => 'tel:' + (props.clinic.phone ?? '').replace(/[^\d+]/g, ''))
 
-const hours = [
-    { day: 'Isnin – Jumaat', time: '8:00 pagi – 9:00 malam' },
-    { day: 'Sabtu – Ahad', time: '9:00 pagi – 6:00 petang' },
-    { day: 'Cuti Umum', time: '9:00 pagi – 1:00 tengah hari' },
-]
+const testiPalette = ['#1A3423', '#8A6E3A', '#5C6E4F', '#3A5A6E', '#6E3A4F']
+
+function testiInitial(name) {
+    if (!name) return '?'
+    const parts = name.trim().split(/\s+/)
+    const honorifics = /^(pn\.?|en\.?|cik|dr\.?|tuan|puan)$/i
+    const target = parts.length > 1 && honorifics.test(parts[0]) ? parts[1] : parts[0]
+    return target.charAt(0).toUpperCase()
+}
+
+function testiColor(i) {
+    return testiPalette[i % testiPalette.length]
+}
+
+// ─── Mobile nav ──────────────────────────────────────────────────────────
+const mobileNavOpen = ref(false)
+
+// ─── Lightbox ────────────────────────────────────────────────────────────
+const lightboxTip = ref(null)
+function openLightbox(tip) { lightboxTip.value = tip }
+function closeLightbox() { lightboxTip.value = null }
+
+function onKeydown(e) {
+    if (e.key === 'Escape') closeLightbox()
+}
+onMounted(() => window.addEventListener('keydown', onKeydown))
+onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 </script>
 
 <template>
     <Head :title="`${clinic.name} · Klinik Perubatan`" />
 
-    <div class="lp">
+    <div class="lp" id="top">
         <!-- ── Header ── -->
         <header class="lp-header">
-            <div class="lp-container lp-header__inner">
-                <div class="lp-brand">
-                    <img :src="clinic.logo_url" alt="" class="lp-brand__logo" />
-                    <div class="lp-brand__text">
-                        <span class="lp-brand__name">{{ clinic.name }}</span>
-                        <span v-if="clinic.tagline" class="lp-brand__sub">{{ clinic.tagline }}</span>
-                    </div>
-                </div>
-
-                <nav class="lp-nav">
-                    <a href="#perkhidmatan" class="lp-nav__link">Perkhidmatan</a>
-                    <a href="#waktu" class="lp-nav__link">Waktu Operasi</a>
-                    <a href="#hubungi" class="lp-nav__link">Hubungi</a>
-                    <Link v-if="canLogin" :href="route('login')" class="lp-btn lp-btn--primary">
-                        Log Masuk Staf →
-                    </Link>
+            <div class="nav-inner">
+                <a class="brand" href="#top">
+                    <img :src="clinic.logo_url" :alt="`Logo ${clinic.name}`" />
+                    <span class="name">{{ clinic.name }}<small>Jitra, Kedah</small></span>
+                </a>
+                <nav :class="['links', mobileNavOpen ? 'open' : '']">
+                    <a href="#perkhidmatan" @click="mobileNavOpen = false">Perkhidmatan</a>
+                    <a href="#waktu-operasi" @click="mobileNavOpen = false">Waktu Operasi</a>
+                    <a v-if="tips.length" href="#tips" @click="mobileNavOpen = false">Tips Kesihatan</a>
+                    <a v-if="testimonials.length" href="#testimoni" @click="mobileNavOpen = false">Testimoni</a>
+                    <a href="#hubungi" @click="mobileNavOpen = false">Hubungi</a>
                 </nav>
+                <div class="header-actions">
+                    <Link v-if="canLogin" :href="route('login')" class="staff-btn">Log Masuk Staf</Link>
+                    <button class="burger" aria-label="Menu" @click="mobileNavOpen = !mobileNavOpen">
+                        <span></span><span></span><span></span>
+                    </button>
+                </div>
             </div>
         </header>
 
         <!-- ── Hero ── -->
-        <section class="lp-hero">
-            <div class="lp-container lp-hero__inner">
-                <div class="lp-hero__text">
-                    <span class="lp-pill">
-                        <span class="lp-pill__dot"></span>
-                        Klinik Perubatan Berdaftar
-                    </span>
-                    <h1 class="lp-hero__h">
-                        Penjagaan Kesihatan<br />
-                        <span class="lp-hero__accent">Mesra & Profesional</span>
-                    </h1>
-                    <p class="lp-hero__p">
-                        {{ clinic.name }} menyediakan perkhidmatan perubatan menyeluruh —
-                        daripada konsultasi, farmasi hingga rawatan susulan — dengan
-                        sokongan sistem klinikal moden untuk keselesaan anda.
-                    </p>
-                    <div class="lp-hero__cta">
-                        <Link v-if="canLogin" :href="route('login')" class="lp-btn lp-btn--primary lp-btn--lg">
-                            Log Masuk Sistem →
-                        </Link>
-                        <a href="#hubungi" class="lp-btn lp-btn--ghost lp-btn--lg">
-                            Hubungi Kami
+        <section class="hero">
+            <div class="hero-grid">
+                <div class="hero-copy">
+                    <span v-if="clinic.tagline" class="script">{{ clinic.tagline }} ♡</span>
+                    <h1>Rawatan mesra untuk<br /><em>seisi keluarga</em> anda</h1>
+                    <p>{{ clinic.name }} menyediakan penjagaan kesihatan yang mesra, sabar dan boleh dipercayai — dari kanak-kanak sehingga warga emas, kami sentiasa ada untuk keluarga anda di Jitra.</p>
+                    <div class="hero-ctas">
+                        <a class="btn btn-primary" href="#hubungi">Buat Temujanji</a>
+                        <a v-if="clinic.phone" class="tel-link" :href="telHref">
+                            <span class="ico">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6.6 10.2c1.2 2.4 3.1 4.3 5.5 5.5l1.8-1.8c.2-.2.6-.3.9-.2 1 .3 2 .5 3.1.5.5 0 .9.4.9.9V19c0 .5-.4.9-.9.9C9.9 19.9 4.1 14.1 4.1 6.9c0-.5.4-.9.9-.9h3.1c.5 0 .9.4.9.9 0 1.1.2 2.1.5 3.1.1.3 0 .7-.2.9l-1.7 1.8Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /></svg>
+                            </span>
+                            Hubungi Kami<br /><span style="font-weight:400;color:var(--fg3);font-size:13px;">{{ clinic.phone }}</span>
                         </a>
                     </div>
-
-                    <dl class="lp-stats">
-                        <div class="lp-stat">
-                            <dt>15+</dt>
-                            <dd>Tahun Pengalaman</dd>
-                        </div>
-                        <div class="lp-stat">
-                            <dt>20K+</dt>
-                            <dd>Pesakit Dirawat</dd>
-                        </div>
-                        <div class="lp-stat">
-                            <dt>6</dt>
-                            <dd>Perkhidmatan Utama</dd>
-                        </div>
-                    </dl>
-                </div>
-
-                <div class="lp-hero__card">
-                    <div class="lp-card-icon">
-                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20"/></svg>
+                    <div class="hero-stats">
+                        <div class="stat"><b>6</b><span>Perkhidmatan Klinikal</span></div>
+                        <div class="stat"><b>13 jam</b><span>Waktu Operasi Harian</span></div>
+                        <div class="stat"><b>100%</b><span>Layanan Mesra Keluarga</span></div>
                     </div>
-                    <h3 class="lp-hero__card-h">Lawati Kami Hari Ini</h3>
-                    <p class="lp-hero__card-p">Tiada temujanji? Tidak mengapa — pesakit walk-in dialu-alukan.</p>
-                    <ul class="lp-hero__card-list">
-                        <li v-if="clinic.address_full">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-                            <span>{{ clinic.address_full }}</span>
-                        </li>
-                        <li v-if="clinic.phone">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92Z"/></svg>
-                            <span>{{ clinic.phone }}</span>
-                        </li>
-                        <li>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                            <span>Buka 7 hari seminggu</span>
-                        </li>
-                    </ul>
+                </div>
+                <div class="hero-photo">
+                    <img class="hero-leaf-tr" src="/images/landing/leaf-left.png" alt="" style="transform:scaleX(-1);" />
+                    <div class="hero-photo-frame">
+                        <img src="/images/landing/doctor.jpg" :alt="`Doktor ${clinic.name} sedia membantu di klinik`" />
+                    </div>
+                    <div class="hero-badge">
+                        <span class="dot">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 21s-7.5-4.6-10-9.3C.5 8 2 4.5 5.5 4c2-.3 3.9.7 5 2.3C11.6 4.7 13.5 3.7 15.5 4c3.5.5 5 4 3.5 7.7C16.5 16.4 12 21 12 21Z" stroke="currentColor" stroke-width="1.6" /></svg>
+                        </span>
+                        <span class="txt"><b>Dipercayai keluarga</b><span>di Jitra sejak sekian lama</span></span>
+                    </div>
+                    <img class="hero-leaf-bl" src="/images/landing/leaf-left.png" alt="" />
                 </div>
             </div>
         </section>
 
         <!-- ── Services ── -->
-        <section id="perkhidmatan" class="lp-section">
-            <div class="lp-container">
-                <div class="lp-section__head">
-                    <span class="lp-eyebrow">Perkhidmatan Kami</span>
-                    <h2 class="lp-section__h">Penjagaan menyeluruh di bawah satu bumbung</h2>
-                    <p class="lp-section__p">Perkhidmatan perubatan lengkap yang disokong sistem digital moden.</p>
+        <section class="services" id="perkhidmatan">
+            <div class="wrap">
+                <div class="services-head">
+                    <span class="eyebrow">Perkhidmatan Kami</span>
+                    <h2 class="section-title">Penjagaan menyeluruh, satu bumbung</h2>
+                    <p class="section-sub center">Daripada rawatan harian sehingga prosedur ringkas, pasukan kami mengendalikan setiap keperluan kesihatan keluarga anda dengan teliti dan penuh mesra.</p>
                 </div>
-
-                <div class="lp-grid">
-                    <article v-for="s in services" :key="s.title" class="lp-service">
-                        <div class="lp-service__icon">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path :d="s.icon"/></svg>
-                        </div>
-                        <h3 class="lp-service__h">{{ s.title }}</h3>
-                        <p class="lp-service__p">{{ s.desc }}</p>
-                    </article>
+                <div class="services-grid">
+                    <div class="service-card">
+                        <span class="service-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M8 3v4M16 3v4M4 8h16M6 8v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /><path d="M9 13c1 1 2 1 3 0s2-1 3 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg></span>
+                        <h3>Perubatan Keluarga</h3>
+                        <p>Konsultasi dan rawatan menyeluruh untuk seisi keluarga.</p>
+                    </div>
+                    <div class="service-card">
+                        <span class="service-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M8 5a5 5 0 0 1 8 4c0 3-3 3-3 6a3 3 0 0 1-6 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /><circle cx="8" cy="19" r="1.6" stroke="currentColor" stroke-width="1.4" /></svg></span>
+                        <h3>Rawatan ENT</h3>
+                        <p>Pemeriksaan dan rawatan telinga, hidung, tekak.</p>
+                    </div>
+                    <div class="service-card">
+                        <span class="service-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M9 3h6M10 3v6l-4.5 8A2 2 0 0 0 7.2 20h9.6a2 2 0 0 0 1.7-3L14 9V3" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /><path d="M8 15h8" stroke="currentColor" stroke-width="1.6" /></svg></span>
+                        <h3>Saringan Kesihatan</h3>
+                        <p>Pemeriksaan kesihatan menyeluruh.</p>
+                    </div>
+                    <div class="service-card">
+                        <span class="service-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="m18 6-3-3-9 9v3h3l9-9Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /><path d="m13 5 3 3M5 19h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg></span>
+                        <h3>Vaksinasi</h3>
+                        <p>Vaksin kanak-kanak dan dewasa.</p>
+                    </div>
+                    <div class="service-card">
+                        <span class="service-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="4" y="9" width="16" height="6" rx="3" transform="rotate(-45 12 12)" stroke="currentColor" stroke-width="1.6" /><path d="m9.5 9.5 5 5" stroke="currentColor" stroke-width="1.6" /></svg></span>
+                        <h3>Prosedur Kecil</h3>
+                        <p>Prosedur ringkas dijalankan dengan selamat.</p>
+                    </div>
+                    <div class="service-card">
+                        <span class="service-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M6 12c2-3 4-4 6-4s4 1 6 4c-2 3-4 4-6 4s-4-1-6-4Z" stroke="currentColor" stroke-width="1.6" /><circle cx="12" cy="12" r="1.8" stroke="currentColor" stroke-width="1.4" /></svg></span>
+                        <h3>Pembedahan Minor</h3>
+                        <p>Jahitan luka, pengeluaran benjolan.</p>
+                    </div>
                 </div>
             </div>
         </section>
 
         <!-- ── Hours ── -->
-        <section id="waktu" class="lp-section lp-section--alt">
-            <div class="lp-container lp-hours">
-                <div class="lp-hours__text">
-                    <span class="lp-eyebrow">Waktu Operasi</span>
-                    <h2 class="lp-section__h">Kami sentiasa bersedia untuk anda</h2>
-                    <p class="lp-section__p">
-                        Datang pada bila-bila masa dalam waktu operasi kami. Untuk kecemasan
-                        di luar waktu, sila hubungi talian klinik.
-                    </p>
+        <section class="hours" id="waktu-operasi">
+            <div class="wrap">
+                <div class="hours-grid">
+                    <div class="hours-copy">
+                        <span class="eyebrow">Waktu Operasi</span>
+                        <h2 class="section-title">Waktu panjang, supaya kami<br />sentiasa ada untuk anda</h2>
+                        <p class="section-sub">Kami buka lebih lama pada hari biasa supaya keluarga anda boleh berjumpa doktor pada waktu yang sesuai — selepas kerja atau sekolah sekalipun.</p>
+                    </div>
+                    <div class="hours-card">
+                        <div class="hours-row">
+                            <span class="day"><span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6" /><path d="M12 7.5V12l3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg></span>Sabtu – Khamis</span>
+                            <span class="time">9.00 pagi – 10.00 malam</span>
+                        </div>
+                        <div class="hours-row closed">
+                            <span class="day"><span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg></span>Jumaat</span>
+                            <span class="time">Tutup</span>
+                        </div>
+                    </div>
                 </div>
-                <ul class="lp-hours__list">
-                    <li v-for="h in hours" :key="h.day" class="lp-hours__row">
-                        <span class="lp-hours__day">{{ h.day }}</span>
-                        <span class="lp-hours__time">{{ h.time }}</span>
-                    </li>
-                </ul>
+                <div class="hours-note">
+                    <span class="i">♡</span>
+                    <p>Jom datang lebih awal pada waktu puncak (petang &amp; malam) untuk mengelakkan menunggu lama.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── Tips Kesihatan ── -->
+        <section v-if="tips.length" class="tips" id="tips">
+            <div class="wrap">
+                <div class="tips-head">
+                    <span class="eyebrow">Tips Kesihatan</span>
+                    <h2 class="section-title">Cerita &amp; tip dari klinik kami</h2>
+                    <p class="section-sub center">Kongsian ringkas yang kami kongsikan di Instagram, TikTok dan Facebook — imbas untuk baca infografik penuh.</p>
+                </div>
+
+                <div v-for="(tip, i) in tips" :key="tip.id" :class="['tip-row', i % 2 === 1 ? 'reverse' : '']">
+                    <div class="tip-media" @click="openLightbox(tip)">
+                        <img :src="tip.image_url" :alt="`Infografik: ${tip.title}`" />
+                        <span class="zoom-hint"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" stroke-width="1.7" /><path d="m20 20-4.3-4.3M8 10.5h5M10.5 8v5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg></span>
+                    </div>
+                    <div class="tip-text">
+                        <span class="tip-label">Tips Kesihatan</span>
+                        <h3>{{ tip.title }}</h3>
+                        <p>Kongsian ringkas daripada klinik kami — imbas untuk baca infografik penuh dan ketahui lebih lanjut.</p>
+                        <span class="tip-cta" @click="openLightbox(tip)">
+                            Lihat Infografik Penuh
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── Testimoni Pesakit ── -->
+        <section v-if="testimonials.length" class="testi" id="testimoni">
+            <div class="wrap">
+                <div class="testi-head">
+                    <span class="eyebrow">Testimoni Pesakit</span>
+                    <h2 class="section-title">Kata mereka yang pernah datang</h2>
+                    <p class="section-sub center">Sedikit luahan hati daripada keluarga yang pernah mendapatkan rawatan di {{ clinic.name }}.</p>
+                </div>
+                <div class="testi-grid">
+                    <div v-for="(item, i) in testimonials" :key="item.id" class="testi-card">
+                        <span class="testi-quote-mark">&ldquo;</span>
+                        <p class="quote">{{ item.quote }}</p>
+                        <div class="testi-person">
+                            <span class="testi-avatar" :style="{ background: testiColor(i) }">{{ testiInitial(item.patient_name) }}</span>
+                            <span class="info"><b>{{ item.patient_name }}</b><span v-if="item.patient_area">{{ item.patient_area }}</span></span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
 
         <!-- ── Contact ── -->
-        <section id="hubungi" class="lp-section">
-            <div class="lp-container">
-                <div class="lp-section__head">
-                    <span class="lp-eyebrow">Hubungi Kami</span>
-                    <h2 class="lp-section__h">Maklumat & lokasi klinik</h2>
-                </div>
-
-                <div class="lp-contact">
-                    <div v-if="clinic.address_full" class="lp-contact__item">
-                        <div class="lp-contact__icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+        <section class="contact" id="hubungi">
+            <div class="wrap">
+                <div class="contact-grid">
+                    <div class="contact-info">
+                        <span class="eyebrow">Hubungi Kami</span>
+                        <h2 class="section-title">Kami sedia membantu<br />keluarga anda</h2>
+                        <p class="section-sub">Datang terus ke klinik kami, atau hubungi kami dahulu untuk sebarang pertanyaan.</p>
+                        <div class="contact-cards">
+                            <div v-if="clinic.address_full" class="contact-card">
+                                <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 21s-7-5.1-7-11a7 7 0 0 1 14 0c0 5.9-7 11-7 11Z" stroke="currentColor" stroke-width="1.6" /><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6" /></svg></span>
+                                <div><h4>Alamat</h4><p>{{ clinic.address_full }}</p></div>
+                            </div>
+                            <div v-if="clinic.phone" class="contact-card">
+                                <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6.6 10.2c1.2 2.4 3.1 4.3 5.5 5.5l1.8-1.8c.2-.2.6-.3.9-.2 1 .3 2 .5 3.1.5.5 0 .9.4.9.9V19c0 .5-.4.9-.9.9C9.9 19.9 4.1 14.1 4.1 6.9c0-.5.4-.9.9-.9h3.1c.5 0 .9.4.9.9 0 1.1.2 2.1.5 3.1.1.3 0 .7-.2.9l-1.7 1.8Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /></svg></span>
+                                <div><h4>Telefon / WhatsApp</h4><a :href="telHref">{{ clinic.phone }}</a></div>
+                            </div>
                         </div>
-                        <div class="lp-contact__label">Alamat</div>
-                        <div class="lp-contact__value">{{ clinic.address_full }}</div>
                     </div>
-                    <div v-if="clinic.phone" class="lp-contact__item">
-                        <div class="lp-contact__icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92Z"/></svg>
-                        </div>
-                        <div class="lp-contact__label">Telefon</div>
-                        <div class="lp-contact__value">{{ clinic.phone }}</div>
-                    </div>
-                    <div v-if="clinic.email" class="lp-contact__item">
-                        <div class="lp-contact__icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>
-                        </div>
-                        <div class="lp-contact__label">Emel</div>
-                        <div class="lp-contact__value">{{ clinic.email }}</div>
-                    </div>
-                    <div v-if="clinic.reg_number || clinic.ckaps_number" class="lp-contact__item">
-                        <div class="lp-contact__icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                        </div>
-                        <div class="lp-contact__label">Pendaftaran</div>
-                        <div class="lp-contact__value">
-                            <template v-if="clinic.reg_number">No. Daftar: {{ clinic.reg_number }}<br /></template>
-                            <template v-if="clinic.ckaps_number">CKAPS: {{ clinic.ckaps_number }}</template>
+                    <div class="contact-map">
+                        <img class="leaf-deco" src="/images/landing/leaf-left.png" alt="" />
+                        <span class="pin"><svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M12 21s-7-5.1-7-11a7 7 0 0 1 14 0c0 5.9-7 11-7 11Z" stroke="currentColor" stroke-width="1.6" /><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6" /></svg></span>
+                        <h3>{{ clinic.name }}</h3>
+                        <p>Mudah diakses dan mempunyai ruang letak kereta.</p>
+                        <div class="map-actions">
+                            <a v-if="clinic.google_maps_url" class="btn btn-primary" :href="clinic.google_maps_url" target="_blank" rel="noopener">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 21s-7-5.1-7-11a7 7 0 0 1 14 0c0 5.9-7 11-7 11Z" stroke="currentColor" stroke-width="1.8" /><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.8" /></svg>
+                                Google Maps
+                            </a>
+                            <a v-if="clinic.waze_url" class="btn btn-outline btn-on-map" :href="clinic.waze_url" target="_blank" rel="noopener">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 11 21 3l-8 18-2-7-8-3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" /></svg>
+                                Waze
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -224,318 +263,349 @@ const hours = [
         </section>
 
         <!-- ── CTA strip ── -->
-        <section class="lp-cta-strip">
-            <div class="lp-container lp-cta-strip__inner">
+        <section class="cta-strip">
+            <div class="wrap cta-strip-inner">
                 <div>
-                    <h2 class="lp-cta-strip__h">Staf klinik?</h2>
-                    <p class="lp-cta-strip__p">Akses sistem pengurusan klinik bersepadu di sini.</p>
+                    <span v-if="clinic.tagline" class="script" style="color:var(--brand-gold);">{{ clinic.tagline }} ♡</span>
+                    <h2>Sedia bertemu doktor keluarga anda hari ini?</h2>
                 </div>
-                <Link v-if="canLogin" :href="route('login')" class="lp-btn lp-btn--white lp-btn--lg">
-                    Log Masuk Sistem →
-                </Link>
+                <div class="cta-strip-actions">
+                    <a class="btn btn-cream" href="#hubungi">Buat Temujanji</a>
+                    <a v-if="clinic.phone" class="btn btn-gold" :href="telHref">Hubungi {{ clinic.phone }}</a>
+                </div>
             </div>
         </section>
 
         <!-- ── Footer ── -->
-        <footer class="lp-footer">
-            <div class="lp-container lp-footer__inner">
-                <div class="lp-brand">
-                    <img :src="clinic.logo_url" alt="" class="lp-brand__logo lp-brand__logo--sm" />
-                    <span class="lp-footer__name">{{ clinic.name }}</span>
+        <footer>
+            <div class="wrap">
+                <div class="footer-grid">
+                    <div class="footer-col">
+                        <div class="footer-brand">
+                            <img :src="clinic.logo_url" :alt="`Logo ${clinic.name}`" />
+                            <b>{{ clinic.name }}</b>
+                        </div>
+                        <p>Klinik keluarga pilihan anda di Jitra, Kedah — penjagaan mesra, sabar dan boleh dipercayai untuk seisi keluarga.</p>
+                        <div class="footer-social" style="margin-top:20px;">
+                            <a href="#" aria-label="Facebook"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M14 9h3V5h-3c-2.2 0-4 1.8-4 4v2H7v4h3v6h4v-6h3l1-4h-4V9c0-.6.4-1 1-1Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" /></svg></a>
+                            <a href="#" aria-label="Instagram"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="5" stroke="currentColor" stroke-width="1.3" /><circle cx="12" cy="12" r="3.5" stroke="currentColor" stroke-width="1.3" /><circle cx="16.6" cy="7.4" r="1" fill="currentColor" /></svg></a>
+                            <a href="#" aria-label="TikTok"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M14 4v10.5a3 3 0 1 1-2-2.8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" /><path d="M14 4c.3 2.5 2 4.3 4.5 4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" /></svg></a>
+                        </div>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Pautan Pantas</h4>
+                        <ul>
+                            <li><a href="#perkhidmatan">Perkhidmatan</a></li>
+                            <li><a href="#waktu-operasi">Waktu Operasi</a></li>
+                            <li v-if="tips.length"><a href="#tips">Tips Kesihatan</a></li>
+                            <li v-if="testimonials.length"><a href="#testimoni">Testimoni</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Perkhidmatan</h4>
+                        <ul>
+                            <li><a href="#perkhidmatan">Perubatan Keluarga</a></li>
+                            <li><a href="#perkhidmatan">Rawatan ENT</a></li>
+                            <li><a href="#perkhidmatan">Vaksinasi</a></li>
+                            <li><a href="#perkhidmatan">Pembedahan Minor</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Hubungi</h4>
+                        <p v-if="clinic.address_full" style="margin-bottom:10px;">{{ clinic.address_full }}</p>
+                        <p v-if="clinic.phone"><a :href="telHref">{{ clinic.phone }}</a></p>
+                    </div>
                 </div>
-                <p class="lp-footer__copy">© 2026 {{ clinic.name }}. Hak cipta terpelihara.</p>
+                <div class="footer-bottom">
+                    <p>© 2026 {{ clinic.name }}. Hak cipta terpelihara.</p>
+                </div>
             </div>
         </footer>
     </div>
+
+    <!-- ── Lightbox ── -->
+    <Teleport to="body">
+        <div class="lightbox" :class="{ open: lightboxTip }" @click="e => { if (e.target.classList.contains('lightbox')) closeLightbox() }">
+            <span class="lightbox-close" @click="closeLightbox">✕</span>
+            <img v-if="lightboxTip" :src="lightboxTip.image_url" :alt="`Infografik: ${lightboxTip.title}`" />
+        </div>
+    </Teleport>
 </template>
 
 <style scoped>
 .lp {
+    --brand-forest: #1A3423;
+    --brand-forest-dark: #12281A;
+    --brand-forest-light: #E7EEE8;
+    --brand-gold: #C9A768;
+    --brand-gold-light: #F0E4C8;
+    --bg-cream: #F5EEE4;
+    --bg-cream-soft: #FAF6F0;
+    --lp-fg1: #16241A;
+    --lp-fg2: #42513F;
+    --lp-fg3: #6E7A6A;
+    --lp-border: #E3DCC8;
+    --lp-font-sans: var(--font-sans);
+    --lp-font-script: 'Segoe Script', 'Brush Script MT', cursive;
+    --lp-shadow-sm: 0 1px 2px rgba(20,30,20,.08);
+    --lp-shadow-md: 0 8px 24px rgba(20,30,20,.12);
+
     flex: 1;
     min-width: 0;
     height: 100vh;
     overflow-y: auto;
-    font-family: var(--font-sans);
-    color: var(--fg1);
-    background: #fff;
+    font-family: var(--lp-font-sans);
+    background: var(--bg-cream);
+    color: var(--lp-fg2);
+    line-height: 1.6;
 }
-.lp-container {
-    width: 100%;
-    max-width: 1140px;
-    margin: 0 auto;
-    padding: 0 24px;
+.lp :deep(img) { max-width: 100%; display: block; }
+.lp :deep(a) { color: inherit; text-decoration: none; }
+.lp :deep(ul) { margin: 0; padding: 0; list-style: none; }
+.lp section { position: relative; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
+.eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--brand-forest); background: var(--brand-gold-light);
+    padding: 6px 16px; border-radius: 999px; margin-bottom: 18px;
 }
-
-/* ── Buttons ── */
-.lp-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    padding: 9px 16px;
-    border-radius: 9px;
-    font: 600 13.5px var(--font-sans);
-    border: 1.5px solid transparent;
-    cursor: pointer;
-    transition: all .15s;
-    text-decoration: none;
+.eyebrow::before { content: "♡"; color: var(--brand-gold); font-size: 12px; }
+.lp h1, .lp h2, .lp h3 { color: var(--lp-fg1); margin: 0; font-weight: 700; }
+.script { font-family: var(--lp-font-script); color: var(--brand-gold); font-size: 28px; font-weight: 400; display: inline-block; }
+.section-title { font-size: 36px; line-height: 1.2; letter-spacing: -.01em; }
+.section-sub { color: var(--lp-fg3); font-size: 16px; margin-top: 12px; max-width: 560px; }
+.center { text-align: center; margin-left: auto; margin-right: auto; }
+.btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 15px 30px; border-radius: 999px; font-weight: 700; font-size: 15px;
+    cursor: pointer; border: none; transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
     white-space: nowrap;
 }
-.lp-btn--lg { padding: 12px 22px; font-size: 14.5px; border-radius: 10px; }
-.lp-btn--primary { background: var(--brand-green); color: #fff; }
-.lp-btn--primary:hover { background: var(--brand-green-dark); }
-.lp-btn--ghost { background: #fff; color: var(--fg1); border-color: var(--border); }
-.lp-btn--ghost:hover { border-color: var(--brand-green); color: var(--brand-green-dark); }
-.lp-btn--white { background: #fff; color: var(--brand-green-dark); }
-.lp-btn--white:hover { background: var(--brand-green-light); }
+.btn-primary { background: var(--brand-forest); color: var(--bg-cream-soft); box-shadow: var(--lp-shadow-md); }
+.btn-primary:hover { background: var(--brand-forest-dark); transform: translateY(-2px); }
+.btn-outline { background: transparent; color: var(--brand-forest); border: 1.5px solid var(--brand-forest); }
+.btn-outline:hover { background: var(--brand-forest-light); transform: translateY(-2px); }
+.btn-gold { background: var(--brand-gold); color: var(--brand-forest-dark); }
+.btn-gold:hover { background: #b89354; transform: translateY(-2px); }
+.btn-cream { background: var(--bg-cream-soft); color: var(--brand-forest); }
+.btn-cream:hover { background: #fff; transform: translateY(-2px); }
 
 /* ── Header ── */
-.lp-header {
-    position: sticky;
-    top: 0;
-    z-index: 20;
-    background: rgba(255,255,255,.9);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--border);
-}
-.lp-header__inner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 64px;
-}
-.lp-brand { display: flex; align-items: center; gap: 11px; }
-.lp-brand__logo {
-    width: 40px; height: 40px;
-    border-radius: 10px;
-    object-fit: contain;
-    background: var(--brand-green-light);
-    padding: 4px;
-}
-.lp-brand__logo--sm { width: 32px; height: 32px; }
-.lp-brand__text { display: flex; flex-direction: column; line-height: 1.2; }
-.lp-brand__name { font: 800 15px var(--font-sans); color: var(--brand-green-dark); }
-.lp-brand__sub { font: 500 11.5px var(--font-sans); color: var(--fg3); }
-.lp-nav { display: flex; align-items: center; gap: 24px; }
-.lp-nav__link {
-    font: 600 13.5px var(--font-sans);
-    color: var(--fg2);
-    text-decoration: none;
-    transition: color .15s;
-}
-.lp-nav__link:hover { color: var(--brand-green); }
+.lp-header { position: sticky; top: 0; z-index: 100; background: rgba(245,238,228,.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--lp-border); }
+.nav-inner { max-width: 1180px; margin: 0 auto; padding: 14px 32px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand img { height: 46px; width: 46px; border-radius: 50%; object-fit: cover; }
+.brand .name { font-weight: 800; color: var(--brand-forest); font-size: 19px; letter-spacing: -.01em; }
+.brand .name small { display: block; font-weight: 500; font-size: 11px; color: var(--lp-fg3); letter-spacing: .08em; text-transform: uppercase; }
+nav.links { display: flex; gap: 34px; align-items: center; }
+nav.links a { font-size: 14.5px; font-weight: 600; color: var(--lp-fg2); position: relative; padding: 4px 0; }
+nav.links a::after { content: ""; position: absolute; left: 0; right: 0; bottom: -3px; height: 2px; background: var(--brand-gold); transform: scaleX(0); transform-origin: left; transition: transform .2s ease; }
+nav.links a:hover { color: var(--brand-forest); }
+nav.links a:hover::after { transform: scaleX(1); }
+.header-actions { display: flex; align-items: center; gap: 14px; }
+.staff-btn { font-size: 13.5px; font-weight: 700; color: var(--brand-forest); border: 1.5px solid var(--brand-forest); padding: 9px 20px; border-radius: 999px; }
+.staff-btn:hover { background: var(--brand-forest); color: var(--bg-cream-soft); }
+.burger { display: none; background: none; border: none; cursor: pointer; padding: 6px; }
+.burger span { display: block; width: 24px; height: 2px; background: var(--brand-forest); margin: 5px 0; border-radius: 2px; }
 
 /* ── Hero ── */
-.lp-hero {
-    background:
-        radial-gradient(900px 400px at 85% -10%, rgba(27,138,74,.10), transparent),
-        var(--bg-soft);
-    padding: 72px 0 80px;
-    border-bottom: 1px solid var(--border);
-}
-.lp-hero__inner {
-    display: grid;
-    grid-template-columns: 1.3fr .9fr;
-    gap: 48px;
-    align-items: center;
-}
-.lp-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 13px;
-    border-radius: 999px;
-    background: var(--brand-green-light);
-    color: var(--brand-green-dark);
-    font: 600 12px var(--font-sans);
-    margin-bottom: 20px;
-}
-.lp-pill__dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: var(--brand-green);
-}
-.lp-hero__h {
-    font: 800 44px/1.12 var(--font-sans);
-    color: var(--fg1);
-    margin: 0 0 18px;
-    letter-spacing: -.02em;
-}
-.lp-hero__accent { color: var(--brand-green); }
-.lp-hero__p {
-    font: 400 16px/1.7 var(--font-sans);
-    color: var(--fg3);
-    margin: 0 0 28px;
-    max-width: 520px;
-}
-.lp-hero__cta { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 40px; }
-.lp-stats {
-    display: flex;
-    gap: 40px;
-    margin: 0;
-    padding-top: 28px;
-    border-top: 1px solid var(--border);
-}
-.lp-stat dt { font: 800 28px var(--font-sans); color: var(--brand-green-dark); }
-.lp-stat dd { margin: 2px 0 0; font: 500 12.5px var(--font-sans); color: var(--fg3); }
+.hero { background: var(--bg-cream); padding: 64px 0 0; overflow: hidden; }
+.hero-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 24px; align-items: center; max-width: 1180px; margin: 0 auto; padding: 0 32px; position: relative; }
+.hero-copy { position: relative; z-index: 2; padding-bottom: 64px; }
+.hero-copy .script { font-size: 32px; margin-bottom: 10px; }
+.hero-copy h1 { font-size: 52px; line-height: 1.12; letter-spacing: -.02em; margin-bottom: 22px; }
+.hero-copy h1 em { font-style: normal; color: var(--brand-forest); background: linear-gradient(180deg, transparent 62%, var(--brand-gold-light) 62%); }
+.hero-copy p { font-size: 17px; color: var(--lp-fg2); max-width: 460px; margin-bottom: 34px; }
+.hero-ctas { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+.hero-ctas .tel-link { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--brand-forest); font-size: 15px; }
+.hero-ctas .tel-link .ico { width: 44px; height: 44px; border-radius: 50%; background: var(--brand-forest-light); display: flex; align-items: center; justify-content: center; color: var(--brand-forest); flex-shrink: 0; }
+.hero-stats { display: flex; gap: 36px; margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--lp-border); max-width: 480px; }
+.hero-stats .stat b { display: block; font-size: 26px; color: var(--brand-forest); font-weight: 800; }
+.hero-stats .stat span { font-size: 13px; color: var(--lp-fg3); }
+.hero-photo { position: relative; z-index: 1; }
+.hero-photo-frame { position: relative; border-radius: 36px 120px 36px 36px; overflow: hidden; box-shadow: var(--lp-shadow-md); aspect-ratio: 520/560; }
+.hero-photo-frame img { width: 100%; height: 100%; object-fit: cover; object-position: center 18%; }
+.hero-badge { position: absolute; bottom: 22px; left: -22px; background: var(--bg-cream-soft); border: 1px solid var(--lp-border); border-radius: 20px; padding: 16px 20px; box-shadow: var(--lp-shadow-md); display: flex; align-items: center; gap: 12px; max-width: 230px; z-index: 3; }
+.hero-badge .dot { width: 40px; height: 40px; border-radius: 50%; background: var(--brand-forest); color: var(--brand-gold-light); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.hero-badge .txt b { display: block; font-size: 13.5px; color: var(--lp-fg1); }
+.hero-badge .txt span { font-size: 12px; color: var(--lp-fg3); }
+.hero-leaf-tr { position: absolute; top: -10px; right: -6px; width: 150px; opacity: .85; pointer-events: none; z-index: 0; }
+.hero-leaf-bl { position: absolute; bottom: 10px; left: -40px; width: 130px; opacity: .55; pointer-events: none; z-index: 0; transform: scaleX(-1) rotate(8deg); }
 
-/* hero card */
-.lp-hero__card {
-    background: var(--brand-green-dark);
-    border-radius: 18px;
-    padding: 30px;
-    color: #fff;
-    box-shadow: var(--shadow-md);
-}
-.lp-card-icon {
-    width: 52px; height: 52px;
-    border-radius: 13px;
-    background: rgba(255,255,255,.14);
-    display: grid; place-items: center;
-    color: #fff;
-    margin-bottom: 18px;
-}
-.lp-hero__card-h { font: 800 21px var(--font-sans); margin: 0 0 8px; }
-.lp-hero__card-p { font: 400 13.5px/1.6 var(--font-sans); color: rgba(255,255,255,.7); margin: 0 0 22px; }
-.lp-hero__card-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
-.lp-hero__card-list li { display: flex; align-items: flex-start; gap: 11px; font: 500 13.5px/1.5 var(--font-sans); }
-.lp-hero__card-list svg { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; color: rgba(255,255,255,.85); }
+/* ── Services ── */
+.services { padding: 100px 0 90px; background: var(--bg-cream); }
+.services-head { max-width: 640px; margin: 0 auto 56px; text-align: center; }
+.services-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 26px; }
+.service-card { background: var(--bg-cream-soft); border: 1px solid var(--lp-border); border-radius: 26px; padding: 34px 28px; box-shadow: var(--lp-shadow-sm); transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease; }
+.service-card:hover { transform: translateY(-6px); box-shadow: var(--lp-shadow-md); border-color: var(--brand-gold); }
+.service-icon { width: 58px; height: 58px; border-radius: 50%; background: var(--brand-forest); display: flex; align-items: center; justify-content: center; color: var(--brand-gold-light); margin-bottom: 22px; }
+.service-card h3 { font-size: 19px; margin-bottom: 10px; }
+.service-card p { font-size: 14.5px; color: var(--lp-fg3); margin: 0; }
 
-/* ── Sections ── */
-.lp-section { padding: 80px 0; }
-.lp-section--alt { background: var(--bg-soft); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-.lp-section__head { text-align: center; max-width: 600px; margin: 0 auto 48px; }
-.lp-eyebrow {
-    display: inline-block;
-    font: 700 12px var(--font-sans);
-    letter-spacing: .08em;
-    text-transform: uppercase;
-    color: var(--brand-green);
-    margin-bottom: 12px;
-}
-.lp-section__h {
-    font: 800 32px/1.2 var(--font-sans);
-    color: var(--fg1);
-    margin: 0 0 12px;
-    letter-spacing: -.01em;
-}
-.lp-section__p { font: 400 15px/1.65 var(--font-sans); color: var(--fg3); margin: 0; }
+/* ── Hours ── */
+.hours { padding: 90px 0; background: var(--brand-forest-light); position: relative; }
+.hours-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; }
+.hours-copy .section-title { margin-bottom: 16px; }
+.hours-card { background: var(--bg-cream-soft); border: 1px solid var(--lp-border); border-radius: 28px; padding: 12px; box-shadow: var(--lp-shadow-md); }
+.hours-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 24px 26px; border-radius: 20px; }
+.hours-row + .hours-row { border-top: 1px solid var(--lp-border); }
+.hours-row .day { display: flex; align-items: center; gap: 14px; font-weight: 700; color: var(--lp-fg1); font-size: 16.5px; }
+.hours-row .day .ico { width: 40px; height: 40px; border-radius: 50%; background: var(--brand-forest); color: var(--brand-gold-light); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.hours-row .time { font-weight: 700; color: var(--brand-forest); font-size: 16.5px; text-align: right; }
+.hours-row.closed { background: var(--bg-cream); }
+.hours-row.closed .day .ico { background: var(--lp-fg3); }
+.hours-row.closed .time { color: var(--lp-fg3); }
+.hours-note { display: flex; gap: 12px; align-items: flex-start; margin-top: 22px; background: var(--bg-cream-soft); border: 1px solid var(--lp-border); border-radius: 18px; padding: 18px 20px; }
+.hours-note span.i { color: var(--brand-gold); font-size: 18px; }
+.hours-note p { margin: 0; font-size: 13.5px; color: var(--lp-fg2); }
 
-/* services grid */
-.lp-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-}
-.lp-service {
-    background: #fff;
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 26px;
-    transition: all .18s;
-}
-.lp-service:hover { border-color: var(--brand-green); box-shadow: var(--shadow-md); transform: translateY(-3px); }
-.lp-service__icon {
-    width: 46px; height: 46px;
-    border-radius: 12px;
-    background: var(--brand-green-light);
-    color: var(--brand-green-dark);
-    display: grid; place-items: center;
-    margin-bottom: 16px;
-}
-.lp-service__h { font: 700 16.5px var(--font-sans); color: var(--fg1); margin: 0 0 7px; }
-.lp-service__p { font: 400 13.5px/1.6 var(--font-sans); color: var(--fg3); margin: 0; }
+/* ── Tips (editorial rows) ── */
+.tips { padding: 100px 0 90px; background: var(--bg-cream); }
+.tips-head { max-width: 640px; margin: 0 auto 60px; text-align: center; position: relative; }
+.tip-row { display: grid; grid-template-columns: .85fr 1.15fr; gap: 56px; align-items: center; margin-bottom: 76px; }
+.tip-row:last-child { margin-bottom: 0; }
+.tip-row.reverse .tip-media { order: 2; }
+.tip-row.reverse .tip-text { order: 1; }
+.tip-media { position: relative; cursor: pointer; border-radius: 28px; overflow: hidden; box-shadow: var(--lp-shadow-md); aspect-ratio: 4/5; }
+.tip-media img { width: 100%; height: 100%; object-fit: cover; transition: transform .5s ease; }
+.tip-media:hover img { transform: scale(1.04); }
+.tip-media .zoom-hint { position: absolute; bottom: 16px; right: 16px; width: 46px; height: 46px; border-radius: 50%; background: rgba(245,238,228,.92); color: var(--brand-forest); display: flex; align-items: center; justify-content: center; box-shadow: var(--lp-shadow-sm); }
+.tip-label { font-size: 12.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--brand-gold); margin-bottom: 12px; display: block; }
+.tip-text h3 { font-size: 27px; line-height: 1.3; margin-bottom: 16px; }
+.tip-text p { font-size: 15px; color: var(--lp-fg2); margin-bottom: 24px; max-width: 460px; }
+.tip-cta { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; color: var(--brand-forest); font-size: 14.5px; cursor: pointer; border-bottom: 1.5px solid var(--brand-gold); padding-bottom: 3px; }
 
-/* hours */
-.lp-hours {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 48px;
-    align-items: center;
-}
-.lp-hours__text { text-align: left; }
-.lp-hours__text .lp-section__h { font-size: 28px; }
-.lp-hours__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0; }
-.lp-hours__row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 18px 22px;
-    background: #fff;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    margin-bottom: 12px;
-}
-.lp-hours__row:last-child { margin-bottom: 0; }
-.lp-hours__day { font: 600 14px var(--font-sans); color: var(--fg1); }
-.lp-hours__time { font: 600 13.5px var(--font-mono); color: var(--brand-green-dark); }
+/* ── Testimonials ── */
+.testi { padding: 100px 0 100px; background: var(--brand-forest-light); }
+.testi-head { max-width: 640px; margin: 0 auto 56px; text-align: center; }
+.testi-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 26px; }
+.testi-card { background: var(--bg-cream-soft); border: 1px solid var(--lp-border); border-radius: 26px; padding: 34px 30px; box-shadow: var(--lp-shadow-sm); display: flex; flex-direction: column; }
+.testi-quote-mark { font-family: Georgia, serif; font-size: 52px; color: var(--brand-gold); line-height: 1; height: 30px; margin-bottom: 6px; }
+.testi-card p.quote { font-size: 15px; color: var(--lp-fg2); margin: 0 0 26px; flex-grow: 1; }
+.testi-person { display: flex; align-items: center; gap: 14px; padding-top: 18px; border-top: 1px solid var(--lp-border); }
+.testi-avatar { width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; color: var(--bg-cream-soft); flex-shrink: 0; }
+.testi-person .info { display: flex; flex-direction: column; }
+.testi-person .info b { font-size: 14.5px; color: var(--lp-fg1); }
+.testi-person .info span { font-size: 12.5px; color: var(--lp-fg3); }
 
-/* contact */
-.lp-contact {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 20px;
-}
-.lp-contact__item {
-    background: #fff;
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 24px;
-}
-.lp-contact__icon {
-    width: 42px; height: 42px;
-    border-radius: 11px;
-    background: var(--brand-green-light);
-    color: var(--brand-green-dark);
-    display: grid; place-items: center;
-    margin-bottom: 14px;
-}
-.lp-contact__icon svg { width: 20px; height: 20px; }
-.lp-contact__label { font: 700 11.5px var(--font-sans); text-transform: uppercase; letter-spacing: .05em; color: var(--fg3); margin-bottom: 6px; }
-.lp-contact__value { font: 500 14px/1.55 var(--font-sans); color: var(--fg1); word-break: break-word; }
+/* ── Contact ── */
+.contact { padding: 100px 0; background: var(--bg-cream); }
+.contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: stretch; }
+.contact-info .section-title { margin-bottom: 16px; }
+.contact-cards { display: flex; flex-direction: column; gap: 16px; margin-top: 32px; }
+.contact-card { display: flex; gap: 18px; align-items: flex-start; background: var(--bg-cream-soft); border: 1px solid var(--lp-border); border-radius: 22px; padding: 22px 24px; }
+.contact-card .ico { width: 48px; height: 48px; border-radius: 50%; background: var(--brand-forest); color: var(--brand-gold-light); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.contact-card h4 { font-size: 15.5px; color: var(--lp-fg1); margin: 0 0 4px; }
+.contact-card p, .contact-card a { font-size: 14.5px; color: var(--lp-fg2); margin: 0; }
+.contact-card a:hover { color: var(--brand-forest); text-decoration: underline; }
+.contact-map { border-radius: 28px; overflow: hidden; border: 1px solid var(--lp-border); background: linear-gradient(135deg, var(--brand-forest-light), var(--bg-cream-soft)); box-shadow: var(--lp-shadow-md); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 48px 40px; position: relative; }
+.contact-map .pin { width: 74px; height: 74px; border-radius: 50%; background: var(--brand-forest); color: var(--brand-gold-light); display: flex; align-items: center; justify-content: center; margin-bottom: 24px; box-shadow: var(--lp-shadow-md); }
+.contact-map h3 { font-size: 20px; margin-bottom: 10px; }
+.contact-map p { font-size: 14.5px; color: var(--lp-fg2); max-width: 280px; margin: 0 0 26px; }
+.contact-map .leaf-deco { position: absolute; top: -8px; left: -8px; width: 110px; opacity: .5; }
+.map-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+.btn-on-map { background: var(--bg-cream-soft); }
 
-/* cta strip */
-.lp-cta-strip { background: var(--brand-green); }
-.lp-cta-strip__inner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 24px;
-    padding: 44px 24px;
-    flex-wrap: wrap;
-}
-.lp-cta-strip__h { font: 800 26px var(--font-sans); color: #fff; margin: 0 0 6px; }
-.lp-cta-strip__p { font: 400 14.5px var(--font-sans); color: rgba(255,255,255,.85); margin: 0; }
+/* ── CTA strip ── */
+.cta-strip { background: var(--brand-forest); padding: 70px 0; position: relative; overflow: hidden; }
+.cta-strip-inner { display: flex; align-items: center; justify-content: space-between; gap: 30px; flex-wrap: wrap; position: relative; z-index: 1; }
+.cta-strip .script { font-size: 24px; margin-bottom: 8px; }
+.cta-strip h2 { color: var(--bg-cream-soft); font-size: 32px; line-height: 1.25; max-width: 520px; }
+.cta-strip-actions { display: flex; gap: 16px; flex-wrap: wrap; }
 
-/* footer */
-.lp-footer { background: #fff; border-top: 1px solid var(--border); }
-.lp-footer__inner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 28px 24px;
-    flex-wrap: wrap;
-}
-.lp-footer__name { font: 800 14px var(--font-sans); color: var(--brand-green-dark); }
-.lp-footer__copy { font: 500 12.5px var(--font-sans); color: var(--fg3); margin: 0; }
+/* ── Footer ── */
+footer { background: var(--brand-forest); color: #cfd9cf; padding: 60px 0 28px; }
+.footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 40px; padding-bottom: 44px; border-bottom: 1px solid rgba(255,255,255,.12); }
+.footer-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+.footer-brand img { height: 44px; width: 44px; border-radius: 50%; }
+.footer-brand b { color: var(--bg-cream-soft); font-size: 18px; }
+.footer-col p { margin: 0; font-size: 14px; color: #b9c4b8; max-width: 280px; }
+.footer-col h4 { color: var(--bg-cream-soft); font-size: 14px; letter-spacing: .06em; text-transform: uppercase; margin: 0 0 18px; }
+.footer-col ul li { margin-bottom: 12px; }
+.footer-col ul a { font-size: 14.5px; color: #cfd9cf; }
+.footer-col ul a:hover { color: var(--brand-gold); }
+.footer-bottom { display: flex; justify-content: space-between; align-items: center; padding-top: 26px; flex-wrap: wrap; gap: 12px; }
+.footer-bottom p { margin: 0; font-size: 13px; color: #93a293; }
+.footer-social { display: flex; gap: 12px; }
+.footer-social a { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.08); display: flex; align-items: center; justify-content: center; color: #cfd9cf; }
+.footer-social a:hover { background: var(--brand-gold); color: var(--brand-forest-dark); }
+
+/* ── Lightbox ── */
+.lightbox { position: fixed; inset: 0; background: rgba(18,28,20,.92); display: flex; align-items: center; justify-content: center; padding: 40px; z-index: 10000; opacity: 0; pointer-events: none; transition: opacity .25s ease; }
+.lightbox.open { opacity: 1; pointer-events: auto; }
+.lightbox img { max-width: min(720px, 90vw); max-height: 86vh; border-radius: 18px; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+.lightbox-close { position: absolute; top: 28px; right: 32px; width: 44px; height: 44px; border-radius: 50%; background: rgba(245,238,228,.15); color: #F5EEE4; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 20px; border: 1px solid rgba(245,238,228,.3); }
+.lightbox-close:hover { background: var(--brand-gold); color: var(--brand-forest-dark); }
 
 /* ── Responsive ── */
 @media (max-width: 900px) {
-    .lp-hero__inner { grid-template-columns: 1fr; gap: 36px; }
-    .lp-hero__h { font-size: 36px; }
-    .lp-grid { grid-template-columns: repeat(2, 1fr); }
-    .lp-hours { grid-template-columns: 1fr; gap: 28px; }
-    .lp-contact { grid-template-columns: repeat(2, 1fr); }
+    .wrap { padding: 0 24px; }
+    nav.links { display: none; }
+    nav.links.open { display: flex; position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-cream-soft); flex-direction: column; padding: 20px 24px; gap: 18px; border-bottom: 1px solid var(--lp-border); box-shadow: var(--lp-shadow-md); }
+    .burger { display: block; }
+    .header-actions .staff-btn { display: none; }
+    .hero-grid { grid-template-columns: 1fr; padding: 0 24px; }
+    .hero-photo { order: -1; max-width: 420px; margin: 0 auto; }
+    .hero-copy { text-align: center; padding-bottom: 48px; }
+    .hero-copy p { margin-left: auto; margin-right: auto; }
+    .hero-ctas { justify-content: center; }
+    .hero-stats { margin-left: auto; margin-right: auto; }
+    .hero-badge { left: 50%; transform: translateX(-50%); bottom: -24px; }
+    .services { padding: 80px 0 70px; }
+    .services-grid { grid-template-columns: repeat(2,1fr); }
+    .hours-grid { grid-template-columns: 1fr; gap: 40px; }
+    .hours-copy { text-align: center; }
+    .tip-row, .tip-row.reverse { grid-template-columns: 1fr; gap: 30px; }
+    .tip-row .tip-media, .tip-row.reverse .tip-media { order: 1; max-width: 380px; margin: 0 auto; width: 100%; }
+    .tip-row .tip-text, .tip-row.reverse .tip-text { order: 2; text-align: center; }
+    .tip-text p { margin-left: auto; margin-right: auto; }
+    .testi-grid { grid-template-columns: 1fr 1fr; }
+    .contact-grid { grid-template-columns: 1fr; }
+    .footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
+    .cta-strip-inner { justify-content: center; text-align: center; }
+    .cta-strip h2 { margin: 0 auto; }
 }
 @media (max-width: 640px) {
-    .lp-nav { gap: 14px; }
-    .lp-nav__link { display: none; }
-    .lp-hero { padding: 48px 0 56px; }
-    .lp-hero__h { font-size: 30px; }
-    .lp-section { padding: 56px 0; }
-    .lp-grid { grid-template-columns: 1fr; }
-    .lp-contact { grid-template-columns: 1fr; }
-    .lp-stats { gap: 24px; }
-    .lp-stat dt { font-size: 24px; }
+    .wrap { padding: 0 20px; }
+    .nav-inner { padding: 12px 20px; }
+    .brand .name { font-size: 16px; }
+    .brand img { height: 38px; width: 38px; }
+    .hero { padding: 36px 0 0; }
+    .hero-grid { padding: 0 20px; gap: 44px; }
+    .hero-copy h1 { font-size: 34px; }
+    .hero-copy .script { font-size: 24px; }
+    .hero-copy p { font-size: 15.5px; }
+    .hero-ctas { flex-direction: column; align-items: stretch; }
+    .hero-ctas .btn { width: 100%; }
+    .hero-ctas .tel-link { justify-content: center; }
+    .hero-stats { flex-direction: column; gap: 16px; align-items: center; }
+    .hero-badge { max-width: 200px; padding: 12px 16px; }
+    .hero-leaf-tr { width: 90px; }
+    .hero-leaf-bl { width: 80px; }
+    .section-title { font-size: 27px; }
+    .services { padding: 64px 0 56px; }
+    .services-head { margin-bottom: 36px; }
+    .services-grid { grid-template-columns: 1fr; gap: 18px; }
+    .hours { padding: 64px 0; }
+    .hours-row { padding: 18px 20px; flex-wrap: wrap; }
+    .tips { padding: 64px 0 56px; }
+    .tips-head { margin-bottom: 40px; }
+    .tip-row { margin-bottom: 52px; }
+    .tip-text h3 { font-size: 22px; }
+    .testi { padding: 64px 0; }
+    .testi-head { margin-bottom: 36px; }
+    .testi-grid { grid-template-columns: 1fr; gap: 18px; }
+    .contact { padding: 64px 0; }
+    .contact-grid { gap: 32px; }
+    .contact-map { padding: 36px 24px; }
+    .cta-strip { padding: 52px 0; }
+    .cta-strip h2 { font-size: 25px; }
+    .cta-strip-actions { width: 100%; flex-direction: column; }
+    .cta-strip-actions .btn { width: 100%; }
+    footer { padding: 48px 0 24px; }
+    .footer-grid { grid-template-columns: 1fr; gap: 28px; }
+    .footer-bottom { flex-direction: column; align-items: flex-start; }
+    .lightbox { padding: 16px; }
 }
 </style>

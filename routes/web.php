@@ -6,6 +6,7 @@ use App\Http\Controllers\BillingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EMRController;
 use App\Http\Controllers\FinanceController;
+use App\Http\Controllers\HealthTipController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\LookupController;
@@ -22,9 +23,12 @@ use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\ServicesController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\TestimonialController;
 use App\Http\Controllers\TimeSlipController;
 use App\Http\Middleware\EnsureModuleAccess;
 use App\Models\ClinicProfile;
+use App\Models\HealthTip;
+use App\Models\Testimonial;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -35,6 +39,15 @@ Route::get('/', function () {
     }
 
     $clinic = ClinicProfile::current();
+
+    $tips = HealthTip::active()->ordered()->get(['id', 'title', 'image_path'])
+        ->map(fn ($tip) => [
+            'id' => $tip->id,
+            'title' => $tip->title,
+            'image_url' => $tip->image_url,
+        ]);
+
+    $testimonials = Testimonial::active()->ordered()->get();
 
     return Inertia::render('Landing', [
         'canLogin' => Route::has('login'),
@@ -49,7 +62,11 @@ Route::get('/', function () {
             'email' => $clinic->email,
             'website' => $clinic->website,
             'logo_url' => $clinic->logo_url,
+            'waze_url' => $clinic->waze_url,
+            'google_maps_url' => $clinic->google_maps_url,
         ],
+        'tips' => $tips,
+        'testimonials' => $testimonials,
     ]);
 })->name('landing');
 
@@ -165,6 +182,19 @@ Route::middleware(['auth', 'verified', EnsureModuleAccess::class])->group(functi
     Route::delete('/settings/users/{user}', [SettingsController::class, 'destroyUser'])->name('settings.users.destroy');
     Route::put('/settings/policies', [SettingsController::class, 'updatePolicies'])->name('settings.policies.update');
     Route::post('/settings/clinic', [SettingsController::class, 'updateClinic'])->name('settings.clinic.update');
+
+    // Tips Kesihatan — CRUD
+    Route::post('/settings/tips', [HealthTipController::class, 'store'])->name('settings.tips.store');
+    Route::post('/settings/tips/{healthTip}', [HealthTipController::class, 'update'])->name('settings.tips.update');
+    Route::patch('/settings/tips/{healthTip}/toggle', [HealthTipController::class, 'toggle'])->name('settings.tips.toggle');
+    Route::delete('/settings/tips/{healthTip}', [HealthTipController::class, 'destroy'])->name('settings.tips.destroy');
+
+    // Testimoni Pesakit — CRUD
+    Route::post('/settings/testimonials', [TestimonialController::class, 'store'])->name('settings.testimonials.store');
+    Route::put('/settings/testimonials/{testimonial}', [TestimonialController::class, 'update'])->name('settings.testimonials.update');
+    Route::patch('/settings/testimonials/{testimonial}/toggle', [TestimonialController::class, 'toggle'])->name('settings.testimonials.toggle');
+    Route::delete('/settings/testimonials/{testimonial}', [TestimonialController::class, 'destroy'])->name('settings.testimonials.destroy');
+
     // Lookup Parameters — CRUD
     Route::post('/settings/lookup/{category}/values', [LookupController::class, 'storeValue'])->name('lookup.values.store');
     Route::put('/settings/lookup/{category}/values/{value}', [LookupController::class, 'updateValue'])->name('lookup.values.update');
