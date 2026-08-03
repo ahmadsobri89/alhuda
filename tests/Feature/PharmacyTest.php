@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Invoice;
+use App\Models\InvoiceItem;
 use App\Models\Patient;
 use App\Models\Prescription;
 use App\Models\PrescriptionItem;
@@ -121,7 +123,7 @@ class PharmacyTest extends TestCase
         $this->assertEquals('New Drug', $rx->fresh()->items->first()->drug_name);
     }
 
-    public function test_cannot_update_dispensed_prescription(): void
+    private function dispenseWithInvoice(array $invoiceOverrides = []): array
     {
         $rx = Prescription::factory()->dispensed()->create([
             'patient_id' => $this->patient->id,
@@ -129,9 +131,100 @@ class PharmacyTest extends TestCase
         ]);
         PrescriptionItem::create(['prescription_id' => $rx->id, 'drug_name' => 'Drug A', 'quantity' => 5]);
 
+        $invoice = Invoice::factory()->create(array_merge([
+            'patient_id'   => $this->patient->id,
+            'subtotal'     => 10,
+            'total_amount' => 10,
+        ], $invoiceOverrides));
+
+        InvoiceItem::create([
+            'invoice_id'       => $invoice->id,
+            'prescription_id'  => $rx->id,
+            'type'             => 'drug',
+            'description'      => 'Drug A',
+            'quantity'         => 5,
+            'unit_price'       => 2,
+            'total_price'      => 10,
+        ]);
+
+        $rx->update(['invoice_id' => $invoice->id]);
+
+        return [$rx, $invoice];
+    }
+
+    public function test_can_update_dispensed_prescription_resyncs_unpaid_invoice_in_place(): void
+    {
+        [$rx, $invoice] = $this->dispenseWithInvoice(['status' => 'unpaid']);
+
+        $this->actingAs($this->user)
+            ->put("/pharmacy/prescriptions/{$rx->id}", $this->validPrescriptionData([
+                'items' => [['drug_name' => 'Drug B', 'quantity' => 3]],
+            ]))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseCount('invoices', 1);
+        $item = InvoiceItem::where('invoice_id', $invoice->id)->first();
+        $this->assertEquals('Drug B', $item->description);
+    }
+
+    public function test_can_update_dispensed_prescription_with_paid_invoice_resyncs_same_invoice(): void
+    {
+        [$rx, $invoice] = $this->dispenseWithInvoice([
+            'status' => 'paid', 'payment_method' => 'cash', 'paid_at' => now(), 'paid_by' => 'Front Desk',
+        ]);
+
+        $this->actingAs($this->user)
+            ->put("/pharmacy/prescriptions/{$rx->id}", $this->validPrescriptionData([
+                'items' => [['drug_name' => 'Drug B', 'quantity' => 3]],
+            ]))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseCount('invoices', 1);
+        $invoice->refresh();
+        $this->assertEquals('paid', $invoice->status);
+        $item = InvoiceItem::where('invoice_id', $invoice->id)->first();
+        $this->assertEquals('Drug B', $item->description);
+    }
+
+    public function test_can_update_dispensed_prescription_with_cancelled_invoice_resyncs_same_invoice(): void
+    {
+        [$rx, $invoice] = $this->dispenseWithInvoice(['status' => 'cancelled']);
+
+        $this->actingAs($this->user)
+            ->put("/pharmacy/prescriptions/{$rx->id}", $this->validPrescriptionData([
+                'items' => [['drug_name' => 'Drug B', 'quantity' => 3]],
+            ]))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseCount('invoices', 1);
+        $this->assertEquals('cancelled', $invoice->fresh()->status);
+    }
+
+    public function test_update_dispensed_prescription_with_no_resolvable_invoice_link_errors_without_creating_phantom_invoice(): void
+    {
+        $rx = Prescription::factory()->dispensed()->create([
+            'patient_id' => $this->patient->id,
+            'user_id'    => $this->user->id,
+        ]);
+        PrescriptionItem::create(['prescription_id' => $rx->id, 'drug_name' => 'Drug A', 'quantity' => 5]);
+
+        // Legacy invoice whose item was never linked back to this prescription
+        // (invoice_items.prescription_id NULL, prescriptions.invoice_id NULL).
+        $invoice = Invoice::factory()->paid()->create(['patient_id' => $this->patient->id]);
+        InvoiceItem::create([
+            'invoice_id'  => $invoice->id,
+            'type'        => 'drug',
+            'description' => 'Drug A',
+            'quantity'    => 5,
+            'unit_price'  => 2,
+            'total_price' => 10,
+        ]);
+
         $this->actingAs($this->user)
             ->put("/pharmacy/prescriptions/{$rx->id}", $this->validPrescriptionData())
             ->assertSessionHasErrors('status');
+
+        $this->assertDatabaseCount('invoices', 1);
     }
 
     // ── Status Update ────────────────────────────────────────────────────────
@@ -180,5 +273,50 @@ class PharmacyTest extends TestCase
             ->assertSessionHas('success');
 
         $this->assertDatabaseMissing('prescriptions', ['id' => $rx->id]);
+    }
+
+    public function test_can_delete_dispensed_prescription_with_unpaid_invoice_cleans_up_invoice(): void
+    {
+        [$rx, $invoice] = $this->dispenseWithInvoice(['status' => 'unpaid']);
+
+        $this->actingAs($this->user)
+            ->delete("/pharmacy/prescriptions/{$rx->id}")
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('prescriptions', ['id' => $rx->id]);
+        $this->assertDatabaseMissing('invoice_items', ['invoice_id' => $invoice->id]);
+        $this->assertEquals(0, $invoice->fresh()->total_amount);
+    }
+
+    public function test_can_delete_dispensed_prescription_with_paid_invoice_cleans_up_invoice(): void
+    {
+        [$rx, $invoice] = $this->dispenseWithInvoice([
+            'status' => 'paid', 'payment_method' => 'cash', 'paid_at' => now(), 'paid_by' => 'Front Desk',
+        ]);
+
+        $this->actingAs($this->user)
+            ->delete("/pharmacy/prescriptions/{$rx->id}")
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('prescriptions', ['id' => $rx->id]);
+        $this->assertDatabaseMissing('invoice_items', ['invoice_id' => $invoice->id]);
+        $invoice->refresh();
+        $this->assertEquals('paid', $invoice->status);
+        $this->assertEquals(0, $invoice->total_amount);
+    }
+
+    public function test_delete_dispensed_prescription_with_no_resolvable_invoice_link_errors(): void
+    {
+        $rx = Prescription::factory()->dispensed()->create([
+            'patient_id' => $this->patient->id,
+            'user_id'    => $this->user->id,
+        ]);
+        PrescriptionItem::create(['prescription_id' => $rx->id, 'drug_name' => 'Drug A', 'quantity' => 5]);
+
+        $this->actingAs($this->user)
+            ->delete("/pharmacy/prescriptions/{$rx->id}")
+            ->assertSessionHasErrors('status');
+
+        $this->assertDatabaseHas('prescriptions', ['id' => $rx->id]);
     }
 }

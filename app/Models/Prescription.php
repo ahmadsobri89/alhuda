@@ -14,7 +14,7 @@ class Prescription extends Model
     use HasFactory, LogsActivity;
 
     protected $fillable = [
-        'rx_number', 'patient_id', 'visit_id', 'prescribing_doctor', 'user_id',
+        'rx_number', 'patient_id', 'visit_id', 'invoice_id', 'prescribing_doctor', 'user_id',
         'status', 'notes', 'drug_check_passed', 'drug_check_notes',
         'dispensed_at', 'dispensed_by',
     ];
@@ -46,6 +46,11 @@ class Prescription extends Model
     public function visit(): BelongsTo
     {
         return $this->belongsTo(Visit::class);
+    }
+
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class);
     }
 
     public function user(): BelongsTo

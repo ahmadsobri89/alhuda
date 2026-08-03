@@ -36,6 +36,8 @@ class PharmacyController extends Controller
             'drug_check_notes'   => $rx->drug_check_notes,
             'dispensed_at'       => $rx->dispensed_at?->format('d/m/Y H:i'),
             'dispensed_by'       => $rx->dispensed_by,
+            'invoice_status'     => $rx->invoice?->status,
+            'invoice_number'     => $rx->invoice?->invoice_number,
             'wait_time'          => $rx->created_at->diffForHumans(),
             'created_at'         => $rx->created_at->format('d/m/Y H:i'),
             'items'              => $rx->items->map(fn ($item) => [
@@ -68,13 +70,13 @@ class PharmacyController extends Controller
 
         $queueStatuses = ['pending', 'verifying', 'ready'];
 
-        $queue = Prescription::with(['patient', 'items'])
+        $queue = Prescription::with(['patient', 'items', 'invoice'])
             ->whereIn('status', $queueStatuses)
             ->orderBy('created_at')
             ->get()
             ->map(fn ($rx) => $this->formatRx($rx));
 
-        $history = Prescription::with(['patient', 'items'])
+        $history = Prescription::with(['patient', 'items', 'invoice'])
             ->whereIn('status', ['dispensed', 'cancelled'])
             ->when($search, fn ($q) =>
                 $q->where(function ($q2) use ($search) {
@@ -167,13 +169,9 @@ class PharmacyController extends Controller
                 $invoice = null;
 
                 if ($wasDispensed) {
-                    $invoiceId = InvoiceItem::where('prescription_id', $rx->id)->value('invoice_id');
-                    if ($invoiceId) {
-                        $invoice = Invoice::whereKey($invoiceId)->lockForUpdate()->first();
-                        if ($invoice && in_array($invoice->status, ['paid', 'cancelled'])) {
-                            $reason = $invoice->status === 'paid' ? 'telah dibayar' : 'telah dibatalkan';
-                            throw new \RuntimeException("Invois {$invoice->invoice_number} {$reason}. Ubat untuk preskripsi ini tidak boleh diubah lagi.");
-                        }
+                    $invoice = $this->findLockedInvoiceForDispensed($rx);
+                    if (! $invoice && $rx->items()->exists()) {
+                        throw new \RuntimeException("Tidak dapat mengesan invois asal untuk preskripsi ini. Sila hubungi pentadbir sistem untuk semakan manual sebelum mengedit ubat ini.");
                     }
                 }
 
@@ -200,11 +198,17 @@ class PharmacyController extends Controller
 
                 $newItemsLog = collect($request->items)->map(fn ($i) => "{$i['drug_name']} ×{$i['quantity']}")->all();
 
+                $action = match (true) {
+                    $wasDispensed && $invoice?->status === 'paid' => 'rx.update_dispensed_after_paid',
+                    $wasDispensed => 'rx.update_dispensed',
+                    default => 'rx.update',
+                };
+
                 AuditLog::record(
-                    $wasDispensed ? 'rx.update_dispensed' : 'rx.update',
-                    "{$rx->rx_number} · {$rx->patient->name}",
+                    $action,
+                    "{$rx->rx_number} · {$rx->patient->name}" . ($invoice ? " · {$invoice->invoice_number}" : ''),
                     true,
-                    ['ubat_lama' => $oldItemsLog, 'ubat_baru' => $newItemsLog, 'resynced' => $wasDispensed]
+                    ['ubat_lama' => $oldItemsLog, 'ubat_baru' => $newItemsLog, 'resynced' => $wasDispensed, 'invoice_status' => $invoice?->status]
                 );
             });
         } catch (\RuntimeException $e) {
@@ -237,6 +241,19 @@ class PharmacyController extends Controller
         AuditLog::record("rx.{$newStatus}", "{$prescription->rx_number} · {$prescription->patient->name}");
 
         return back()->with('success', "Status preskripsi {$prescription->rx_number} dikemaskini.");
+    }
+
+    /**
+     * Resolve and lock the invoice a dispensed prescription is billed on, preferring
+     * the durable prescriptions.invoice_id column over the legacy per-item
+     * invoice_items.prescription_id lookup (which can be NULL for older/ambiguous
+     * records that predate that column).
+     */
+    private function findLockedInvoiceForDispensed(Prescription $rx): ?Invoice
+    {
+        $invoiceId = $rx->invoice_id ?? InvoiceItem::where('prescription_id', $rx->id)->value('invoice_id');
+
+        return $invoiceId ? Invoice::whereKey($invoiceId)->lockForUpdate()->first() : null;
     }
 
     private function resolveInvoiceForPrescription(Prescription $prescription): Invoice
@@ -306,6 +323,10 @@ class PharmacyController extends Controller
 
         $invoice ??= $this->resolveInvoiceForPrescription($prescription);
 
+        if ($prescription->invoice_id !== $invoice->id) {
+            $prescription->update(['invoice_id' => $invoice->id]);
+        }
+
         // Pre-load inventory items by FK; fall back to name-match for items without FK
         $linkedIds  = $prescription->items->pluck('inventory_item_id')->filter()->unique()->values()->all();
         $drugNames  = $prescription->items->whereNull('inventory_item_id')->map(fn ($i) => strtolower($i->drug_name))->all();
@@ -368,9 +389,30 @@ class PharmacyController extends Controller
 
     public function destroy(Prescription $prescription)
     {
-        $rxNum = $prescription->rx_number;
-        $prescription->delete();
-        AuditLog::record('rx.delete', $rxNum);
+        $rxNum = null;
+
+        try {
+            DB::transaction(function () use ($prescription, &$rxNum) {
+                $rx = Prescription::whereKey($prescription->id)->lockForUpdate()->firstOrFail();
+                $rxNum = $rx->rx_number;
+
+                if ($rx->status === 'dispensed') {
+                    $invoice = $this->findLockedInvoiceForDispensed($rx);
+
+                    if ($invoice) {
+                        $this->reverseDispenseEffects($rx, $invoice);
+                        $invoice->recalc();
+                    } elseif ($rx->items()->exists()) {
+                        throw new \RuntimeException("Tidak dapat mengesan invois asal untuk preskripsi ini. Sila hubungi pentadbir sistem untuk semakan manual sebelum memadam.");
+                    }
+                }
+
+                $rx->delete();
+                AuditLog::record('rx.delete', $rxNum);
+            });
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['status' => $e->getMessage()]);
+        }
 
         return back()->with('success', "Preskripsi {$rxNum} dipadam.");
     }

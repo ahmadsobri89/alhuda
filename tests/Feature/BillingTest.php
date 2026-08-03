@@ -201,6 +201,73 @@ class BillingTest extends TestCase
             ->assertSessionHasErrors('payment_method');
     }
 
+    // ── Update Payment Method ────────────────────────────────────────────────
+
+    public function test_can_update_payment_method_on_paid_invoice(): void
+    {
+        $invoice = Invoice::factory()->paid()->create([
+            'patient_id' => $this->patient->id, 'payment_method' => 'card',
+        ]);
+        $originalPaidAt = $invoice->paid_at;
+        $originalPaidBy = $invoice->paid_by;
+
+        $this->actingAs($this->user)
+            ->patch("/billing/{$invoice->id}/payment-method", [
+                'payment_method' => 'cash',
+                'reason'         => 'Pesakit minta tukar kad ke tunai',
+            ])
+            ->assertSessionHas('success');
+
+        $invoice->refresh();
+        $this->assertEquals('cash', $invoice->payment_method);
+        $this->assertEquals('paid', $invoice->status);
+        $this->assertEquals($originalPaidAt->timestamp, $invoice->paid_at->timestamp);
+        $this->assertEquals($originalPaidBy, $invoice->paid_by);
+
+        $this->assertDatabaseHas('audit_logs', ['action' => 'billing.payment_method_update']);
+        $this->assertDatabaseHas('activity_log', ['subject_id' => $invoice->id, 'subject_type' => Invoice::class]);
+    }
+
+    public function test_payment_method_update_requires_reason(): void
+    {
+        $invoice = Invoice::factory()->paid()->create(['patient_id' => $this->patient->id, 'payment_method' => 'card']);
+
+        $this->actingAs($this->user)
+            ->patch("/billing/{$invoice->id}/payment-method", ['payment_method' => 'cash'])
+            ->assertSessionHasErrors('reason');
+
+        $this->assertEquals('card', $invoice->fresh()->payment_method);
+    }
+
+    public function test_payment_method_update_validates_method_whitelist(): void
+    {
+        $invoice = Invoice::factory()->paid()->create(['patient_id' => $this->patient->id]);
+
+        $this->actingAs($this->user)
+            ->patch("/billing/{$invoice->id}/payment-method", ['payment_method' => 'bitcoin', 'reason' => 'x'])
+            ->assertSessionHasErrors('payment_method');
+    }
+
+    public function test_cannot_update_payment_method_on_unpaid_invoice(): void
+    {
+        $invoice = Invoice::factory()->unpaid()->create(['patient_id' => $this->patient->id]);
+
+        $this->actingAs($this->user)
+            ->patch("/billing/{$invoice->id}/payment-method", ['payment_method' => 'cash', 'reason' => 'x'])
+            ->assertStatus(403);
+    }
+
+    public function test_cannot_update_payment_method_on_cancelled_invoice(): void
+    {
+        $invoice = Invoice::factory()->create([
+            'patient_id' => $this->patient->id, 'status' => 'cancelled', 'payment_method' => 'cash',
+        ]);
+
+        $this->actingAs($this->user)
+            ->patch("/billing/{$invoice->id}/payment-method", ['payment_method' => 'card', 'reason' => 'x'])
+            ->assertStatus(403);
+    }
+
     // ── Cancel ───────────────────────────────────────────────────────────────
 
     public function test_can_cancel_invoice(): void

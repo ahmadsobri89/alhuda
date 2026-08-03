@@ -171,6 +171,7 @@ Route::middleware(['auth', 'verified', EnsureModuleAccess::class])->group(functi
     Route::patch('/billing/{invoice}/discount', [BillingController::class, 'updateDiscount'])->name('billing.discount');
     Route::patch('/billing/{invoice}/finalize', [BillingController::class, 'finalize'])->name('billing.finalize');
     Route::patch('/billing/{invoice}/pay', [BillingController::class, 'pay'])->name('billing.pay');
+    Route::patch('/billing/{invoice}/payment-method', [BillingController::class, 'updatePaymentMethod'])->name('billing.payment_method');
     Route::patch('/billing/{invoice}/cancel', [BillingController::class, 'cancel'])->name('billing.cancel');
     Route::delete('/billing/{invoice}', [BillingController::class, 'destroy'])->name('billing.destroy');
     Route::get('/billing/{invoice}/print', [BillingController::class, 'print'])->name('billing.print');

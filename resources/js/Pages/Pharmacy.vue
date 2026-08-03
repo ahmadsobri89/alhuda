@@ -296,6 +296,7 @@ function setStatus(rx, status) {
 
 // ─── Delete ────────────────────────────────────────────────────────────────
 const deleteTarget = ref(null)
+const deleteError  = computed(() => page.props.errors?.status)
 function doDelete() {
   router.delete(route('pharmacy.destroy', deleteTarget.value.id), {
     onSuccess: () => { deleteTarget.value = null },
@@ -579,7 +580,12 @@ function doDispense() {
             ⚠ {{ t('rx_dispensed_edit_warn') }}
           </div>
 
-          <!-- Ralat blok edit (cth: invois dah dibayar/dibatalkan) -->
+          <!-- Amaran lebih kuat: invois berkaitan dah dibayar -->
+          <div v-if="isEditingDispensed && editingRx?.invoice_status === 'paid'" class="allergy-alert">
+            ⚠ {{ t('rx_dispensed_paid_edit_warn', { invoice: editingRx.invoice_number }) }}
+          </div>
+
+          <!-- Ralat blok edit (cth: pautan invois tak dapat dikesan) -->
           <div v-if="rxForm.errors.status" class="allergy-alert">
             ⚠ {{ rxForm.errors.status }}
           </div>
@@ -905,6 +911,10 @@ function doDispense() {
           <p style="font:400 13.5px var(--font-sans);color:var(--fg2);line-height:1.6;margin:0 0 16px">
             {{ t('rx_del_body', { rx: deleteTarget.rx_number }) }}
           </p>
+          <div v-if="deleteTarget.status === 'dispensed' && deleteTarget.invoice_number" class="dispensed-edit-warn">
+            ⚠ {{ t('rx_del_invoice_notice', { invoice: deleteTarget.invoice_number }) }}
+          </div>
+          <div v-if="deleteError" class="allergy-alert">⚠ {{ deleteError }}</div>
           <div class="modal__footer">
             <Btn variant="secondary" @click="deleteTarget=null">{{ t('btn_cancel') }}</Btn>
             <Btn variant="primary" style="background:var(--brand-red)" @click="doDelete">{{ t('rx_del_confirm') }}</Btn>

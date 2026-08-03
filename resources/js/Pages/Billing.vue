@@ -167,6 +167,22 @@ function submitPay () {
   )
 }
 
+/* ── edit payment method (after paid) ── */
+const pmEdit = ref(false)
+const pmForm = useForm({ payment_method: 'cash', reason: '' })
+function openPmEdit () {
+  pmForm.clearErrors()
+  pmForm.payment_method = props.selected?.payment_method ?? 'cash'
+  pmForm.reason = ''
+  pmEdit.value = true
+}
+function savePmEdit () {
+  pmForm.patch(`/billing/${props.selected.id}/payment-method`, {
+    preserveScroll: true,
+    onSuccess: () => { pmEdit.value = false },
+  })
+}
+
 /* ── cancel / delete ── */
 const showCancelModal = ref(false)
 const showDeleteModal = ref(false)
@@ -404,8 +420,28 @@ function submitNew () {
                 <template v-else-if="selected.status==='paid'">
                   <div class="paid-box">
                     <div class="paid-box__title">{{ t('bill_paid_title') }}</div>
-                    <div class="paid-box__meta">{{ methodLabel[selected.payment_method] }} · {{ selected.paid_at }}</div>
+                    <div class="paid-box__meta">
+                      {{ methodLabel[selected.payment_method] }} · {{ selected.paid_at }}
+                      <button v-if="!pmEdit" class="edit-link" @click="openPmEdit">{{ t('bill_pm_edit') }}</button>
+                    </div>
                     <div class="paid-box__meta">{{ t('bill_paid_by', { name: selected.paid_by }) }}</div>
+                  </div>
+
+                  <div v-if="pmEdit" class="field" style="margin-top:10px">
+                    <label class="field__label">{{ t('bill_pm_new_method') }}</label>
+                    <div class="pay-grid">
+                      <button v-for="m in payMethods" :key="m.value"
+                        class="pay-btn" :class="{ active: pmForm.payment_method===m.value }"
+                        @click="pmForm.payment_method=m.value">{{ m.label }}</button>
+                    </div>
+                    <label class="field__label" style="margin-top:10px">{{ t('bill_pm_reason') }} *</label>
+                    <textarea v-model="pmForm.reason" class="input" rows="2" :placeholder="t('bill_pm_reason_ph')" style="width:100%;resize:vertical"></textarea>
+                    <p v-if="pmForm.errors.reason" class="field__err">{{ pmForm.errors.reason }}</p>
+                    <p v-if="pmForm.errors.payment_method" class="field__err">{{ pmForm.errors.payment_method }}</p>
+                    <div style="display:flex;gap:8px;margin-top:10px">
+                      <Btn variant="secondary" size="sm" @click="pmEdit=false" style="flex:1;justify-content:center">{{ t('btn_cancel') }}</Btn>
+                      <Btn variant="primary" size="sm" :loading="pmForm.processing" @click="savePmEdit" style="flex:1;justify-content:center">{{ t('btn_save') }}</Btn>
+                    </div>
                   </div>
                 </template>
 

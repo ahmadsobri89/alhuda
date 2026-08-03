@@ -246,6 +246,36 @@ class BillingController extends Controller
         return back()->with('success', "Pembayaran RM " . number_format($invoice->total_amount, 2) . " diterima.");
     }
 
+    public function updatePaymentMethod(Request $request, Invoice $invoice)
+    {
+        abort_if($invoice->status !== 'paid', 403);
+
+        $data = $request->validate([
+            'payment_method' => ['required', 'in:cash,card,duitnow,panel,insurance'],
+            'reason'         => ['required', 'string', 'max:500'],
+        ]);
+
+        $old = $invoice->payment_method;
+        $invoice->update(['payment_method' => $data['payment_method']]);
+
+        AuditLog::record(
+            'billing.payment_method_update',
+            "{$invoice->patient->name} · {$invoice->invoice_number} · {$old} → {$data['payment_method']} · Sebab: {$data['reason']}",
+            true,
+            ['old' => $old, 'new' => $data['payment_method'], 'reason' => $data['reason']]
+        );
+
+        TaskNotifier::notifyRole(
+            'finance',
+            'finance',
+            'Kaedah pembayaran dikemaskini',
+            "Invois {$invoice->invoice_number}: kaedah bayaran ditukar daripada {$old} kepada {$data['payment_method']}.",
+            route('finance'),
+        );
+
+        return back()->with('success', 'Kaedah pembayaran dikemaskini.');
+    }
+
     public function cancel(Invoice $invoice)
     {
         abort_if($invoice->status === 'cancelled', 403);
