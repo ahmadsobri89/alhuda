@@ -100,6 +100,20 @@ const quickDrugs = computed(() =>
   }))
 )
 
+/* ── edit items on a paid invoice (needs a reason, like payment-method edit) ── */
+const itemsEditPaid   = ref(false)
+const itemsEditReason = ref('')
+const itemsReasonOk   = computed(() => itemsEditReason.value.trim().length > 0)
+function openItemsEditPaid () { itemsEditReason.value = ''; itemsEditPaid.value = true }
+function closeItemsEditPaid () { itemsEditPaid.value = false; showAddDrawer.value = false; cancelEdit() }
+const canEditItems = computed(() =>
+  ['draft', 'unpaid'].includes(props.selected?.status) ||
+  (props.selected?.status === 'paid' && itemsEditPaid.value)
+)
+function withPaidReason (data) {
+  return props.selected?.status === 'paid' ? { ...data, reason: itemsEditReason.value } : data
+}
+
 /* ── add-item drawer ── */
 const showAddDrawer = ref(false)
 const itemForm = useForm({ type:'consultation', code:'', description:'', quantity:1, unit_price:0 })
@@ -115,12 +129,15 @@ function fillQuick (q) {
   itemForm.quantity    = 1
 }
 function addItem () {
-  itemForm.post(`/billing/${props.selected.id}/items`, {
+  itemForm.transform(withPaidReason).post(`/billing/${props.selected.id}/items`, {
     onSuccess: () => { showAddDrawer.value = false; itemForm.reset() },
   })
 }
 function removeItem (itemId) {
-  router.delete(`/billing/${props.selected.id}/items/${itemId}`, { preserveScroll: true })
+  router.delete(`/billing/${props.selected.id}/items/${itemId}`, {
+    preserveScroll: true,
+    data: withPaidReason({}),
+  })
 }
 
 /* ── inline edit item (qty/price) ── */
@@ -137,7 +154,7 @@ function startEdit (item) {
 }
 function cancelEdit () { editingItemId.value = null }
 function saveItemEdit (item) {
-  editForm.patch(`/billing/${props.selected.id}/items/${item.id}`, {
+  editForm.transform(withPaidReason).patch(`/billing/${props.selected.id}/items/${item.id}`, {
     preserveScroll: true,
     onSuccess: () => { editingItemId.value = null },
   })
@@ -330,6 +347,17 @@ function submitNew () {
               <h3 class="card__title">{{ t('bill_items_title') }}</h3>
               <Btn v-if="['draft','unpaid'].includes(selected.status)"
                 variant="primary" size="sm" @click="openAddDrawer">{{ t('bill_add_item') }}</Btn>
+              <div v-else-if="selected.status==='paid'" style="display:flex;gap:6px;align-items:center">
+                <Btn v-if="itemsEditPaid" variant="primary" size="sm" :disabled="!itemsReasonOk" @click="openAddDrawer">{{ t('bill_add_item') }}</Btn>
+                <Btn variant="ghost" size="sm" @click="itemsEditPaid ? closeItemsEditPaid() : openItemsEditPaid()">
+                  {{ itemsEditPaid ? t('bill_items_edit_done') : t('bill_items_edit_paid') }}
+                </Btn>
+              </div>
+            </div>
+
+            <div v-if="selected.status==='paid' && itemsEditPaid" class="items-edit-reason">
+              <label class="field__label">{{ t('bill_items_edit_reason') }} *</label>
+              <textarea v-model="itemsEditReason" class="input" rows="2" :placeholder="t('bill_pm_reason_ph')" style="width:100%;resize:vertical"></textarea>
             </div>
 
             <!-- table -->
@@ -357,9 +385,9 @@ function submitNew () {
                 <div style="font:500 12px var(--font-mono);color:var(--fg2)">{{ Number(item.unit_price).toFixed(2) }}</div>
                 <div style="font:700 13px var(--font-mono);color:var(--fg1)">{{ Number(item.total_price).toFixed(2) }}</div>
                 <div style="display:flex;gap:2px">
-                  <template v-if="['draft','unpaid'].includes(selected.status)">
-                    <button class="rm-btn" @click="startEdit(item)" title="Adjust harga/kuantiti">✎</button>
-                    <button class="rm-btn" @click="removeItem(item.id)" title="Padam item">✕</button>
+                  <template v-if="canEditItems">
+                    <button class="rm-btn" :disabled="selected.status==='paid' && !itemsReasonOk" @click="startEdit(item)" title="Adjust harga/kuantiti">✎</button>
+                    <button class="rm-btn" :disabled="selected.status==='paid' && !itemsReasonOk" @click="removeItem(item.id)" title="Padam item">✕</button>
                   </template>
                 </div>
               </template>
@@ -778,6 +806,11 @@ function submitNew () {
   color: var(--fg3); font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .12s;
 }
 .rm-btn:hover { background: #FEF2F2; border-color: #FECACA; color: #DC2626; }
+.rm-btn:disabled { opacity: .4; cursor: not-allowed; }
+.rm-btn:disabled:hover { background: #fff; border-color: var(--border); color: var(--fg3); }
+
+/* items editable after payment */
+.items-edit-reason { padding: 10px 16px; background: #FFFBEB; border-bottom: 1px solid #FDE68A; }
 
 /* ── add-item drawer ── */
 .add-drawer {

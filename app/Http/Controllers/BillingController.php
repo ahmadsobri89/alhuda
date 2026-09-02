@@ -145,9 +145,38 @@ class BillingController extends Controller
             ->with('success', "Invois {$inv->invoice_number} dicipta.");
     }
 
+    /**
+     * Draft/unpaid invoices are freely editable. A paid invoice may still have
+     * its items adjusted (e.g. billing correction), but only with a mandatory
+     * reason, mirroring updatePaymentMethod()'s post-payment edit trail.
+     */
+    private function ensureItemsEditable(Request $request, Invoice $invoice): ?string
+    {
+        if (in_array($invoice->status, ['draft', 'unpaid'])) {
+            return null;
+        }
+
+        abort_if($invoice->status !== 'paid', 403, 'Invois tidak boleh diedit.');
+
+        return $request->validate([
+            'reason' => ['required', 'string', 'max:500'],
+        ])['reason'];
+    }
+
+    private function notifyItemsEditedAfterPayment(Invoice $invoice, string $reason): void
+    {
+        TaskNotifier::notifyRole(
+            'finance',
+            'finance',
+            'Item invois dikemaskini selepas bayaran',
+            "Invois {$invoice->invoice_number}: item bil diubah selepas bayaran. Sebab: {$reason}",
+            route('finance'),
+        );
+    }
+
     public function storeItem(Request $request, Invoice $invoice)
     {
-        abort_if(! in_array($invoice->status, ['draft', 'unpaid']), 403, 'Invois tidak boleh diedit.');
+        $reason = $this->ensureItemsEditable($request, $invoice);
 
         $data = $request->validate([
             'type'        => ['required', 'in:consultation,procedure,drug,lab,other'],
@@ -161,35 +190,65 @@ class BillingController extends Controller
         $invoice->items()->create($data);
         $invoice->recalc();
 
-        AuditLog::record('billing.item_add', "{$invoice->invoice_number} · {$data['description']}");
+        $suffix = $reason ? " · Selepas bayaran · Sebab: {$reason}" : '';
+        AuditLog::record(
+            'billing.item_add',
+            "{$invoice->invoice_number} · {$data['description']}{$suffix}",
+            true,
+            $reason ? ['reason' => $reason] : []
+        );
+
+        if ($reason) $this->notifyItemsEditedAfterPayment($invoice, $reason);
 
         return back()->with('success', 'Item ditambah.');
     }
 
     public function updateItem(Request $request, Invoice $invoice, InvoiceItem $item)
     {
-        abort_if(! in_array($invoice->status, ['draft', 'unpaid']), 403, 'Invois tidak boleh diedit.');
+        $reason = $this->ensureItemsEditable($request, $invoice);
 
         $data = $request->validate([
             'quantity'   => ['required', 'numeric', 'min:0.01'],
             'unit_price' => ['required', 'numeric', 'min:0'],
         ]);
 
+        $old = "{$item->quantity} × RM " . number_format($item->unit_price, 2);
         $data['total_price'] = round($data['quantity'] * $data['unit_price'], 2);
         $item->update($data);
         $invoice->recalc();
 
-        AuditLog::record('billing.item_update', "{$invoice->invoice_number} · {$item->description}");
+        $new = "{$data['quantity']} × RM " . number_format($data['unit_price'], 2);
+        $suffix = $reason ? " · {$old} → {$new} · Selepas bayaran · Sebab: {$reason}" : '';
+        AuditLog::record(
+            'billing.item_update',
+            "{$invoice->invoice_number} · {$item->description}{$suffix}",
+            true,
+            $reason ? ['old' => $old, 'new' => $new, 'reason' => $reason] : []
+        );
+
+        if ($reason) $this->notifyItemsEditedAfterPayment($invoice, $reason);
 
         return back()->with('success', 'Item dikemaskini.');
     }
 
-    public function destroyItem(Invoice $invoice, InvoiceItem $item)
+    public function destroyItem(Request $request, Invoice $invoice, InvoiceItem $item)
     {
-        abort_if(! in_array($invoice->status, ['draft', 'unpaid']), 403);
+        $reason = $this->ensureItemsEditable($request, $invoice);
+
+        $desc = $item->description;
         $item->delete();
         $invoice->recalc();
-        AuditLog::record('billing.item_remove', $invoice->invoice_number);
+
+        $suffix = $reason ? " · Selepas bayaran · Sebab: {$reason}" : '';
+        AuditLog::record(
+            'billing.item_remove',
+            "{$invoice->invoice_number} · {$desc}{$suffix}",
+            true,
+            $reason ? ['reason' => $reason] : []
+        );
+
+        if ($reason) $this->notifyItemsEditedAfterPayment($invoice, $reason);
+
         return back()->with('success', 'Item dipadam.');
     }
 

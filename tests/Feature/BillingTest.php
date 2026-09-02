@@ -83,7 +83,7 @@ class BillingTest extends TestCase
         $this->assertEquals(50.00, $invoice->total_amount);
     }
 
-    public function test_cannot_add_item_to_paid_invoice(): void
+    public function test_adding_item_to_paid_invoice_requires_reason(): void
     {
         $invoice = Invoice::factory()->paid()->create(['patient_id' => $this->patient->id]);
 
@@ -94,7 +94,97 @@ class BillingTest extends TestCase
                 'quantity'    => 10,
                 'unit_price'  => 0.50,
             ])
+            ->assertSessionHasErrors('reason');
+
+        $this->assertEquals(0, $invoice->fresh()->items()->count());
+    }
+
+    public function test_can_add_item_to_paid_invoice_with_reason(): void
+    {
+        $invoice = Invoice::factory()->paid()->create(['patient_id' => $this->patient->id]);
+
+        $this->actingAs($this->user)
+            ->post("/billing/{$invoice->id}/items", [
+                'type'        => 'drug',
+                'description' => 'Paracetamol',
+                'quantity'    => 10,
+                'unit_price'  => 0.50,
+                'reason'      => 'Doktor tambah ubat susulan selepas bayaran',
+            ])
+            ->assertSessionHas('success');
+
+        $invoice->refresh();
+        $this->assertEquals(5.00, $invoice->subtotal);
+        $this->assertEquals('paid', $invoice->status);
+
+        $this->assertDatabaseHas('audit_logs', ['action' => 'billing.item_add']);
+        $this->assertDatabaseHas('activity_log', ['subject_id' => $invoice->id, 'subject_type' => Invoice::class]);
+    }
+
+    public function test_cannot_add_item_to_cancelled_invoice(): void
+    {
+        $invoice = Invoice::factory()->create(['patient_id' => $this->patient->id, 'status' => 'cancelled']);
+
+        $this->actingAs($this->user)
+            ->post("/billing/{$invoice->id}/items", [
+                'type'        => 'drug',
+                'description' => 'Paracetamol',
+                'quantity'    => 10,
+                'unit_price'  => 0.50,
+                'reason'      => 'x',
+            ])
             ->assertStatus(403);
+    }
+
+    // ── Update Item ──────────────────────────────────────────────────────────
+
+    public function test_updating_item_on_paid_invoice_requires_reason(): void
+    {
+        $invoice = Invoice::factory()->paid()->create(['patient_id' => $this->patient->id]);
+        $item    = InvoiceItem::create([
+            'invoice_id'  => $invoice->id,
+            'type'        => 'consultation',
+            'description' => 'Fee',
+            'quantity'    => 1,
+            'unit_price'  => 50.00,
+            'total_price' => 50.00,
+        ]);
+        $invoice->recalc();
+
+        $this->actingAs($this->user)
+            ->patch("/billing/{$invoice->id}/items/{$item->id}", [
+                'quantity'   => 2,
+                'unit_price' => 50.00,
+            ])
+            ->assertSessionHasErrors('reason');
+
+        $this->assertEquals(1, $item->fresh()->quantity);
+    }
+
+    public function test_can_update_item_on_paid_invoice_with_reason(): void
+    {
+        $invoice = Invoice::factory()->paid()->create(['patient_id' => $this->patient->id]);
+        $item    = InvoiceItem::create([
+            'invoice_id'  => $invoice->id,
+            'type'        => 'consultation',
+            'description' => 'Fee',
+            'quantity'    => 1,
+            'unit_price'  => 50.00,
+            'total_price' => 50.00,
+        ]);
+        $invoice->recalc();
+
+        $this->actingAs($this->user)
+            ->patch("/billing/{$invoice->id}/items/{$item->id}", [
+                'quantity'   => 2,
+                'unit_price' => 50.00,
+                'reason'     => 'Pembetulan kuantiti selepas bayaran',
+            ])
+            ->assertSessionHas('success');
+
+        $this->assertEquals(2, $item->fresh()->quantity);
+        $this->assertEquals(100.00, $invoice->fresh()->total_amount);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'billing.item_update']);
     }
 
     // ── Delete Item ───────────────────────────────────────────────────────────
@@ -118,6 +208,48 @@ class BillingTest extends TestCase
 
         $this->assertDatabaseMissing('invoice_items', ['id' => $item->id]);
         $this->assertEquals(0.00, $invoice->fresh()->subtotal);
+    }
+
+    public function test_removing_item_from_paid_invoice_requires_reason(): void
+    {
+        $invoice = Invoice::factory()->paid()->create(['patient_id' => $this->patient->id]);
+        $item    = InvoiceItem::create([
+            'invoice_id'  => $invoice->id,
+            'type'        => 'consultation',
+            'description' => 'Fee',
+            'quantity'    => 1,
+            'unit_price'  => 50.00,
+            'total_price' => 50.00,
+        ]);
+        $invoice->recalc();
+
+        $this->actingAs($this->user)
+            ->delete("/billing/{$invoice->id}/items/{$item->id}")
+            ->assertSessionHasErrors('reason');
+
+        $this->assertDatabaseHas('invoice_items', ['id' => $item->id]);
+    }
+
+    public function test_can_remove_item_from_paid_invoice_with_reason(): void
+    {
+        $invoice = Invoice::factory()->paid()->create(['patient_id' => $this->patient->id]);
+        $item    = InvoiceItem::create([
+            'invoice_id'  => $invoice->id,
+            'type'        => 'consultation',
+            'description' => 'Fee',
+            'quantity'    => 1,
+            'unit_price'  => 50.00,
+            'total_price' => 50.00,
+        ]);
+        $invoice->recalc();
+
+        $this->actingAs($this->user)
+            ->delete("/billing/{$invoice->id}/items/{$item->id}", ['reason' => 'Item dimasukkan silap'])
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('invoice_items', ['id' => $item->id]);
+        $this->assertEquals(0.00, $invoice->fresh()->subtotal);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'billing.item_remove']);
     }
 
     // ── Discount ─────────────────────────────────────────────────────────────
