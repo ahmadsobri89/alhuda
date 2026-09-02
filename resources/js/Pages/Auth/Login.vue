@@ -96,6 +96,7 @@ const submit = () => {
                 <div class="lr-card__logo">
                     <img :src="clinicLogoUrl" alt="" />
                     <span>Poliklinik Al-Huda</span>
+                    <p class="lr-card__tag">Sistem Pengurusan Klinik Bersepadu</p>
                 </div>
 
                 <div class="lr-card__head">
@@ -340,6 +341,7 @@ const submit = () => {
     font: 700 14px var(--font-sans);
     color: var(--brand-green-dark);
 }
+.lr-card__tag { display: none; }
 
 .lr-card__head { margin-bottom: 28px; }
 .lr-card__head h2 {
@@ -523,16 +525,53 @@ const submit = () => {
     .lr-main { padding: 40px 28px; }
 }
 
-/* ── Mobile: stack, hide the marketing sidebar, show compact brand ── */
+/* ── Mobile: stack, hide the marketing sidebar, show a branded header band ── */
 @media (max-width: 768px) {
     .lr { flex-direction: column; min-height: auto; }
     .lr-aside { display: none; }
-    .lr-main { padding: 40px 24px; min-height: 100vh; }
-    .lr-card__logo { display: flex; }
+    .lr-main {
+        padding: 0 0 48px;
+        min-height: 100vh;
+        align-items: flex-start;
+        background: #F6F8F7;
+    }
+    .lr-card { padding: 0 24px; }
+
+    .lr-card__logo {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        background: var(--brand-green-dark);
+        margin: 0 -24px 32px;
+        padding: 44px 24px 30px;
+        border-radius: 0 0 28px 28px;
+        box-shadow: 0 12px 28px rgba(15,64,35,.18);
+    }
+    .lr-card__logo img {
+        width: 52px; height: 52px;
+        padding: 9px;
+        background: rgba(255,255,255,.15);
+        border-radius: 14px;
+    }
+    .lr-card__logo span {
+        font-size: 16px;
+        color: #fff;
+    }
+    .lr-card__tag {
+        display: block;
+        margin: 2px 0 0;
+        font: 400 12px var(--font-sans);
+        color: rgba(255,255,255,.65);
+        text-align: center;
+    }
+
+    .lr-card__head { text-align: center; }
 }
 
 @media (max-width: 480px) {
-    .lr-main { padding: 28px 16px; }
+    .lr-card { padding: 0 20px; }
+    .lr-card__logo { margin: 0 -20px 28px; padding: 36px 20px 26px; }
     .lr-card__head h2 { font-size: 22px; }
     .lr-roles { justify-content: center; }
 }
