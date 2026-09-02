@@ -617,6 +617,8 @@
   "bill_items_edit_paid": "Edit Items",
   "bill_items_edit_done": "Done",
   "bill_items_edit_reason": "Reason for Item Change",
+  "bill_cancel_paid_warn": "This invoice has already been paid. Cancelling it removes it from revenue totals/reports, but the original record and items are kept for audit purposes.",
+  "bill_cancel_paid_reason": "Reason for Cancellation",
   "bill_notes_title": "Notes",
   "bill_no_items": "No items in this bill.",
   "bill_ph_desc": "Service or drug name…",

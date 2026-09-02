@@ -203,7 +203,13 @@ function savePmEdit () {
 /* ── cancel / delete ── */
 const showCancelModal = ref(false)
 const showDeleteModal = ref(false)
-function confirmCancel () { router.patch(`/billing/${props.selected.id}/cancel`, {}, { onSuccess: () => { showCancelModal.value = false } }) }
+const cancelForm = useForm({ reason: '' })
+function openCancelModal () { cancelForm.reset(); cancelForm.clearErrors(); showCancelModal.value = true }
+function confirmCancel () {
+  cancelForm.patch(`/billing/${props.selected.id}/cancel`, {
+    onSuccess: () => { showCancelModal.value = false },
+  })
+}
 function confirmDelete () { router.delete(`/billing/${props.selected.id}`, { onSuccess: () => { showDeleteModal.value = false } }) }
 
 /* ── new invoice modal ── */
@@ -332,8 +338,8 @@ function submitNew () {
               </svg>
               {{ t('bill_print') }}
             </a>
-            <Btn v-if="selected.status!=='paid'&&selected.status!=='cancelled'"
-              variant="ghost" size="sm" style="color:#DC2626" @click="showCancelModal=true">{{ t('bill_cancel') }}</Btn>
+            <Btn v-if="selected.status!=='cancelled'"
+              variant="ghost" size="sm" style="color:#DC2626" @click="openCancelModal">{{ t('bill_cancel') }}</Btn>
             <Btn v-if="selected.status!=='paid'" variant="ghost" size="sm" @click="showDeleteModal=true">{{ t('bill_delete') }}</Btn>
           </div>
         </div>
@@ -623,10 +629,16 @@ function submitNew () {
         <p style="font:400 13px var(--font-sans);color:var(--fg2)">
           {{ t('bill_cancel_body', { inv: selected?.invoice_number }) }}
         </p>
+        <div v-if="selected?.status==='paid'" style="margin-top:12px">
+          <p class="cancel-warn">{{ t('bill_cancel_paid_warn') }}</p>
+          <label class="field__label" style="margin-top:8px">{{ t('bill_cancel_paid_reason') }} *</label>
+          <textarea v-model="cancelForm.reason" class="input" rows="2" :placeholder="t('bill_pm_reason_ph')" style="width:100%;resize:vertical"></textarea>
+          <p v-if="cancelForm.errors.reason" class="field__err">{{ cancelForm.errors.reason }}</p>
+        </div>
       </div>
       <div class="modal__footer">
         <Btn variant="secondary" @click="showCancelModal=false">{{ t('btn_cancel') }}</Btn>
-        <Btn variant="primary" style="background:#DC2626" @click="confirmCancel">{{ t('bill_cancel_confirm') }}</Btn>
+        <Btn variant="primary" style="background:#DC2626" :loading="cancelForm.processing" @click="confirmCancel">{{ t('bill_cancel_confirm') }}</Btn>
       </div>
     </div>
   </div>
@@ -811,6 +823,12 @@ function submitNew () {
 
 /* items editable after payment */
 .items-edit-reason { padding: 10px 16px; background: #FFFBEB; border-bottom: 1px solid #FDE68A; }
+
+/* cancel-paid warning */
+.cancel-warn {
+  font: 500 12px var(--font-sans); color: #B45309;
+  background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 8px; padding: 8px 10px;
+}
 
 /* ── add-item drawer ── */
 .add-drawer {

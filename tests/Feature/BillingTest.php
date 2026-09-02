@@ -422,6 +422,54 @@ class BillingTest extends TestCase
             ->assertStatus(403);
     }
 
+    public function test_cancelling_paid_invoice_requires_reason(): void
+    {
+        $invoice = Invoice::factory()->paid()->create(['patient_id' => $this->patient->id]);
+
+        $this->actingAs($this->user)
+            ->patch("/billing/{$invoice->id}/cancel")
+            ->assertSessionHasErrors('reason');
+
+        $this->assertEquals('paid', $invoice->fresh()->status);
+    }
+
+    public function test_can_cancel_paid_invoice_with_reason(): void
+    {
+        $invoice = Invoice::factory()->paid()->create(['patient_id' => $this->patient->id]);
+        $item    = InvoiceItem::create([
+            'invoice_id'  => $invoice->id,
+            'type'        => 'consultation',
+            'description' => 'Fee',
+            'quantity'    => 1,
+            'unit_price'  => 50.00,
+            'total_price' => 50.00,
+        ]);
+
+        $this->actingAs($this->user)
+            ->patch("/billing/{$invoice->id}/cancel", ['reason' => 'Invois dibuat semula, salah pesakit'])
+            ->assertSessionHas('success');
+
+        $invoice->refresh();
+        $this->assertEquals('cancelled', $invoice->status);
+        // Original record & item kept for audit, not hard-deleted.
+        $this->assertDatabaseHas('invoice_items', ['id' => $item->id]);
+        $this->assertNotNull($invoice->paid_at);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'billing.cancel']);
+    }
+
+    public function test_cancelled_paid_invoice_excluded_from_revenue_stats(): void
+    {
+        $invoice = Invoice::factory()->paid()->create([
+            'patient_id' => $this->patient->id, 'total_amount' => 200, 'paid_at' => now(),
+        ]);
+
+        $this->actingAs($this->user)->patch("/billing/{$invoice->id}/cancel", ['reason' => 'x']);
+
+        $this->actingAs($this->user)->get('/billing')->assertInertia(
+            fn ($page) => $page->where('stats.today_revenue', 0)
+        );
+    }
+
     // ── Destroy Invoice ───────────────────────────────────────────────────────
 
     public function test_can_delete_draft_invoice(): void

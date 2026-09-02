@@ -335,11 +335,37 @@ class BillingController extends Controller
         return back()->with('success', 'Kaedah pembayaran dikemaskini.');
     }
 
-    public function cancel(Invoice $invoice)
+    public function cancel(Request $request, Invoice $invoice)
     {
         abort_if($invoice->status === 'cancelled', 403);
+
+        $reason = null;
+        if ($invoice->status === 'paid') {
+            $reason = $request->validate([
+                'reason' => ['required', 'string', 'max:500'],
+            ])['reason'];
+        }
+
         $invoice->update(['status' => 'cancelled']);
-        AuditLog::record('billing.cancel', "{$invoice->patient->name} · {$invoice->invoice_number}");
+
+        $suffix = $reason ? " · Selepas bayaran · Sebab: {$reason}" : '';
+        AuditLog::record(
+            'billing.cancel',
+            "{$invoice->patient->name} · {$invoice->invoice_number}{$suffix}",
+            true,
+            $reason ? ['reason' => $reason] : []
+        );
+
+        if ($reason) {
+            TaskNotifier::notifyRole(
+                'finance',
+                'finance',
+                'Invois dibatalkan selepas bayaran',
+                "Invois {$invoice->invoice_number} ({$invoice->patient->name}) dibatalkan selepas bayaran. Sebab: {$reason}",
+                route('finance'),
+            );
+        }
+
         return back()->with('success', 'Invois dibatalkan.');
     }
 

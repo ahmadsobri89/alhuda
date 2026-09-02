@@ -617,6 +617,8 @@
   "bill_items_edit_paid": "Edit Item",
   "bill_items_edit_done": "Selesai",
   "bill_items_edit_reason": "Sebab Perubahan Item",
+  "bill_cancel_paid_warn": "Invois ini telah dibayar. Membatalkannya akan mengeluarkannya daripada jumlah kutipan/laporan hasil, tetapi rekod & item asal masih disimpan untuk audit.",
+  "bill_cancel_paid_reason": "Sebab Pembatalan",
   "bill_notes_title": "Nota",
   "bill_no_items": "Tiada item dalam bil ini.",
   "bill_ph_desc": "Nama perkhidmatan atau ubat…",
