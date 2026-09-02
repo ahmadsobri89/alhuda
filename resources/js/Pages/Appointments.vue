@@ -11,10 +11,13 @@ defineOptions({ layout: KlinikLayout })
 
 const props = defineProps({
   currentRoute: String,
+  viewMode:     { type: String, default: 'week' },
   weekStart:    String,
   weekEnd:      String,
   weekDates:    Array,
   weekMap:      Object,
+  monthStart:   { type: String, default: null },
+  monthWeeks:   { type: Array, default: () => [] },
   todayList:    Array,
   slots:        Array,
   stats:        Object,
@@ -35,10 +38,10 @@ const defaultDoctor = computed(() => {
 function goWeek(offset) {
   const d = new Date(props.weekStart)
   d.setDate(d.getDate() + offset * 7)
-  router.get('/appointments', { week: d.toISOString().slice(0, 10) }, { preserveScroll: true })
+  router.get('/appointments', { view: 'week', date: d.toISOString().slice(0, 10) }, { preserveScroll: true })
 }
 function goToday() {
-  router.get('/appointments', {}, { preserveScroll: true })
+  router.get('/appointments', { view: props.viewMode }, { preserveScroll: true })
 }
 const isCurrentWeek = computed(() => {
   const now = new Date(props.today)
@@ -46,6 +49,43 @@ const isCurrentWeek = computed(() => {
   const we  = new Date(props.weekEnd)
   return now >= ws && now <= we
 })
+
+/* ── Month navigation ────────────────────────────────── */
+function switchView(mode) {
+  // Prefer landing on "today" when it's visible in the period being left,
+  // so toggling view mode never jumps away from the week/month you're
+  // actually looking at (e.g. a week that straddles two months).
+  const today     = new Date(props.today)
+  const todayHere = mode === 'month'
+    ? (today >= new Date(props.weekStart) && today <= new Date(props.weekEnd))
+    : isCurrentMonth.value
+  const date = todayHere ? props.today : (mode === 'month' ? props.weekStart : props.monthStart)
+  router.get('/appointments', { view: mode, date }, { preserveScroll: true })
+}
+function goMonth(offset) {
+  const d = new Date(props.monthStart)
+  d.setMonth(d.getMonth() + offset)
+  router.get('/appointments', { view: 'month', date: d.toISOString().slice(0, 10) }, { preserveScroll: true })
+}
+function goToDate(dateStr) {
+  router.get('/appointments', { view: 'month', date: dateStr }, { preserveScroll: true })
+}
+const isCurrentMonth = computed(() => {
+  if (!props.monthStart) return false
+  const now = new Date(props.today)
+  const ms  = new Date(props.monthStart)
+  return now.getFullYear() === ms.getFullYear() && now.getMonth() === ms.getMonth()
+})
+const monthLabel = computed(() => {
+  if (!props.monthStart) return ''
+  return new Date(props.monthStart).toLocaleDateString('ms-MY', { month: 'long', year: 'numeric' })
+})
+const weekdayHeaders = computed(() =>
+  Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(2024, 0, 1 + i) // 1 Jan 2024 = Monday
+    return d.toLocaleDateString('ms-MY', { weekday: 'short' })
+  })
+)
 
 /* ── Status / type maps ──────────────────────────────── */
 const STATUS_TONE = {
@@ -91,6 +131,23 @@ function getAppt(date, time) {
 const viewAppt = ref(null)
 function openView(appt) { viewAppt.value = appt }
 function closeView()    { viewAppt.value = null }
+
+/* ── Day agenda drawer (month view) ──────────────────── */
+const dayAgenda = ref(null)
+function openDayAgenda(day) { dayAgenda.value = day }
+function closeDayAgenda()   { dayAgenda.value = null }
+function openApptFromAgenda(appt) {
+  dayAgenda.value = null
+  openView(appt)
+}
+function addFromAgenda(dateStr) {
+  dayAgenda.value = null
+  openCreate(dateStr)
+}
+const dayAgendaLabel = computed(() => {
+  if (!dayAgenda.value) return ''
+  return new Date(dayAgenda.value.date).toLocaleDateString('ms-MY', { weekday: 'long', day: 'numeric', month: 'long' })
+})
 
 /* ── Status update ───────────────────────────────────── */
 function updateStatus(appt, status) {
@@ -203,6 +260,9 @@ const weekLabel = computed(() => {
   const fmt = d => d.toLocaleDateString('ms-MY', { day: 'numeric', month: 'short' })
   return `${fmt(s)} – ${fmt(e)}`
 })
+const periodLabel  = computed(() => (props.viewMode === 'month' ? monthLabel.value : weekLabel.value))
+const kpiTotalKey  = computed(() => (props.viewMode === 'month' ? 'appt_kpi_total_month' : 'appt_kpi_total'))
+const kpiPeriodKey = computed(() => (props.viewMode === 'month' ? 'appt_kpi_month' : 'appt_kpi_week'))
 </script>
 
 <template>
@@ -215,7 +275,7 @@ const weekLabel = computed(() => {
     <div class="row">
       <div>
         <h1 style="font:700 18px var(--font-sans);color:var(--fg1);margin:0">Temujanji</h1>
-        <p style="font:500 12px var(--font-sans);color:var(--fg3);margin:2px 0 0">Jadual mingguan & senarai hari ini</p>
+        <p style="font:500 12px var(--font-sans);color:var(--fg3);margin:2px 0 0">{{ t(viewMode === 'month' ? 'appt_subtitle_month' : 'appt_subtitle') }}</p>
       </div>
       <div class="spacer"></div>
       <Btn variant="primary" @click="openCreate()">
@@ -227,9 +287,9 @@ const weekLabel = computed(() => {
     <!-- ── KPIs ────────────────────────────────────── -->
     <div class="kpi-grid">
       <div class="kpi">
-        <div class="kpi__label">{{ t('appt_kpi_total') }}</div>
+        <div class="kpi__label">{{ t(kpiTotalKey) }}</div>
         <div class="kpi__value">{{ stats.total }}</div>
-        <div class="kpi__sub">{{ weekLabel }}</div>
+        <div class="kpi__sub">{{ periodLabel }}</div>
       </div>
       <div class="kpi">
         <div class="kpi__label">{{ t('appt_kpi_confirmed') }}</div>
@@ -239,12 +299,12 @@ const weekLabel = computed(() => {
       <div class="kpi">
         <div class="kpi__label">{{ t('appt_kpi_done') }}</div>
         <div class="kpi__value" style="color:var(--brand-green)">{{ stats.done }}</div>
-        <div class="kpi__sub">{{ t('appt_kpi_week') }}</div>
+        <div class="kpi__sub">{{ t(kpiPeriodKey) }}</div>
       </div>
       <div class="kpi">
         <div class="kpi__label">{{ t('appt_kpi_cancelled') }}</div>
         <div class="kpi__value" style="color:var(--fg3)">{{ stats.cancelled }}</div>
-        <div class="kpi__sub">{{ t('appt_kpi_week') }}</div>
+        <div class="kpi__sub">{{ t(kpiPeriodKey) }}</div>
       </div>
     </div>
 
@@ -254,52 +314,104 @@ const weekLabel = computed(() => {
       <!-- Calendar card -->
       <div class="card" style="display:flex;flex-direction:column;overflow:hidden;min-height:0">
 
-        <!-- Week nav -->
-        <div class="week-nav">
-          <button class="btn btn--ghost btn--sm" style="padding:6px 8px" @click="goWeek(-1)">
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-          </button>
-          <div class="row" style="gap:10px">
-            <span style="font:700 13.5px var(--font-sans);color:var(--fg1)">{{ weekLabel }}</span>
-            <button v-if="!isCurrentWeek" class="today-link" @click="goToday">Hari Ini</button>
-          </div>
-          <button class="btn btn--ghost btn--sm" style="padding:6px 8px" @click="goWeek(1)">
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-          </button>
+        <!-- View toggle -->
+        <div class="view-toggle">
+          <button :class="['view-toggle__btn', viewMode === 'week' && 'is-active']" @click="viewMode !== 'week' && switchView('week')">{{ t('appt_view_week') }}</button>
+          <button :class="['view-toggle__btn', viewMode === 'month' && 'is-active']" @click="viewMode !== 'month' && switchView('month')">{{ t('appt_view_month') }}</button>
         </div>
 
-        <!-- Grid -->
-        <div class="grid-wrap">
-          <table class="cal-table">
-            <thead>
-              <tr>
-                <th class="th-time">Masa</th>
-                <th v-for="day in weekDates" :key="day.date"
-                    :class="['th-day', day.is_today && 'th-day--today']">
-                  <div style="font:700 12px var(--font-sans);color:var(--fg1)">{{ day.label }}</div>
-                  <div style="font:500 10px var(--font-sans);color:var(--fg3)">{{ day.count }} temujanji</div>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="slot in slots" :key="slot">
-                <td class="td-time">{{ slot }}</td>
-                <td v-for="day in weekDates" :key="day.date"
-                    :class="['td-slot', day.is_today && 'td-slot--today']"
-                    @click="!getAppt(day.date, slot) && openCreate(day.date, slot)">
-                  <div v-if="getAppt(day.date, slot)"
-                       class="appt-chip"
-                       :class="CHIP_CLASS[getAppt(day.date, slot).status]"
-                       @click.stop="openView(getAppt(day.date, slot))">
-                    <div style="font:600 11px var(--font-sans);line-height:1.3">{{ getAppt(day.date, slot).patient_name }}</div>
-                    <div style="font:500 10px var(--font-sans);opacity:.75">{{ TYPE_LABELS[getAppt(day.date, slot).type] }}</div>
+        <template v-if="viewMode === 'week'">
+          <!-- Week nav -->
+          <div class="week-nav">
+            <button class="btn btn--ghost btn--sm" style="padding:6px 8px" @click="goWeek(-1)">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <div class="row" style="gap:10px">
+              <span style="font:700 13.5px var(--font-sans);color:var(--fg1)">{{ weekLabel }}</span>
+              <button v-if="!isCurrentWeek" class="today-link" @click="goToday">{{ t('appt_today_btn') }}</button>
+            </div>
+            <button class="btn btn--ghost btn--sm" style="padding:6px 8px" @click="goWeek(1)">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+          </div>
+
+          <!-- Grid -->
+          <div class="grid-wrap">
+            <table class="cal-table">
+              <thead>
+                <tr>
+                  <th class="th-time">Masa</th>
+                  <th v-for="day in weekDates" :key="day.date"
+                      :class="['th-day', day.is_today && 'th-day--today']">
+                    <div style="font:700 12px var(--font-sans);color:var(--fg1)">{{ day.label }}</div>
+                    <div style="font:500 10px var(--font-sans);color:var(--fg3)">{{ day.count }} temujanji</div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="slot in slots" :key="slot">
+                  <td class="td-time">{{ slot }}</td>
+                  <td v-for="day in weekDates" :key="day.date"
+                      :class="['td-slot', day.is_today && 'td-slot--today']"
+                      @click="!getAppt(day.date, slot) && openCreate(day.date, slot)">
+                    <div v-if="getAppt(day.date, slot)"
+                         class="appt-chip"
+                         :class="CHIP_CLASS[getAppt(day.date, slot).status]"
+                         @click.stop="openView(getAppt(day.date, slot))">
+                      <div style="font:600 11px var(--font-sans);line-height:1.3">{{ getAppt(day.date, slot).patient_name }}</div>
+                      <div style="font:500 10px var(--font-sans);opacity:.75">{{ TYPE_LABELS[getAppt(day.date, slot).type] }}</div>
+                    </div>
+                    <div v-else class="slot-plus">+</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </template>
+
+        <template v-else>
+          <!-- Month nav -->
+          <div class="week-nav">
+            <button class="btn btn--ghost btn--sm" style="padding:6px 8px" @click="goMonth(-1)">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <div class="row" style="gap:10px">
+              <span style="font:700 13.5px var(--font-sans);color:var(--fg1);text-transform:capitalize">{{ monthLabel }}</span>
+              <button v-if="!isCurrentMonth" class="today-link" @click="goToday">{{ t('appt_month_today') }}</button>
+            </div>
+            <button class="btn btn--ghost btn--sm" style="padding:6px 8px" @click="goMonth(1)">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+          </div>
+
+          <!-- Month grid -->
+          <div class="grid-wrap month-wrap">
+            <div class="month-head">
+              <div v-for="wd in weekdayHeaders" :key="wd" class="month-head__cell">{{ wd }}</div>
+            </div>
+            <div class="month-grid">
+              <template v-for="(week, wi) in monthWeeks" :key="wi">
+                <div v-for="day in week" :key="day.date"
+                     :class="['month-cell', !day.in_month && 'month-cell--out', day.is_today && 'month-cell--today']"
+                     @click="day.in_month ? openDayAgenda(day) : goToDate(day.date)">
+                  <div class="month-cell__head">
+                    <span :class="['month-daynum', day.is_today && 'month-daynum--today']">{{ day.day_number }}</span>
                   </div>
-                  <div v-else class="slot-plus">+</div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+                  <div class="month-cell__chips">
+                    <div v-for="a in day.appts.slice(0, 3)" :key="a.id"
+                         class="month-chip" :class="CHIP_CLASS[a.status]"
+                         @click.stop="openApptFromAgenda(a)">
+                      <span style="font-family:var(--font-mono);font-size:9.5px">{{ a.appointment_time }}</span> {{ a.patient_name }}
+                    </div>
+                    <div v-if="day.count > 3" class="month-more" @click.stop="openDayAgenda(day)">
+                      {{ t('appt_day_more', { n: day.count - 3 }) }}
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
       </div>
 
       <!-- Queue card -->
@@ -425,6 +537,47 @@ const weekLabel = computed(() => {
             <div class="row" style="gap:8px">
               <Btn variant="secondary" style="flex:1" @click="openEdit(viewAppt)">{{ t('appt_edit') }}</Btn>
               <Btn variant="ghost" style="color:var(--brand-red)" @click="confirmDelete(viewAppt)">{{ t('appt_delete') }}</Btn>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- ── Day Agenda Drawer (month view) ───────────── -->
+    <Teleport to="body">
+      <div v-if="dayAgenda" class="drawer-backdrop" @click.self="closeDayAgenda">
+        <div class="drawer">
+          <div class="drawer__header">
+            <div style="flex:1;min-width:0">
+              <h2 class="drawer__name" style="text-transform:capitalize">{{ dayAgendaLabel }}</h2>
+              <div style="font:500 12px var(--font-sans);color:var(--fg3)">{{ t('appt_col_appts', { n: dayAgenda.count }) }}</div>
+            </div>
+            <button class="modal__close" @click="closeDayAgenda">✕</button>
+          </div>
+
+          <div class="drawer__body" style="padding:0;display:flex;flex-direction:column;flex:1">
+            <div v-if="dayAgenda.appts.length === 0"
+                 style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:32px;color:var(--fg3);font:500 13px var(--font-sans);text-align:center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+              {{ t('appt_day_empty') }}
+            </div>
+            <div v-else>
+              <div v-for="a in dayAgenda.appts" :key="a.id" class="qi" @click="openApptFromAgenda(a)">
+                <div style="font:700 12px var(--font-mono);color:var(--brand-green);width:40px;flex-shrink:0;padding-top:1px">{{ a.appointment_time }}</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font:600 13px var(--font-sans);color:var(--fg1)">{{ a.patient_name }}</div>
+                  <div style="font:500 11px var(--font-sans);color:var(--fg3)">{{ TYPE_LABELS[a.type] }}</div>
+                  <div v-if="a.reason" style="font:500 11px var(--font-sans);color:var(--fg2);margin-top:1px">{{ a.reason }}</div>
+                </div>
+                <Badge :tone="STATUS_TONE[a.status]">{{ STATUS_LABELS[a.status] }}</Badge>
+              </div>
+            </div>
+
+            <div style="padding:16px 20px;margin-top:auto;border-top:1px solid var(--border)">
+              <Btn variant="primary" style="width:100%" @click="addFromAgenda(dayAgenda.date)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                {{ t('appt_new') }}
+              </Btn>
             </div>
           </div>
         </div>
@@ -615,6 +768,17 @@ const weekLabel = computed(() => {
 /* Two-col layout */
 .appt-layout { display: grid; grid-template-columns: 1fr 280px; gap: 14px; min-height: 0; flex: 1; }
 
+/* ── View toggle ──────────────────────────────────── */
+.view-toggle { display: flex; gap: 3px; padding: 10px 16px 0; }
+.view-toggle__btn {
+  background: none; border: none; cursor: pointer;
+  padding: 5px 14px; border-radius: 999px;
+  font: 600 11.5px var(--font-sans); color: var(--fg3);
+}
+.view-toggle__btn:hover { background: var(--bg-soft); }
+.view-toggle__btn.is-active { background: var(--brand-green); color: #fff; }
+.view-toggle__btn.is-active:hover { background: var(--brand-green); }
+
 /* ── Calendar ──────────────────────────────────────── */
 .week-nav {
   display: flex; align-items: center; justify-content: space-between;
@@ -652,6 +816,30 @@ const weekLabel = computed(() => {
 .chip-red     { background: #fee2e2; border-color: #fecaca; color: #991b1b; }
 
 .slot-plus { color: #d1d5db; text-align: center; padding: 4px; font-size: 14px; user-select: none; }
+
+/* ── Month grid ──────────────────────────────────────── */
+.month-wrap { display: flex; flex-direction: column; }
+.month-head { display: grid; grid-template-columns: repeat(7,1fr); background: var(--bg-soft); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 2; }
+.month-head__cell { padding: 8px 6px; text-align: center; font: 700 11px var(--font-sans); color: var(--fg3); text-transform: uppercase; letter-spacing: .04em; }
+.month-grid { display: grid; grid-template-columns: repeat(7,1fr); grid-auto-rows: minmax(92px,1fr); }
+.month-cell {
+  border-bottom: 1px solid var(--border); border-left: 1px solid var(--border);
+  padding: 6px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; min-width: 0;
+}
+.month-cell:hover { background: var(--bg-soft); }
+.month-cell--out { opacity: .45; }
+.month-cell--today { background: #f7fdfb; }
+.month-cell__head { display: flex; }
+.month-daynum { font: 700 12px var(--font-sans); color: var(--fg1); width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border-radius: 999px; flex-shrink: 0; }
+.month-daynum--today { background: var(--brand-green); color: #fff; }
+.month-cell__chips { display: flex; flex-direction: column; gap: 2px; overflow: hidden; flex: 1; min-height: 0; }
+.month-chip {
+  border: 1px solid; border-radius: 5px; padding: 2px 5px; cursor: pointer;
+  font: 600 10px var(--font-sans); line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.month-chip:hover { filter: brightness(.95); }
+.month-more { font: 600 10px var(--font-sans); color: var(--fg3); padding: 1px 5px; cursor: pointer; }
+.month-more:hover { color: var(--fg1); text-decoration: underline; }
 
 /* ── Queue items ──────────────────────────────────── */
 .qi { display: flex; align-items: flex-start; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border); cursor: pointer; }

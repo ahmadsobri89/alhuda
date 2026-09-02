@@ -54,14 +54,45 @@ class AppointmentController extends Controller
 
     public function index(Request $request)
     {
-        // Week start (Monday)
-        $weekStart = $request->filled('week')
-            ? Carbon::parse($request->input('week'))->startOfWeek(Carbon::MONDAY)
-            : now()->startOfWeek(Carbon::MONDAY);
+        $view   = $request->input('view') === 'month' ? 'month' : 'week';
+        $anchor = $request->filled('date')
+            ? Carbon::parse($request->input('date'))
+            : now();
 
-        $weekEnd = $weekStart->copy()->addDays(6); // Mon–Sun
+        $todayKey = now()->format('Y-m-d');
 
-        // Fetch week's appointments
+        $props = $view === 'month'
+            ? $this->buildMonthView($anchor)
+            : $this->buildWeekView($anchor);
+
+        // Today's ordered list is shared by both views (right-hand queue panel)
+        $todayAppts = Appointment::with('patient', 'visit')
+            ->whereDate('appointment_date', $todayKey)
+            ->orderBy('appointment_time')
+            ->get();
+
+        $patients = Patient::where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'name', 'ic_number', 'patient_id', 'allergies', 'conditions']);
+
+        $lookups = LookupCategory::forSlugs(['jenis_temujanji', 'status_temujanji', 'tempoh_temujanji']);
+
+        return Inertia::render('Appointments', array_merge([
+            'currentRoute' => 'appointments',
+            'viewMode'     => $view,
+            'todayList'    => $todayAppts->map(fn ($a) => $this->formatAppt($a))->values(),
+            'slots'        => self::SLOTS,
+            'patients'     => $patients,
+            'today'        => $todayKey,
+            'lookups'      => $lookups,
+        ], $props));
+    }
+
+    private function buildWeekView(Carbon $anchor): array
+    {
+        $weekStart = $anchor->copy()->startOfWeek(Carbon::MONDAY);
+        $weekEnd   = $weekStart->copy()->addDays(6); // Mon–Sun
+
         $weekAppts = Appointment::with('patient', 'visit')
             ->whereBetween('appointment_date', [$weekStart->format('Y-m-d'), $weekEnd->format('Y-m-d')])
             ->orderBy('appointment_time')
@@ -88,15 +119,6 @@ class AppointmentController extends Controller
             ];
         }
 
-        // Today's ordered list
-        $todayKey  = now()->format('Y-m-d');
-        $todayList = $weekAppts
-            ->filter(fn ($a) => $a->appointment_date->format('Y-m-d') === $todayKey)
-            ->sortBy('appointment_time')
-            ->map(fn ($a) => $this->formatAppt($a))
-            ->values();
-
-        // Stats for the week
         $stats = [
             'total'     => $weekAppts->count(),
             'confirmed' => $weekAppts->where('status', 'confirmed')->count(),
@@ -104,25 +126,69 @@ class AppointmentController extends Controller
             'cancelled' => $weekAppts->where('status', 'cancelled')->count(),
         ];
 
-        $patients = Patient::where('status', 'active')
-            ->orderBy('name')
-            ->get(['id', 'name', 'ic_number', 'patient_id', 'allergies', 'conditions']);
+        return [
+            'weekStart' => $weekStart->format('Y-m-d'),
+            'weekEnd'   => $weekEnd->format('Y-m-d'),
+            'weekDates' => $weekDates,
+            'weekMap'   => $weekMap,
+            'stats'     => $stats,
+        ];
+    }
 
-        $lookups = LookupCategory::forSlugs(['jenis_temujanji', 'status_temujanji', 'tempoh_temujanji']);
+    private function buildMonthView(Carbon $anchor): array
+    {
+        $monthStart = $anchor->copy()->startOfMonth();
+        $monthEnd   = $anchor->copy()->endOfMonth();
+        $gridStart  = $monthStart->copy()->startOfWeek(Carbon::MONDAY);
+        $gridEnd    = $monthEnd->copy()->endOfWeek(Carbon::SUNDAY);
 
-        return Inertia::render('Appointments', [
-            'currentRoute' => 'appointments',
-            'weekStart'    => $weekStart->format('Y-m-d'),
-            'weekEnd'      => $weekEnd->format('Y-m-d'),
-            'weekDates'    => $weekDates,
-            'weekMap'      => $weekMap,
-            'todayList'    => $todayList,
-            'slots'        => self::SLOTS,
-            'stats'        => $stats,
-            'patients'     => $patients,
-            'today'        => now()->format('Y-m-d'),
-            'lookups'      => $lookups,
-        ]);
+        $gridAppts = Appointment::with('patient', 'visit')
+            ->whereBetween('appointment_date', [$gridStart->format('Y-m-d'), $gridEnd->format('Y-m-d')])
+            ->orderBy('appointment_date')
+            ->orderBy('appointment_time')
+            ->get();
+
+        $byDate = [];
+        foreach ($gridAppts as $appt) {
+            $dateKey = $appt->appointment_date->format('Y-m-d');
+            $byDate[$dateKey][] = $this->formatAppt($appt);
+        }
+
+        $monthWeeks = [];
+        $cursor     = $gridStart->copy();
+        while ($cursor <= $gridEnd) {
+            $week = [];
+            for ($i = 0; $i < 7; $i++) {
+                $dateKey = $cursor->format('Y-m-d');
+                $week[]  = [
+                    'date'       => $dateKey,
+                    'day_number' => $cursor->day,
+                    'in_month'   => $cursor->month === $monthStart->month,
+                    'is_today'   => $cursor->isToday(),
+                    'count'      => count($byDate[$dateKey] ?? []),
+                    'appts'      => $byDate[$dateKey] ?? [],
+                ];
+                $cursor->addDay();
+            }
+            $monthWeeks[] = $week;
+        }
+
+        $monthAppts = $gridAppts->filter(
+            fn ($a) => $a->appointment_date->between($monthStart, $monthEnd)
+        );
+
+        $stats = [
+            'total'     => $monthAppts->count(),
+            'confirmed' => $monthAppts->where('status', 'confirmed')->count(),
+            'done'      => $monthAppts->where('status', 'done')->count(),
+            'cancelled' => $monthAppts->where('status', 'cancelled')->count(),
+        ];
+
+        return [
+            'monthStart' => $monthStart->format('Y-m-d'),
+            'monthWeeks' => $monthWeeks,
+            'stats'      => $stats,
+        ];
     }
 
     public function store(StoreAppointmentRequest $request)
