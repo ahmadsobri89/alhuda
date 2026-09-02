@@ -513,4 +513,27 @@ const submit = () => {
 .lr-role--blue   { background: #DBEAFE; color: #1E40AF; border-color: rgba(37,99,235,.2);  }
 .lr-role--orange { background: #FFEDD5; color: #9A3412; border-color: rgba(244,128,31,.2); }
 .lr-role--red    { background: #FEE2E2; color: #991B1B; border-color: rgba(230,57,70,.2);  }
+
+/* ── Tablet ── */
+@media (max-width: 1024px) {
+    .lr-aside { width: 300px; }
+    .lr-aside__inner { padding: 26px 24px; }
+    .lr-hero__h { font-size: 20px; }
+    .lr-hero__p { font-size: 12.5px; }
+    .lr-main { padding: 40px 28px; }
+}
+
+/* ── Mobile: stack, hide the marketing sidebar, show compact brand ── */
+@media (max-width: 768px) {
+    .lr { flex-direction: column; min-height: auto; }
+    .lr-aside { display: none; }
+    .lr-main { padding: 40px 24px; min-height: 100vh; }
+    .lr-card__logo { display: flex; }
+}
+
+@media (max-width: 480px) {
+    .lr-main { padding: 28px 16px; }
+    .lr-card__head h2 { font-size: 22px; }
+    .lr-roles { justify-content: center; }
+}
 </style>
