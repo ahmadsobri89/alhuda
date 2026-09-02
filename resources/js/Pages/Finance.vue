@@ -191,7 +191,7 @@ function barH(v) { return Math.max(3, Math.round((v / maxTrend.value) * 90)) + '
 </template>
 
 <style scoped>
-.fin { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.fin { padding: 20px; display: flex; flex-direction: column; gap: 16px; height: calc(100vh - 56px); overflow-y: auto; }
 .fin__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .fin__title { font: 800 20px var(--font-sans); color: var(--fg1); }
 .fin__sub { font: 500 13px var(--font-sans); color: var(--fg3); margin-top: 2px; text-transform: capitalize; }
