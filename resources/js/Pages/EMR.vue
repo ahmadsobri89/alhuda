@@ -351,6 +351,13 @@ function rxItemEstimate(item) {
   return (Number(item.quantity) || 0) * Number(price)
 }
 
+const rxEstimateTotal = computed(() =>
+  rxForm.items.reduce((sum, item) => sum + (rxItemEstimate(item) ?? 0), 0)
+)
+const rxHasUnlinkedItems = computed(() =>
+  rxForm.items.some(item => item.drug_name && rxItemEstimate(item) === null)
+)
+
 const RX_FREQS  = computed(() => (props.lookups?.kekerapan_dos ?? []).map(v => v.label_ms))
 const RX_INSTRS = computed(() => (props.lookups?.arahan_dos    ?? []).map(v => v.label_ms))
 const DRUG_UNITS = computed(() => (props.lookups?.bentuk_ubat  ?? []).map(v => ({ code: v.code, label: v.label_ms })))
@@ -1122,6 +1129,12 @@ const soapHints = computed(() => ({
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     Tambah Ubat
                   </button>
+
+                  <div v-if="rxEstimateTotal > 0" class="rx-estimate-total">
+                    <span>Anggaran jumlah preskripsi</span>
+                    <strong>RM {{ rxEstimateTotal.toFixed(2) }}</strong>
+                    <small v-if="rxHasUnlinkedItems">(tidak termasuk ubat yang tiada harga)</small>
+                  </div>
 
                   <!-- Notes -->
                   <div class="field" style="margin-top:14px">
@@ -2468,6 +2481,17 @@ const soapHints = computed(() => ({
   margin-top: -2px; margin-bottom: 10px;
   font: 600 11.5px var(--font-mono); color: var(--brand-green-dark);
 }
+
+/* Overall estimated total for prescription (matches Pharmacy) */
+.rx-estimate-total {
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  margin-top: 10px; padding: 10px 14px;
+  background: var(--brand-green-light); border: 1px solid var(--brand-green);
+  border-radius: 9px;
+}
+.rx-estimate-total span   { font: 600 12px var(--font-sans); color: var(--brand-green-dark); }
+.rx-estimate-total strong { font: 800 15px var(--font-mono); color: var(--brand-green-dark); }
+.rx-estimate-total small  { font: 500 10.5px var(--font-sans); color: var(--fg3); }
 
 /* Linked drug bar */
 .drug-linked-bar {
