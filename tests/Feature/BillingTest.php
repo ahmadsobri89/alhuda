@@ -3,8 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\Invoice;
+use App\Models\InventoryItem;
+use App\Models\InventoryTransaction;
 use App\Models\InvoiceItem;
 use App\Models\Patient;
+use App\Models\Prescription;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -250,6 +253,113 @@ class BillingTest extends TestCase
         $this->assertDatabaseMissing('invoice_items', ['id' => $item->id]);
         $this->assertEquals(0.00, $invoice->fresh()->subtotal);
         $this->assertDatabaseHas('audit_logs', ['action' => 'billing.item_remove']);
+    }
+
+    // ── Inventory Stock Sync ─────────────────────────────────────────────────
+
+    public function test_adding_drug_item_deducts_inventory_stock(): void
+    {
+        $invoice = Invoice::factory()->create(['patient_id' => $this->patient->id]);
+        $drug    = InventoryItem::factory()->create(['stock_quantity' => 20]);
+
+        $this->actingAs($this->user)
+            ->post("/billing/{$invoice->id}/items", [
+                'type'              => 'drug',
+                'description'       => $drug->name,
+                'quantity'          => 5,
+                'unit_price'        => 3.00,
+                'inventory_item_id' => $drug->id,
+            ])
+            ->assertSessionHas('success');
+
+        $this->assertEquals(15, $drug->fresh()->stock_quantity);
+        $this->assertDatabaseHas('inventory_transactions', [
+            'inventory_item_id' => $drug->id,
+            'type'              => 'out',
+            'quantity_delta'    => -5,
+            'reference'         => $invoice->invoice_number,
+        ]);
+    }
+
+    public function test_updating_drug_item_quantity_adjusts_inventory_stock(): void
+    {
+        $invoice = Invoice::factory()->create(['patient_id' => $this->patient->id]);
+        $drug    = InventoryItem::factory()->create(['stock_quantity' => 20]);
+        $item    = InvoiceItem::create([
+            'invoice_id' => $invoice->id, 'inventory_item_id' => $drug->id,
+            'type' => 'drug', 'description' => $drug->name,
+            'quantity' => 5, 'unit_price' => 3.00, 'total_price' => 15.00,
+        ]);
+        $drug->update(['stock_quantity' => 15]); // simulate the deduction that would have happened on add
+
+        $this->actingAs($this->user)
+            ->patch("/billing/{$invoice->id}/items/{$item->id}", ['quantity' => 8, 'unit_price' => 3.00])
+            ->assertSessionHas('success');
+
+        // qty went 5 -> 8, i.e. 3 more units taken out of stock.
+        $this->assertEquals(12, $drug->fresh()->stock_quantity);
+    }
+
+    public function test_removing_drug_item_restores_inventory_stock(): void
+    {
+        $invoice = Invoice::factory()->create(['patient_id' => $this->patient->id]);
+        $drug    = InventoryItem::factory()->create(['stock_quantity' => 15]);
+        $item    = InvoiceItem::create([
+            'invoice_id' => $invoice->id, 'inventory_item_id' => $drug->id,
+            'type' => 'drug', 'description' => $drug->name,
+            'quantity' => 5, 'unit_price' => 3.00, 'total_price' => 15.00,
+        ]);
+
+        $this->actingAs($this->user)
+            ->delete("/billing/{$invoice->id}/items/{$item->id}")
+            ->assertSessionHas('success');
+
+        $this->assertEquals(20, $drug->fresh()->stock_quantity);
+        $this->assertDatabaseHas('inventory_transactions', [
+            'inventory_item_id' => $drug->id,
+            'type'              => 'adjustment',
+            'quantity_delta'    => 5,
+        ]);
+    }
+
+    public function test_non_drug_item_does_not_touch_inventory(): void
+    {
+        $invoice = Invoice::factory()->create(['patient_id' => $this->patient->id]);
+
+        $this->actingAs($this->user)->post("/billing/{$invoice->id}/items", [
+            'type' => 'consultation', 'description' => 'Consult Fee', 'quantity' => 1, 'unit_price' => 50,
+        ]);
+
+        $this->assertEquals(0, InventoryTransaction::count());
+    }
+
+    public function test_editing_drug_item_on_paid_invoice_syncs_stock_under_rx_ledger(): void
+    {
+        $invoice = Invoice::factory()->paid()->create(['patient_id' => $this->patient->id]);
+        $drug    = InventoryItem::factory()->create(['stock_quantity' => 20]);
+        $rx      = Prescription::factory()->create([
+            'patient_id' => $this->patient->id, 'invoice_id' => $invoice->id,
+        ]);
+        $item = InvoiceItem::create([
+            'invoice_id' => $invoice->id, 'prescription_id' => $rx->id, 'inventory_item_id' => $drug->id,
+            'type' => 'drug', 'description' => $drug->name,
+            'quantity' => 5, 'unit_price' => 3.00, 'total_price' => 15.00,
+        ]);
+
+        $this->actingAs($this->user)
+            ->patch("/billing/{$invoice->id}/items/{$item->id}", [
+                'quantity' => 3, 'unit_price' => 3.00, 'reason' => 'Doktor kurangkan dos',
+            ])
+            ->assertSessionHas('success');
+
+        // 5 -> 3 restores 2 units, logged under the prescription's rx_number (not the invoice number)
+        // so PharmacyController::reverseDispenseEffects() can still reconcile the ledger correctly.
+        $this->assertEquals(22, $drug->fresh()->stock_quantity);
+        $this->assertDatabaseHas('inventory_transactions', [
+            'inventory_item_id' => $drug->id,
+            'reference'         => $rx->rx_number,
+            'quantity_delta'    => 2,
+        ]);
     }
 
     // ── Discount ─────────────────────────────────────────────────────────────

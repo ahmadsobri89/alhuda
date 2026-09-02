@@ -12,7 +12,7 @@ class InvoiceItem extends Model
     use LogsActivity;
 
     protected $fillable = [
-        'invoice_id', 'prescription_id', 'type', 'code', 'description',
+        'invoice_id', 'prescription_id', 'inventory_item_id', 'type', 'code', 'description',
         'quantity', 'unit_price', 'total_price',
     ];
 
@@ -33,6 +33,11 @@ class InvoiceItem extends Model
     public function prescription(): BelongsTo
     {
         return $this->belongsTo(Prescription::class);
+    }
+
+    public function inventoryItem(): BelongsTo
+    {
+        return $this->belongsTo(InventoryItem::class);
     }
 
     public function getActivitylogOptions(): LogOptions

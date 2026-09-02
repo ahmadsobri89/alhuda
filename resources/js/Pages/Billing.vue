@@ -116,7 +116,7 @@ function withPaidReason (data) {
 
 /* ── add-item drawer ── */
 const showAddDrawer = ref(false)
-const itemForm = useForm({ type:'consultation', code:'', description:'', quantity:1, unit_price:0 })
+const itemForm = useForm({ type:'consultation', code:'', description:'', quantity:1, unit_price:0, inventory_item_id:null })
 const itemLiveTotal = computed(() =>
   (parseFloat(itemForm.quantity) || 0) * (parseFloat(itemForm.unit_price) || 0)
 )
@@ -127,6 +127,7 @@ function fillQuick (q) {
   itemForm.description = q.description
   itemForm.unit_price  = q.unit_price
   itemForm.quantity    = 1
+  itemForm.inventory_item_id = q.id ?? null
 }
 function addItem () {
   itemForm.transform(withPaidReason).post(`/billing/${props.selected.id}/items`, {

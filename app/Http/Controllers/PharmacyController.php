@@ -359,7 +359,8 @@ class PharmacyController extends Controller
             $qty       = (int) $item->quantity;
 
             $invoice->items()->create([
-                'prescription_id' => $prescription->id,
+                'prescription_id'    => $prescription->id,
+                'inventory_item_id'  => $inv?->id,
                 'type'        => 'drug',
                 'code'        => null,
                 'description' => $item->drug_name,

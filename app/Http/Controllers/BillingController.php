@@ -8,10 +8,12 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\LookupCategory;
 use App\Models\Patient;
+use App\Models\Prescription;
 use App\Models\Service;
 use App\Services\TaskNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class BillingController extends Controller
@@ -174,21 +176,76 @@ class BillingController extends Controller
         );
     }
 
+    /**
+     * Apply a signed stock change and log it to the same InventoryTransaction ledger
+     * Pharmacy dispensing uses, so both sides stay reconcilable. $delta is the intended
+     * signed change (negative = deduct); the actual stock level is clamped at 0, matching
+     * PharmacyController's autoPopulateBill()/reverseDispenseEffects() behaviour.
+     */
+    private function adjustStock(InventoryItem $inv, int $delta, string $reference, string $notes): void
+    {
+        if ($delta === 0) return;
+
+        $newStock = max(0, $inv->stock_quantity + $delta);
+        $inv->update(['stock_quantity' => $newStock]);
+        $inv->transactions()->create([
+            'type'           => $delta < 0 ? 'out' : 'adjustment',
+            'quantity_delta' => $delta,
+            'quantity_after' => $newStock,
+            'reference'      => $reference,
+            'notes'          => $notes,
+            'performed_by'   => Auth::user()?->name ?? 'System',
+        ]);
+    }
+
+    /**
+     * A prescription-dispensed drug line's stock lives on the rx_number ledger
+     * (see PharmacyController::reverseDispenseEffects), so billing-side edits to it
+     * must post under that same reference to stay reconcilable. Standalone lines
+     * added directly in Billing use the invoice number instead.
+     */
+    private function stockReferenceFor(InvoiceItem $item, Invoice $invoice): string
+    {
+        if ($item->prescription_id) {
+            $rx = $item->relationLoaded('prescription') ? $item->prescription : Prescription::find($item->prescription_id);
+            if ($rx) return $rx->rx_number;
+        }
+
+        return $invoice->invoice_number;
+    }
+
     public function storeItem(Request $request, Invoice $invoice)
     {
         $reason = $this->ensureItemsEditable($request, $invoice);
 
         $data = $request->validate([
-            'type'        => ['required', 'in:consultation,procedure,drug,lab,other'],
-            'code'        => ['nullable', 'string', 'max:30'],
-            'description' => ['required', 'string', 'max:255'],
-            'quantity'    => ['required', 'numeric', 'min:0.01'],
-            'unit_price'  => ['required', 'numeric', 'min:0'],
+            'type'              => ['required', 'in:consultation,procedure,drug,lab,other'],
+            'code'              => ['nullable', 'string', 'max:30'],
+            'description'       => ['required', 'string', 'max:255'],
+            'quantity'          => ['required', 'numeric', 'min:0.01'],
+            'unit_price'        => ['required', 'numeric', 'min:0'],
+            'inventory_item_id' => ['nullable', 'exists:inventory_items,id'],
         ]);
 
+        // Only a 'drug' line can be linked to inventory stock.
+        $data['inventory_item_id'] = $data['type'] === 'drug' ? ($data['inventory_item_id'] ?? null) : null;
         $data['total_price'] = round($data['quantity'] * $data['unit_price'], 2);
-        $invoice->items()->create($data);
-        $invoice->recalc();
+
+        DB::transaction(function () use ($invoice, $data) {
+            $invoice->items()->create($data);
+
+            if ($data['inventory_item_id']) {
+                $inv = InventoryItem::whereKey($data['inventory_item_id'])->lockForUpdate()->first();
+                if ($inv) {
+                    $this->adjustStock(
+                        $inv, -(int) $data['quantity'], $invoice->invoice_number,
+                        "Dikeluarkan melalui Bil & Invois · {$invoice->invoice_number}"
+                    );
+                }
+            }
+
+            $invoice->recalc();
+        });
 
         $suffix = $reason ? " · Selepas bayaran · Sebab: {$reason}" : '';
         AuditLog::record(
@@ -213,9 +270,25 @@ class BillingController extends Controller
         ]);
 
         $old = "{$item->quantity} × RM " . number_format($item->unit_price, 2);
+        $oldQty = (float) $item->quantity;
         $data['total_price'] = round($data['quantity'] * $data['unit_price'], 2);
-        $item->update($data);
-        $invoice->recalc();
+
+        DB::transaction(function () use ($item, $data, $invoice, $oldQty) {
+            $item->update($data);
+
+            if ($item->inventory_item_id) {
+                $inv = InventoryItem::whereKey($item->inventory_item_id)->lockForUpdate()->first();
+                if ($inv) {
+                    $qtyDelta = (int) $oldQty - (int) $data['quantity'];
+                    $this->adjustStock(
+                        $inv, $qtyDelta, $this->stockReferenceFor($item, $invoice),
+                        "Pelarasan kuantiti item bil · {$invoice->invoice_number}"
+                    );
+                }
+            }
+
+            $invoice->recalc();
+        });
 
         $new = "{$data['quantity']} × RM " . number_format($data['unit_price'], 2);
         $suffix = $reason ? " · {$old} → {$new} · Selepas bayaran · Sebab: {$reason}" : '';
@@ -236,8 +309,21 @@ class BillingController extends Controller
         $reason = $this->ensureItemsEditable($request, $invoice);
 
         $desc = $item->description;
-        $item->delete();
-        $invoice->recalc();
+
+        DB::transaction(function () use ($item, $invoice) {
+            if ($item->inventory_item_id) {
+                $inv = InventoryItem::whereKey($item->inventory_item_id)->lockForUpdate()->first();
+                if ($inv) {
+                    $this->adjustStock(
+                        $inv, (int) $item->quantity, $this->stockReferenceFor($item, $invoice),
+                        "Item bil dipadam · {$invoice->invoice_number}"
+                    );
+                }
+            }
+
+            $item->delete();
+            $invoice->recalc();
+        });
 
         $suffix = $reason ? " · Selepas bayaran · Sebab: {$reason}" : '';
         AuditLog::record(
