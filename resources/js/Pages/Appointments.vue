@@ -4,7 +4,7 @@ import Avatar from '@/Components/Clinic/Avatar.vue'
 import Badge from '@/Components/Clinic/Badge.vue'
 import Btn from '@/Components/Clinic/Btn.vue'
 import { router, useForm, usePage } from '@inertiajs/vue3'
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useLocale } from '@/composables/useLocale'
 
 defineOptions({ layout: KlinikLayout })
@@ -32,6 +32,33 @@ const defaultDoctor = computed(() => {
   const u = usePage().props.auth?.user
   if (!u?.name) return ''
   return u.role === 'doctor' ? `Dr. ${u.name}` : u.name
+})
+
+/* ── Week grid: auto-scroll to business hours ────────── */
+// Slots now span the full 24h day, so land the (scrollable) grid on
+// business hours by default instead of showing 00:00 first.
+const BUSINESS_HOURS_SLOT = '08:00'
+const gridWrapRef = ref(null)
+const slotRowEls = {}
+function setSlotRowEl(slot, el) {
+  if (el) slotRowEls[slot] = el
+  else delete slotRowEls[slot]
+}
+function scrollGridToBusinessHours() {
+  nextTick(() => {
+    const wrap = gridWrapRef.value
+    const row  = slotRowEls[BUSINESS_HOURS_SLOT]
+    if (!wrap || !row) return
+    const wrapRect = wrap.getBoundingClientRect()
+    const rowRect  = row.getBoundingClientRect()
+    wrap.scrollTop += rowRect.top - wrapRect.top
+  })
+}
+onMounted(() => {
+  if (props.viewMode === 'week') scrollGridToBusinessHours()
+})
+watch(() => props.viewMode, (mode) => {
+  if (mode === 'week') scrollGridToBusinessHours()
 })
 
 /* ── Week navigation ─────────────────────────────────── */
@@ -336,7 +363,7 @@ const kpiPeriodKey = computed(() => (props.viewMode === 'month' ? 'appt_kpi_mont
           </div>
 
           <!-- Grid -->
-          <div class="grid-wrap">
+          <div class="grid-wrap" ref="gridWrapRef">
             <table class="cal-table">
               <thead>
                 <tr>
@@ -349,7 +376,7 @@ const kpiPeriodKey = computed(() => (props.viewMode === 'month' ? 'appt_kpi_mont
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="slot in slots" :key="slot">
+                <tr v-for="slot in slots" :key="slot" :ref="el => setSlotRowEl(slot, el)">
                   <td class="td-time">{{ slot }}</td>
                   <td v-for="day in weekDates" :key="day.date"
                       :class="['td-slot', day.is_today && 'td-slot--today']"
