@@ -60,6 +60,8 @@
   "fin_trend": "Trend Kutipan",
   "fin_txn": "transaksi",
   "fin_txn_list": "Senarai Transaksi",
+  "fin_search": "Cari invois / pesakit…",
+  "fin_col_no": "Bil",
   "fin_col_invoice": "Invois",
   "fin_col_patient": "Pesakit",
   "fin_col_method": "Jenis Bayaran",

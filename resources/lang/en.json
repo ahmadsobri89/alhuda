@@ -60,6 +60,8 @@
   "fin_trend": "Collection Trend",
   "fin_txn": "txn",
   "fin_txn_list": "Transaction List",
+  "fin_search": "Search invoice / patient…",
+  "fin_col_no": "No.",
   "fin_col_invoice": "Invoice",
   "fin_col_patient": "Patient",
   "fin_col_method": "Payment Type",

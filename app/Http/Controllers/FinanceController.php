@@ -119,12 +119,24 @@ class FinanceController extends Controller
             ])->values();
         }
 
-        // ── Transaksi dalam tempoh ──
-        $transactions = $scope(Invoice::with('patient'))
-            ->latest('paid_at')
-            ->take(60)
-            ->get()
-            ->map(fn ($i) => [
+        // ── Transaksi dalam tempoh (carian + pagination) ──
+        $search = trim((string) $request->input('search', ''));
+
+        $perPage = (int) $request->input('per_page', 15);
+        if (! in_array($perPage, [15, 30, 50, 100], true)) {
+            $perPage = 15;
+        }
+
+        $transactionsQuery = $scope(Invoice::with('patient'))->latest('paid_at');
+        if ($search !== '') {
+            $transactionsQuery->where(function ($q) use ($search) {
+                $q->where('invoice_number', 'like', "%{$search}%")
+                    ->orWhereHas('patient', fn ($p) => $p->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        $transactions = $transactionsQuery->paginate($perPage)->withQueryString()
+            ->through(fn ($i) => [
                 'id'             => $i->id,
                 'invoice_number' => $i->invoice_number,
                 'patient_name'   => $i->patient->name,
@@ -147,6 +159,7 @@ class FinanceController extends Controller
             'selectedMonth' => $month,
             'selectedYear'  => $year,
             'filterYears'   => range((int) now()->year, 2015),
+            'filters'       => ['search' => $search],
         ]);
     }
 

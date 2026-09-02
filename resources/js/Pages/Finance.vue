@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import KlinikLayout from '@/Layouts/KlinikLayout.vue'
 import Badge from '@/Components/Clinic/Badge.vue'
@@ -14,11 +14,12 @@ const props = defineProps({
   summary:       Object,
   byMethod:      Array,
   trend:         Array,
-  transactions:  Array,
+  transactions:  { type: Object, default: () => ({ data: [], links: [], from: 0, to: 0, total: 0, per_page: 15, last_page: 1 }) },
   selectedDate:  String,
   selectedMonth: Number,
   selectedYear:  Number,
   filterYears:   Array,
+  filters:       { type: Object, default: () => ({}) },
 })
 
 const page = usePage()
@@ -36,16 +37,42 @@ const months = computed(() =>
   }))
 )
 
+const PER_PAGE_OPTIONS = [15, 30, 50, 100]
+const search  = ref(props.filters?.search ?? '')
+const perPage = ref(props.transactions?.per_page ?? 15)
+
+function buildParams(period, extra = {}) {
+  const data = { period }
+  if (period === 'day')   data.date = fDate.value
+  if (period === 'month') { data.month = fMonth.value; data.year = fYear.value }
+  if (period === 'year')  data.year = fYear.value
+  data.search   = search.value || undefined
+  data.per_page = perPage.value !== 15 ? perPage.value : undefined
+  return { ...data, ...extra }
+}
+
+function goFinance(data) {
+  router.get('/finance', data, { preserveState: true, preserveScroll: true, replace: true })
+}
+
 function setPeriod(p) {
   if (p !== 'day' && !props.isAdmin) return
-  const data = { period: p }
-  if (p === 'day')   data.date = fDate.value
-  if (p === 'month') { data.month = fMonth.value; data.year = fYear.value }
-  if (p === 'year')  data.year = fYear.value
-  router.visit('/finance', { data, preserveScroll: true })
+  goFinance(buildParams(p))
 }
 
 function applyFilter() { setPeriod(props.period) }
+
+let searchTimer
+watch(search, () => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => goFinance(buildParams(props.period)), 350)
+})
+
+function setPerPage() { goFinance(buildParams(props.period)) }
+
+function goToPage(url) {
+  if (url) router.get(url, buildParams(props.period), { preserveState: true, preserveScroll: true })
+}
 
 /* ── audit export (CSV) — ikut penapis semasa ── */
 const exportUrl = computed(() => {
@@ -170,21 +197,44 @@ function barH(v) { return Math.max(3, Math.round((v / maxTrend.value) * 90)) + '
     <div class="card">
       <div class="card__hd">
         <h3 class="card__ttl">{{ t('fin_txn_list') }}</h3>
-        <span class="card__sub">{{ transactions.length }} {{ t('fin_txn') }}</span>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+          <input v-model="search" class="inp" style="width:220px" :placeholder="t('fin_search')" />
+          <span class="card__sub">{{ transactions.total }} {{ t('fin_txn') }}</span>
+        </div>
       </div>
       <div class="tbl__hd">
-        <div>{{ t('fin_col_invoice') }}</div><div>{{ t('fin_col_patient') }}</div>
+        <div>{{ t('fin_col_no') }}</div><div>{{ t('fin_col_invoice') }}</div><div>{{ t('fin_col_patient') }}</div>
         <div>{{ t('fin_col_method') }}</div><div style="text-align:right">{{ t('fin_col_amount') }}</div>
         <div>{{ t('fin_col_time') }}</div><div>{{ t('fin_col_by') }}</div>
       </div>
-      <div v-if="!transactions.length" class="empty">{{ t('fin_empty') }}</div>
-      <div v-for="x in transactions" :key="x.id" class="tbl__row">
+      <div v-if="!transactions.data.length" class="empty">{{ t('fin_empty') }}</div>
+      <div v-for="(x, idx) in transactions.data" :key="x.id" class="tbl__row">
+        <div class="mono" style="color:var(--fg3)">{{ transactions.from + idx }}</div>
         <div class="mono">{{ x.invoice_number }}</div>
         <div>{{ x.patient_name }}</div>
         <div><Badge :tone="methodTone[x.payment_method] || 'neutral'">{{ methodLabel[x.payment_method] || x.payment_method }}</Badge></div>
         <div style="text-align:right;font:700 13px var(--font-mono)">{{ rm(x.total_amount) }}</div>
         <div class="mono" style="color:var(--fg3)">{{ x.paid_at }}</div>
         <div style="color:var(--fg3)">{{ x.paid_by }}</div>
+      </div>
+
+      <div v-if="transactions.data.length" class="pagination">
+        <div class="pagination__info">
+          {{ t('pg_show') }}
+          <select v-model.number="perPage" @change="setPerPage" class="per-page-select">
+            <option v-for="n in PER_PAGE_OPTIONS" :key="n" :value="n">{{ n }}</option>
+          </select>
+          / {{ t('pg_per_page') }} · {{ transactions.from }}–{{ transactions.to }} {{ t('pg_of') }} {{ transactions.total }}
+        </div>
+        <div v-if="transactions.last_page > 1" class="pagination__pages">
+          <button
+            v-for="link in transactions.links" :key="link.label"
+            :disabled="!link.url"
+            :class="['page-btn', link.active ? 'active':'']"
+            @click="goToPage(link.url)"
+            v-html="link.label"
+          ></button>
+        </div>
       </div>
     </div>
   </div>
@@ -237,7 +287,7 @@ function barH(v) { return Math.max(3, Math.round((v / maxTrend.value) * 90)) + '
 .col__bar { width: 70%; min-width: 8px; max-width: 26px; background: var(--brand-green-light); border: 1px solid #A7F3D0; border-radius: 4px 4px 0 0; transition: height .3s; }
 .col__lbl { font: 500 10px var(--font-sans); color: var(--fg3); white-space: nowrap; }
 
-.tbl__hd, .tbl__row { display: grid; grid-template-columns: 1.2fr 1.6fr 1fr 1.1fr 1.2fr 1fr; gap: 10px; align-items: center; }
+.tbl__hd, .tbl__row { display: grid; grid-template-columns: 44px 1.2fr 1.6fr 1fr 1.1fr 1.2fr 1fr; gap: 10px; align-items: center; }
 .tbl__hd { padding: 8px 4px; border-bottom: 1px solid var(--border); font: 600 11px var(--font-sans); color: var(--fg3); text-transform: uppercase; }
 .tbl__row { padding: 10px 4px; border-bottom: 1px solid var(--border); font: 500 13px var(--font-sans); color: var(--fg1); }
 .tbl__row:last-child { border-bottom: none; }
