@@ -45,6 +45,7 @@ class ServicesController extends Controller
 
         $services = $query->orderBy('name')
             ->paginate($perPage)
+            ->onEachSide(0)
             ->withQueryString()
             ->through(fn ($service) => $this->formatService($service));
 

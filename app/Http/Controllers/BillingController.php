@@ -43,7 +43,7 @@ class BillingController extends Controller
             $perPage = 30;
         }
 
-        $invoices = $query->paginate($perPage)->withQueryString()
+        $invoices = $query->paginate($perPage)->onEachSide(0)->withQueryString()
             ->through(fn ($inv) => [
                 'id'             => $inv->id,
                 'invoice_number' => $inv->invoice_number,

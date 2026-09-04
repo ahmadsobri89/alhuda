@@ -34,7 +34,7 @@ class AuditLogController extends Controller
             $perPage = 20;
         }
 
-        $logs = $query->paginate($perPage)->withQueryString()
+        $logs = $query->paginate($perPage)->onEachSide(0)->withQueryString()
             ->through(fn (Activity $a) => [
                 'id' => $a->id,
                 'ts' => $a->created_at->format('d/m/Y H:i:s'),

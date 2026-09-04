@@ -87,6 +87,7 @@ class InventoryController extends Controller
 
         $items = $query->orderBy('name')
             ->paginate($perPage)
+            ->onEachSide(0)
             ->withQueryString()
             ->through(fn ($item) => $this->formatItem($item));
 

@@ -31,6 +31,7 @@ class SettingsController extends Controller
         $auditLogs = AuditLog::with('user:id,name')
             ->orderByDesc('created_at')
             ->paginate($perPage)
+            ->onEachSide(0)
             ->withQueryString()
             ->through(fn ($r) => [
                 'id'  => $r->id,

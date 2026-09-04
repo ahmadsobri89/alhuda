@@ -29,6 +29,7 @@ class PatientController extends Controller
             )
             ->orderByDesc('created_at')
             ->paginate($perPage)
+            ->onEachSide(0)
             ->withQueryString()
             ->through(fn ($p) => [
                 'id'                      => $p->id,

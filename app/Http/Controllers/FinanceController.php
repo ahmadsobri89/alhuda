@@ -135,7 +135,7 @@ class FinanceController extends Controller
             });
         }
 
-        $transactions = $transactionsQuery->paginate($perPage)->withQueryString()
+        $transactions = $transactionsQuery->paginate($perPage)->onEachSide(0)->withQueryString()
             ->through(fn ($i) => [
                 'id'             => $i->id,
                 'invoice_number' => $i->invoice_number,

@@ -43,7 +43,7 @@ class EMRController extends Controller
             $perPage = 30;
         }
 
-        $visits = $query->paginate($perPage)->withQueryString()
+        $visits = $query->paginate($perPage)->onEachSide(0)->withQueryString()
             ->through(fn ($v) => [
                 'id'              => $v->id,
                 'patient_name'    => $v->patient->name,

@@ -86,6 +86,7 @@ class PharmacyController extends Controller
             )
             ->orderByDesc('updated_at')
             ->paginate($perPage)
+            ->onEachSide(0)
             ->withQueryString()
             ->through(fn ($rx) => $this->formatRx($rx));
 
