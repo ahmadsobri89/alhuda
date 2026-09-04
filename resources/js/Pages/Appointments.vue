@@ -846,9 +846,9 @@ const kpiPeriodKey = computed(() => (props.viewMode === 'month' ? 'appt_kpi_mont
 
 /* ── Month grid ──────────────────────────────────────── */
 .month-wrap { display: flex; flex-direction: column; }
-.month-head { display: grid; grid-template-columns: repeat(7,1fr); background: var(--bg-soft); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 2; }
+.month-head { display: grid; grid-template-columns: repeat(7,1fr); background: var(--bg-soft); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 2; min-width: 640px; }
 .month-head__cell { padding: 8px 6px; text-align: center; font: 700 11px var(--font-sans); color: var(--fg3); text-transform: uppercase; letter-spacing: .04em; }
-.month-grid { display: grid; grid-template-columns: repeat(7,1fr); grid-auto-rows: minmax(92px,1fr); }
+.month-grid { display: grid; grid-template-columns: repeat(7,1fr); grid-auto-rows: minmax(92px,1fr); min-width: 640px; }
 .month-cell {
   border-bottom: 1px solid var(--border); border-left: 1px solid var(--border);
   padding: 6px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; min-width: 0;
@@ -926,4 +926,30 @@ const kpiPeriodKey = computed(() => (props.viewMode === 'month' ? 'appt_kpi_mont
 .info-label { font: 600 10.5px var(--font-sans); letter-spacing: .04em; text-transform: uppercase; color: var(--fg3); }
 .info-val   { font: 500 13px var(--font-sans); color: var(--fg1); }
 .info-val.mono { font-family: var(--font-mono); font-size: 12px; }
+
+@media (max-width: 1024px) {
+  .appt-layout {
+    grid-template-columns: 1fr;
+    flex: none;
+    min-height: 0;
+  }
+  .appt-layout > .card {
+    min-height: 0 !important;
+    max-height: 70vh;
+    overflow: hidden !important;
+  }
+  .grid-wrap {
+    flex: 1;
+    min-height: 0;
+    overflow-x: auto;
+    overflow-y: auto;
+  }
+  .kpi-grid { grid-template-columns: repeat(2,1fr); }
+}
+
+@media (max-width: 560px) {
+  .kpi-grid { grid-template-columns: 1fr; }
+  .form-grid-3 { grid-template-columns: 1fr; }
+  .info-grid { grid-template-columns: 1fr; }
+}
 </style>

@@ -1254,6 +1254,7 @@ function doDispense() {
 
   /* Info grid: 1-col */
   .rx-info-grid { grid-template-columns: 1fr; }
+  .info-grid { grid-template-columns: 1fr; }
 
   /* Drug card rows: stack */
   .rx-row--2      { grid-template-columns: 1fr; }

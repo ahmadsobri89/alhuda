@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import Icon from '@/Components/Clinic/Icon.vue'
 import Avatar from '@/Components/Clinic/Avatar.vue'
@@ -53,18 +53,33 @@ const navItems = computed(() =>
 const title    = computed(() => t(`page_title_${currentRoute.value}`))
 const subtitle = computed(() => page.props.pageSubtitle ?? '')
 
+const mobileNavOpen = ref(false)
+
 function navigate(item) {
+  mobileNavOpen.value = false
   router.visit(route(item.routeName || item.id))
+}
+
+function logout() {
+  if (window.confirm(t('layout_logout_confirm'))) {
+    router.post('/logout')
+  }
 }
 </script>
 
 <template>
   <div id="app">
+    <!-- Mobile backdrop -->
+    <div v-if="mobileNavOpen" class="sidebar-backdrop" @click="mobileNavOpen = false" />
+
     <!-- Sidebar -->
-    <aside class="sidebar">
+    <aside :class="['sidebar', mobileNavOpen ? 'sidebar--open' : '']">
       <div class="sidebar__brand">
         <img :src="clinicLogoUrl" alt="Al-Huda" />
         <div class="sidebar__brand-name">Poliklinik<b>Al-Huda</b></div>
+        <button class="sidebar__close" @click="mobileNavOpen = false">
+          <Icon name="close" :size="18" />
+        </button>
       </div>
       <nav class="sidebar__nav">
         <button
@@ -85,7 +100,7 @@ function navigate(item) {
           <div style="font:600 12.5px var(--font-sans); color: var(--fg1)">{{ user?.role === 'doctor' ? 'Dr. ' : '' }}{{ userName }}</div>
           <div style="font:500 11px var(--font-mono); color: var(--fg3)">{{ userMeta }}</div>
         </div>
-        <button class="logout-btn" :title="t('layout_logout')" @click="router.post('/logout')">
+        <button class="logout-btn" :title="t('layout_logout')" @click="logout">
           <Icon name="logout" :size="16" />
         </button>
       </div>
@@ -95,6 +110,9 @@ function navigate(item) {
     <div class="main">
       <!-- TopBar -->
       <div class="topbar">
+        <button class="hamburger-btn" @click="mobileNavOpen = true">
+          <Icon name="menu" :size="19" />
+        </button>
         <div class="topbar__title">
           <h1>{{ title }}</h1>
           <p v-if="subtitle">{{ subtitle }}</p>

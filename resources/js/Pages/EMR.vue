@@ -2598,5 +2598,25 @@ const soapHints = computed(() => ({
   .rx-row--footer .rx-field--price { max-width: none; }
   .rx-row--footer .rx-field--instr { grid-column: 1 / -1; }
   .rx-toggle { margin-top: 8px; }
+  .detail-body { grid-template-columns: 1fr; }
+  .form-grid-3 { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 1024px) {
+  /* .main (shared shell) has overflow:hidden, so .emr-root itself must be the
+     scroll container here — overflow:visible alone stops local clipping but
+     .main still blocks real wheel/touch scrolling, leaving content unreachable. */
+  .emr-root { flex-direction: column; height: 100%; overflow-y: auto; overflow-x: hidden; }
+  .visit-list { width: 100%; max-height: 40vh; flex-shrink: 0; border-right: 0; border-bottom: 1px solid var(--border); }
+  .visit-detail { flex: none; overflow-y: visible; }
+  /* nothing selected yet: give the list the room instead of a half-empty placeholder pane */
+  .emr-root:has(.empty-state) .visit-list { max-height: none; }
+  .empty-state { padding: 24px 20px; }
+}
+
+@media (max-width: 560px) {
+  .form-grid-vitals { grid-template-columns: repeat(2, 1fr); }
+  .svc-form-grid { grid-template-columns: 1fr 1fr; }
+  .form-grid-3 { grid-template-columns: 1fr; }
 }
 </style>

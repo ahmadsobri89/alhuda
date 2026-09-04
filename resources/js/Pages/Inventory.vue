@@ -675,4 +675,18 @@ function doDiscontinue() {
 .stock-fill  { height: 100%; border-radius: 4px; transition: width .3s; }
 
 /* Pagination & datatable scroll styles kini global di app.css */
+
+@media (max-width: 900px) {
+  .kpi-grid { grid-template-columns: repeat(2,1fr); }
+  .form-grid-3 { grid-template-columns: 1fr 1fr; }
+  .form-grid-4 { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 560px) {
+  .kpi-grid { grid-template-columns: 1fr; }
+  .form-grid-3 { grid-template-columns: 1fr; }
+  .form-grid-4 { grid-template-columns: 1fr; }
+  .stock-type-grid { grid-template-columns: 1fr; }
+  .info-grid { grid-template-columns: 1fr; }
+}
 </style>

@@ -433,4 +433,19 @@ function fmtRM(v) { return 'RM ' + Number(v).toLocaleString('ms-MY', { minimumFr
   color: var(--fg3);
   font: 400 12px var(--font-sans);
 }
+
+@media (max-width: 1024px) {
+  .grid-2 { grid-template-columns: 1fr; }
+  .grid-3 { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 900px) {
+  .kpi-row { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 560px) {
+  .kpi-row { grid-template-columns: 1fr; }
+  .inv-stats { grid-template-columns: 1fr; }
+  .hbar-label { width: 80px; }
+}
 </style>

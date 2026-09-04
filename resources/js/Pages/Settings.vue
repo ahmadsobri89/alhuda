@@ -1459,4 +1459,14 @@ function lkpDoDelete() {
   overflow: hidden;
   background: #fff;
 }
+
+@media (max-width: 900px) {
+  .lookup-layout { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .form-grid .field:nth-child(5) { grid-column: auto; }
+  .clinic-form-grid { grid-template-columns: 1fr; }
+}
 </style>

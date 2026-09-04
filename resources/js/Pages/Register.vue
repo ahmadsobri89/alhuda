@@ -385,4 +385,12 @@ function submit() {
 }
 
 .req { color: var(--brand-red); }
+
+@media (max-width: 900px) {
+  .reg-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 560px) {
+  .reg-grid { grid-template-columns: 1fr; }
+}
 </style>

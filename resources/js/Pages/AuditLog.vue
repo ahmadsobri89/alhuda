@@ -185,4 +185,8 @@ function toggle(id) {
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+@media (max-width: 640px) {
+  .diff-panel { grid-template-columns: 1fr; }
+}
 </style>

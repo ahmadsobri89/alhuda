@@ -399,7 +399,7 @@ const submit = () => {
 
 .lr-input {
     width: 100%;
-    padding: 10px 13px;
+    padding: 15px 13px;
     border: 1.5px solid var(--border);
     border-radius: 9px;
     font: 400 13.5px var(--font-sans);
@@ -422,21 +422,21 @@ const submit = () => {
 }
 
 .lr-input-wrap { position: relative; }
-.lr-input-wrap .lr-input { padding-right: 42px; }
+.lr-input-wrap .lr-input { padding-right: 50px; }
 .lr-input-eye {
     position: absolute;
     top: 50%;
-    right: 4px;
+    right: 2px;
     transform: translateY(-50%);
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
     padding: 0;
     background: transparent;
     border: none;
-    border-radius: 6px;
+    border-radius: 8px;
     color: var(--fg3);
     cursor: pointer;
     transition: color .15s, background .15s;
@@ -444,6 +444,10 @@ const submit = () => {
 .lr-input-eye:hover { color: var(--fg1); background: var(--brand-green-light); }
 
 .lr-forgot {
+    display: inline-flex;
+    align-items: center;
+    padding: 15px 0;
+    margin: -15px 0;
     font: 500 12px var(--font-sans);
     color: var(--brand-green);
     text-decoration: none;
@@ -454,16 +458,19 @@ const submit = () => {
     display: flex;
     align-items: center;
     gap: 8px;
+    min-height: 44px;
     font: 500 13px var(--font-sans);
     color: var(--fg2);
     cursor: pointer;
     user-select: none;
-    margin-top: -2px;
+    margin-top: -8px;
+    margin-bottom: -8px;
 }
 .lr-check input {
-    width: 15px; height: 15px;
+    width: 18px; height: 18px;
     accent-color: var(--brand-green);
     cursor: pointer;
+    flex-shrink: 0;
 }
 
 .lr-btn {
@@ -472,6 +479,7 @@ const submit = () => {
     justify-content: center;
     gap: 8px;
     width: 100%;
+    min-height: 44px;
     padding: 12px;
     background: var(--brand-green);
     color: #fff;
@@ -499,6 +507,7 @@ const submit = () => {
     justify-content: center;
     gap: 10px;
     width: 100%;
+    min-height: 44px;
     padding: 11px 12px;
     background: #fff;
     border: 1.5px solid var(--border);

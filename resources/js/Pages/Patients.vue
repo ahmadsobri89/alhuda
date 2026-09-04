@@ -627,4 +627,14 @@ function genderLabel(g) { return g === 'male' ? t('gender_male') : t('gender_fem
 .info-val.mono { font-family: var(--font-mono); font-size: 12px; }
 
 /* Pagination & datatable scroll styles kini global di app.css */
+
+@media (max-width: 900px) {
+  .form-grid-3 { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 560px) {
+  .form-grid-3 { grid-template-columns: 1fr; }
+  .info-grid { grid-template-columns: 1fr; }
+  .drawer-stats { flex-wrap: wrap; }
+}
 </style>

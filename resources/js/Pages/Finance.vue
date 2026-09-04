@@ -202,6 +202,7 @@ function barH(v) { return Math.max(3, Math.round((v / maxTrend.value) * 90)) + '
           <span class="card__sub">{{ transactions.total }} {{ t('fin_txn') }}</span>
         </div>
       </div>
+      <div class="tbl-scroll">
       <div class="tbl__hd">
         <div>{{ t('fin_col_no') }}</div><div>{{ t('fin_col_invoice') }}</div><div>{{ t('fin_col_patient') }}</div>
         <div>{{ t('fin_col_method') }}</div><div style="text-align:right">{{ t('fin_col_amount') }}</div>
@@ -216,6 +217,7 @@ function barH(v) { return Math.max(3, Math.round((v / maxTrend.value) * 90)) + '
         <div style="text-align:right;font:700 13px var(--font-mono)">{{ rm(x.total_amount) }}</div>
         <div class="mono" style="color:var(--fg3)">{{ x.paid_at }}</div>
         <div style="color:var(--fg3)">{{ x.paid_by }}</div>
+      </div>
       </div>
 
       <div v-if="transactions.data.length" class="pagination">
@@ -287,7 +289,8 @@ function barH(v) { return Math.max(3, Math.round((v / maxTrend.value) * 90)) + '
 .col__bar { width: 70%; min-width: 8px; max-width: 26px; background: var(--brand-green-light); border: 1px solid #A7F3D0; border-radius: 4px 4px 0 0; transition: height .3s; }
 .col__lbl { font: 500 10px var(--font-sans); color: var(--fg3); white-space: nowrap; }
 
-.tbl__hd, .tbl__row { display: grid; grid-template-columns: 44px 1.2fr 1.6fr 1fr 1.1fr 1.2fr 1fr; gap: 10px; align-items: center; }
+.tbl-scroll { overflow-x: auto; }
+.tbl__hd, .tbl__row { display: grid; grid-template-columns: 44px 1.2fr 1.6fr 1fr 1.1fr 1.2fr 1fr; gap: 10px; align-items: center; min-width: 640px; }
 .tbl__hd { padding: 8px 4px; border-bottom: 1px solid var(--border); font: 600 11px var(--font-sans); color: var(--fg3); text-transform: uppercase; }
 .tbl__row { padding: 10px 4px; border-bottom: 1px solid var(--border); font: 500 13px var(--font-sans); color: var(--fg1); }
 .tbl__row:last-child { border-bottom: none; }
@@ -298,5 +301,10 @@ function barH(v) { return Math.max(3, Math.round((v / maxTrend.value) * 90)) + '
 @media (max-width: 900px) {
   .grid2 { grid-template-columns: 1fr; }
   .kpis { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 560px) {
+  .card__hd { flex-wrap: wrap; gap: 8px; }
+  .card__hd .inp { width: 100% !important; }
 }
 </style>

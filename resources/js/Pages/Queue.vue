@@ -152,6 +152,7 @@ startAutoRefresh()
         </div>
 
         <!-- table head -->
+        <div class="q-table-scroll">
         <div class="table__head q-cols">
           <div>{{ t('queue_col_no') }}</div>
           <div>{{ t('queue_col_patient') }}</div>
@@ -236,6 +237,7 @@ startAutoRefresh()
           <span>{{ t('queue_no_active') }}</span>
           <Btn variant="secondary" size="sm" @click="router.visit('/appointments')">{{ t('queue_register') }}</Btn>
         </div>
+        </div><!-- /.q-table-scroll -->
       </div>
 
       <!-- SELESAI -->
@@ -245,6 +247,7 @@ startAutoRefresh()
           <span class="count-pill count-pill--grey">{{ finished.length }}</span>
         </div>
 
+        <div class="q-table-scroll">
         <div class="table__head q-cols-done">
           <div>{{ t('queue_col_no_short') }}</div>
           <div>{{ t('queue_col_patient') }}</div>
@@ -297,6 +300,7 @@ startAutoRefresh()
             >{{ t('queue_reregister') }}</button>
           </div>
         </div>
+        </div><!-- /.q-table-scroll -->
       </div>
 
     </div>
@@ -395,11 +399,14 @@ startAutoRefresh()
 .legend-item--conf { color: var(--fg3); }
 
 /* grid columns */
+.q-table-scroll { overflow-x: auto; }
 .q-cols {
   grid-template-columns: 100px 1.8fr 120px 130px 1.5fr 100px 110px 180px !important;
+  min-width: 900px;
 }
 .q-cols-done {
   grid-template-columns: 80px 1.8fr 120px 130px 1.5fr 110px 120px !important;
+  min-width: 820px;
 }
 
 /* queue no */
@@ -490,5 +497,11 @@ startAutoRefresh()
   flex-direction: column;
   align-items: center;
   gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .stats-bar { flex-wrap: wrap; }
+  .stat-box { flex: 1 1 45%; }
+  .stat-date { flex: 1 1 100%; }
 }
 </style>

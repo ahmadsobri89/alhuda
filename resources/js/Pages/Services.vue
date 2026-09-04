@@ -291,4 +291,14 @@ function doDiscontinue() {
 .field { display:flex; flex-direction:column; gap:5px; }
 .field__label { font:600 11px var(--font-sans); color:var(--fg2); }
 .field__error { font:500 11px var(--font-sans); color:var(--brand-red); }
+
+@media (max-width: 900px) {
+  .kpi-grid { grid-template-columns: repeat(2,1fr); }
+  .form-grid-3 { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 560px) {
+  .kpi-grid { grid-template-columns: 1fr; }
+  .form-grid-3 { grid-template-columns: 1fr; }
+}
 </style>

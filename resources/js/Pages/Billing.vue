@@ -368,11 +368,12 @@ function submitNew () {
             </div>
 
             <!-- table -->
-            <div class="table__head" style="grid-template-columns:90px 1fr 60px 90px 90px 32px">
+            <div class="table-scroll">
+            <div class="table__head" style="grid-template-columns:90px 1fr 60px 90px 90px 32px;min-width:452px">
               <div>{{ t('bill_col_type') }}</div><div>{{ t('bill_col_desc') }}</div><div>{{ t('bill_col_qty') }}</div><div>{{ t('bill_col_price') }}</div><div>{{ t('bill_total') }}</div><div></div>
             </div>
             <div v-for="item in selected.items" :key="item.id"
-              class="table__row" :style="editingItemId===item.id ? 'grid-template-columns:90px 1fr 60px 90px 90px 60px' : 'grid-template-columns:90px 1fr 60px 90px 90px 32px'">
+              class="table__row" :style="(editingItemId===item.id ? 'grid-template-columns:90px 1fr 60px 90px 90px 60px' : 'grid-template-columns:90px 1fr 60px 90px 90px 32px') + ';min-width:452px'">
               <div><Badge :tone="typeTone(item.type)" size="xs">{{ typeLabel[item.type] }}</Badge></div>
               <div>
                 <div style="font:500 12.5px var(--font-sans);color:var(--fg1)">{{ item.description }}</div>
@@ -399,6 +400,7 @@ function submitNew () {
                 </div>
               </template>
             </div>
+            </div><!-- /.table-scroll -->
 
             <p v-if="!selected.items.length"
               style="padding:28px 16px;text-align:center;color:var(--fg3);font:400 12.5px var(--font-sans)">
@@ -924,4 +926,27 @@ function submitNew () {
 .pdrop__item:last-child { border-bottom: none; }
 .pdrop__item:hover { background: var(--brand-green-light); }
 .field__err { font: 400 11px var(--font-sans); color: #DC2626; margin-top: 2px; }
+
+@media (max-width: 1024px) {
+  /* .main (shared shell) has overflow:hidden, so .billing-root itself must be
+     the scroll container — overflow:visible alone stops local clipping but
+     .main still blocks real wheel/touch scrolling, leaving content unreachable. */
+  .billing-root { flex-direction: column; overflow-y: auto; overflow-x: hidden; }
+  .inv-list { width: 100%; flex: none; max-height: 42vh; border-right: 0; border-bottom: 1px solid var(--border); }
+  .inv-detail { flex: none; overflow-y: visible; }
+  .inv-scroll { overflow-y: visible; }
+  .inv-body { flex-wrap: wrap; }
+  .right-col { width: 100%; }
+}
+
+@media (max-width: 560px) {
+  .add-drawer { width: 100%; }
+  .qsec__grid { grid-template-columns: 1fr; }
+  .pay-grid { grid-template-columns: 1fr; }
+  .stats-bar { flex-wrap: wrap; }
+  .stat-box { flex: 1 1 45%; }
+  .inv-hd-card { flex-wrap: wrap; }
+  .inv-hd-top { flex-wrap: wrap; }
+  .inv-hd-actions { flex-wrap: wrap; }
+}
 </style>

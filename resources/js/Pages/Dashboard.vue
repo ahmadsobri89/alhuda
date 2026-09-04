@@ -326,6 +326,7 @@ function barH(val) { return Math.max(4, Math.round((val / maxRev.value) * 72)) +
 .greeting__date { font: 400 12px var(--font-sans); color: var(--fg3); margin-top: 2px; }
 .greeting__right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
 .greeting__actions { display: flex; gap: 8px; }
+.greeting__actions .btn { min-height: 44px; }
 
 /* filter bar */
 .filter-bar {
@@ -460,5 +461,21 @@ function barH(val) { return Math.max(4, Math.round((val / maxRev.value) * 72)) +
   text-align: center;
   color: var(--fg3);
   font: 400 12.5px var(--font-sans);
+}
+
+@media (max-width: 1024px) {
+  .main-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  .kpi-row { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 480px) {
+  .dash-root { padding: 14px; }
+  .kpi-row { grid-template-columns: 1fr; }
+  .greeting__right { align-items: flex-start; width: 100%; }
+  .greeting__actions { width: 100%; }
+  .greeting__actions .btn { flex: 1; }
 }
 </style>
