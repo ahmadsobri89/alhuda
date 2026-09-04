@@ -174,8 +174,8 @@ function genderLabel(g) { return g === 'male' ? t('gender_male') : t('gender_fem
     <div v-if="flash" class="flash-ok">{{ flash }}</div>
 
     <!-- Toolbar -->
-    <div class="row">
-      <div style="position:relative;flex:1;max-width:360px">
+    <div class="row pat-toolbar">
+      <div class="pat-toolbar__search" style="position:relative;flex:1;max-width:360px">
         <input v-model="search" class="input" :placeholder="t('pat_search')" style="padding-left:36px" />
         <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--fg3)">
           <Icon name="search" :size="15" />
@@ -636,5 +636,7 @@ function genderLabel(g) { return g === 'male' ? t('gender_male') : t('gender_fem
   .form-grid-3 { grid-template-columns: 1fr; }
   .info-grid { grid-template-columns: 1fr; }
   .drawer-stats { flex-wrap: wrap; }
+  .pat-toolbar { flex-wrap: wrap; }
+  .pat-toolbar__search { flex: 1 1 100% !important; max-width: none !important; }
 }
 </style>

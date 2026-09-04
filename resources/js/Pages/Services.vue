@@ -109,8 +109,8 @@ function doDiscontinue() {
     </div>
 
     <!-- Toolbar -->
-    <div class="row">
-      <div style="position:relative;flex:1;max-width:340px">
+    <div class="row svc-toolbar">
+      <div class="svc-toolbar__search" style="position:relative;flex:1;max-width:340px">
         <input v-model="search" class="input" :placeholder="t('svc_search')" style="padding-left:36px" />
         <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--fg3)">
           <Icon name="search" :size="15" />
@@ -300,5 +300,7 @@ function doDiscontinue() {
 @media (max-width: 560px) {
   .kpi-grid { grid-template-columns: 1fr; }
   .form-grid-3 { grid-template-columns: 1fr; }
+  .svc-toolbar { flex-wrap: wrap; }
+  .svc-toolbar__search { flex: 1 1 100% !important; max-width: none !important; }
 }
 </style>

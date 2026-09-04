@@ -65,6 +65,8 @@ input, select, textarea { font-family: inherit; }
 .topbar__search svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--fg3); }
 .topbar__search input { width: 100%; padding: 8px 12px 8px 34px; border: 1px solid var(--border); border-radius: 8px; font: 400 13px var(--font-sans); background: var(--bg-soft); }
 .topbar__bell { width: 44px; height: 44px; border: 1px solid var(--border); border-radius: 8px; background: #fff; display: grid; place-items: center; position: relative; cursor: pointer; }
+.topbar__search-toggle { display: none; width: 44px; height: 44px; border: 1px solid var(--border); border-radius: 8px; background: #fff; color: var(--fg2); align-items: center; justify-content: center; flex-shrink: 0; }
+.topbar__search-close  { display: none; width: 44px; height: 44px; border: 1px solid var(--border); border-radius: 8px; background: #fff; color: var(--fg2); align-items: center; justify-content: center; flex-shrink: 0; }
 
 /* Main */
 .main { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
@@ -206,9 +208,36 @@ input, select, textarea { font-family: inherit; }
   .topbar__title h1 { font-size: 15px; }
   .topbar__title p { display: none; }
   .topbar__search { display: none; }
+  .topbar__search-toggle { display: flex; }
+  .topbar__search-close  { display: flex; }
+  .topbar--search-mode { gap: 10px; }
+  .topbar__search--active {
+    display: flex !important;
+    align-items: center;
+    width: auto;
+    flex: 1;
+  }
+  .topbar__search--active input {
+    padding: 11px 12px 11px 36px;
+    font-size: 16px; /* keep >=16px so iOS Safari doesn't zoom in on focus */
+  }
   .screen { padding: 14px; gap: 12px; }
   .card__header { flex-wrap: wrap; }
   .page-btn { min-width: 40px; height: 40px; }
   .per-page-select { height: 40px; }
   .pagination { gap: 8px; }
+
+  /* Datatable cards use flex:1;min-height:0 expecting a bounded desktop pane.
+     On mobile, enough stacked content above (KPI cards, filters) can starve
+     that shared space down to a sliver. Cap instead so the table always gets
+     a real, usable height and scrolls within itself. */
+  .table-card, .tab-panel {
+    flex: none;
+    min-height: 0;
+    max-height: 60vh;
+  }
+  .table-scroll {
+    flex: 1;
+    min-height: 0;
+  }
 }

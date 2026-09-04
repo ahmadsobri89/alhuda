@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import Icon from '@/Components/Clinic/Icon.vue'
 import Avatar from '@/Components/Clinic/Avatar.vue'
@@ -54,6 +54,13 @@ const title    = computed(() => t(`page_title_${currentRoute.value}`))
 const subtitle = computed(() => page.props.pageSubtitle ?? '')
 
 const mobileNavOpen = ref(false)
+const mobileSearchOpen = ref(false)
+const mobileSearchInput = ref(null)
+
+function openMobileSearch() {
+  mobileSearchOpen.value = true
+  nextTick(() => mobileSearchInput.value?.focus())
+}
 
 function navigate(item) {
   mobileNavOpen.value = false
@@ -109,22 +116,36 @@ function logout() {
     <!-- Main -->
     <div class="main">
       <!-- TopBar -->
-      <div class="topbar">
-        <button class="hamburger-btn" @click="mobileNavOpen = true">
-          <Icon name="menu" :size="19" />
-        </button>
-        <div class="topbar__title">
-          <h1>{{ title }}</h1>
-          <p v-if="subtitle">{{ subtitle }}</p>
-        </div>
-        <div class="topbar__search">
-          <Icon name="search" :size="15" />
-          <input :placeholder="t('layout_search_placeholder')" />
-        </div>
-        <button class="lang-btn" @click="switchLocale" :title="locale === 'ms' ? 'Switch to English' : 'Tukar ke Bahasa Malaysia'">
-          {{ locale === 'ms' ? 'EN' : 'BM' }}
-        </button>
-        <NotificationBell />
+      <div :class="['topbar', mobileSearchOpen ? 'topbar--search-mode' : '']">
+        <template v-if="mobileSearchOpen">
+          <button class="topbar__search-close" @click="mobileSearchOpen = false">
+            <Icon name="close" :size="18" />
+          </button>
+          <div class="topbar__search topbar__search--active">
+            <Icon name="search" :size="15" />
+            <input ref="mobileSearchInput" :placeholder="t('layout_search_placeholder')" />
+          </div>
+        </template>
+        <template v-else>
+          <button class="hamburger-btn" @click="mobileNavOpen = true">
+            <Icon name="menu" :size="19" />
+          </button>
+          <div class="topbar__title">
+            <h1>{{ title }}</h1>
+            <p v-if="subtitle">{{ subtitle }}</p>
+          </div>
+          <div class="topbar__search">
+            <Icon name="search" :size="15" />
+            <input :placeholder="t('layout_search_placeholder')" />
+          </div>
+          <button class="topbar__search-toggle" @click="openMobileSearch">
+            <Icon name="search" :size="18" />
+          </button>
+          <button class="lang-btn" @click="switchLocale" :title="locale === 'ms' ? 'Switch to English' : 'Tukar ke Bahasa Malaysia'">
+            {{ locale === 'ms' ? 'EN' : 'BM' }}
+          </button>
+          <NotificationBell />
+        </template>
       </div>
 
       <!-- Page content -->

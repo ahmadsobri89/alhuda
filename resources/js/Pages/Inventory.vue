@@ -219,9 +219,9 @@ function doDiscontinue() {
     </div>
 
     <!-- Toolbar -->
-    <div class="row">
+    <div class="row inv-toolbar">
       <!-- Search -->
-      <div style="position:relative;flex:1;max-width:340px">
+      <div class="inv-toolbar__search" style="position:relative;flex:1;max-width:340px">
         <input v-model="search" class="input" :placeholder="t('inv_search')" style="padding-left:36px" />
         <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--fg3)">
           <Icon name="search" :size="15" />
@@ -688,5 +688,8 @@ function doDiscontinue() {
   .form-grid-4 { grid-template-columns: 1fr; }
   .stock-type-grid { grid-template-columns: 1fr; }
   .info-grid { grid-template-columns: 1fr; }
+  .inv-toolbar { flex-wrap: wrap; }
+  .inv-toolbar__search { flex: 1 1 100% !important; max-width: none !important; }
+  .filter-chips { flex-wrap: wrap; }
 }
 </style>
