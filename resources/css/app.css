@@ -104,8 +104,8 @@ input, select, textarea { font-family: inherit; }
 .kpi__value { font: 800 26px var(--font-sans); color: var(--fg1); margin-top: 4px; }
 .kpi__sub { font: 500 12px var(--font-sans); color: var(--fg3); }
 
-.tabs { display: flex; gap: 4px; padding: 4px; background: var(--bg-muted); border-radius: 8px; align-self: flex-start; flex-wrap: wrap; max-width: 100%; overflow-x: auto; }
-.tab { padding: 7px 16px; border: 0; background: transparent; color: var(--fg2); font: 500 13px var(--font-sans); border-radius: 6px; }
+.tabs { display: flex; gap: 4px; padding: 4px; background: var(--bg-muted); border-radius: 8px; align-self: flex-start; flex-wrap: wrap; max-width: 100%; flex-shrink: 0; }
+.tab { padding: 7px 16px; border: 0; background: transparent; color: var(--fg2); font: 500 13px var(--font-sans); border-radius: 6px; flex-shrink: 0; white-space: nowrap; }
 .tab.active { background: #fff; color: var(--fg1); font-weight: 700; box-shadow: var(--shadow-sm); }
 
 .table { width: 100%; }
