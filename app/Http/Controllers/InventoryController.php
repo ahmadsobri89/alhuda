@@ -6,6 +6,7 @@ use App\Http\Requests\StoreInventoryItemRequest;
 use App\Http\Requests\UpdateInventoryItemRequest;
 use App\Models\AuditLog;
 use App\Models\InventoryItem;
+use App\Models\InventoryTransaction;
 use App\Models\LookupCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -102,13 +103,82 @@ class InventoryController extends Controller
 
         $lookups = LookupCategory::forSlugs(['bentuk_ubat', 'kategori_ubat', 'klasifikasi_ubat']);
 
+        $usagePeriod = (int) $request->input('period', 30);
+        if (! in_array($usagePeriod, [30, 90, 365], true)) {
+            $usagePeriod = 30;
+        }
+
         return Inertia::render('Inventory', [
             'currentRoute' => 'inventory',
             'items'        => $items,
             'kpis'         => $kpis,
             'filters'      => ['search' => $search, 'filter' => $filter, 'per_page' => $perPage],
             'lookups'      => $lookups,
+            'usage'        => $this->usageAnalytics($usagePeriod),
         ]);
+    }
+
+    /**
+     * Kekerapan ubat dikeluarkan (dispensed) dalam tempoh terpilih, untuk bantu
+     * anggarkan ubat mana perlu dibeli lebih (cadangan reorder).
+     */
+    private function usageAnalytics(int $periodDays): array
+    {
+        $since = now()->subDays($periodDays);
+
+        $rows = InventoryTransaction::query()
+            ->where('type', 'out')
+            ->where('created_at', '>=', $since)
+            ->selectRaw('inventory_item_id, SUM(ABS(quantity_delta)) as total_out')
+            ->groupBy('inventory_item_id')
+            ->orderByDesc('total_out')
+            ->take(15)
+            ->get();
+
+        $items = InventoryItem::whereIn('id', $rows->pluck('inventory_item_id'))->get()->keyBy('id');
+
+        $top = $rows->map(function ($row) use ($items, $periodDays) {
+            $item = $items->get($row->inventory_item_id);
+            if (! $item) {
+                return null;
+            }
+
+            $totalOut      = (int) $row->total_out;
+            $avgPerDay     = $totalOut / $periodDays;
+            $daysRemaining = $avgPerDay > 0 ? (int) floor($item->stock_quantity / $avgPerDay) : null;
+            $suggestedQty  = max(0, (int) ceil($avgPerDay * 30) - $item->stock_quantity);
+
+            $status = 'ok';
+            if ($item->stock_quantity <= $item->reorder_level || ($daysRemaining !== null && $daysRemaining <= 14)) {
+                $status = 'urgent';
+            } elseif ($item->stock_quantity > $item->reorder_level * 3 && ($daysRemaining === null || $daysRemaining > 180)) {
+                $status = 'overstock';
+            }
+
+            return [
+                'id'             => $item->id,
+                'name'           => $item->name,
+                'unit'           => $item->unit,
+                'stock_quantity' => $item->stock_quantity,
+                'reorder_level'  => $item->reorder_level,
+                'total_out'      => $totalOut,
+                'avg_per_day'    => round($avgPerDay, 2),
+                'days_remaining' => $daysRemaining,
+                'suggested_qty'  => $suggestedQty,
+                'status'         => $status,
+            ];
+        })->filter()->values();
+
+        return [
+            'period' => $periodDays,
+            'top'    => $top,
+            'kpis'   => [
+                'top_name'        => $top->first()['name'] ?? null,
+                'urgent_count'    => $top->where('status', 'urgent')->count(),
+                'overstock_count' => $top->where('status', 'overstock')->count(),
+                'total_units_out' => (int) $top->sum('total_out'),
+            ],
+        ];
     }
 
     public function store(StoreInventoryItemRequest $request)

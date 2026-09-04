@@ -15,11 +15,15 @@ const props = defineProps({
   kpis:    { type: Object, default: () => ({}) },
   filters: { type: Object, default: () => ({}) },
   lookups: { type: Object, default: () => ({}) },
+  usage:   { type: Object, default: () => ({ period: 30, top: [], kpis: {} }) },
 })
 
 const page  = usePage()
 const flash = computed(() => page.props.flash?.success)
 const { t } = useLocale()
+
+// ─── Tabs ──────────────────────────────────────────────────────────────────
+const activeTab = ref('list') // list | analytics
 
 // ─── Search & filter ───────────────────────────────────────────────────────
 const search     = ref(props.filters.search ?? '')
@@ -34,6 +38,7 @@ function queryParams(extra = {}) {
     search: search.value || undefined,
     filter: activeFilter.value !== 'all' ? activeFilter.value : undefined,
     per_page: perPage.value !== 20 ? perPage.value : undefined,
+    period: usagePeriod.value !== 30 ? usagePeriod.value : undefined,
     ...extra,
   }
 }
@@ -61,6 +66,58 @@ function setPerPage() {
 function goToPage(url) {
   if (url) router.get(url, queryParams(), { preserveState: true, preserveScroll: true })
 }
+
+// ─── Usage analytics (tab) ─────────────────────────────────────────────────
+const usagePeriod = ref(props.usage?.period ?? 30)
+
+function setUsagePeriod(p) {
+  usagePeriod.value = p
+  router.get(route('inventory'), queryParams(), { preserveState: true, replace: true })
+}
+
+const maxUsage = computed(() => Math.max(...(props.usage?.top ?? []).map(m => m.total_out), 1))
+function barPct(val, max) { return Math.max(2, Math.round((val / max) * 100)) + '%' }
+
+const USAGE_STATUS_TONE = { urgent: 'red', overstock: 'orange', ok: 'green' }
+const USAGE_STATUS_LABEL = computed(() => ({
+  urgent: t('inv_usage_status_urgent'), overstock: t('inv_usage_status_overstock'), ok: t('inv_usage_status_ok'),
+}))
+const USAGE_STATUS_ORDER = { urgent: 0, ok: 1, overstock: 2 }
+
+// Sorting jadual "Cadangan Pembelian" — klik header untuk tukar lajur/arah.
+const sortColumn = ref(null) // name | stock | avg | days | suggest | status
+const sortDir    = ref('asc')
+
+function setSort(col) {
+  if (sortColumn.value === col) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortColumn.value = col
+    sortDir.value = 'asc'
+  }
+}
+
+const sortedUsageTop = computed(() => {
+  const list = [...(props.usage?.top ?? [])]
+  if (!sortColumn.value) return list
+
+  const dir = sortDir.value === 'asc' ? 1 : -1
+  return list.sort((a, b) => {
+    let av, bv
+    switch (sortColumn.value) {
+      case 'name':    av = a.name.toLowerCase(); bv = b.name.toLowerCase(); break
+      case 'stock':   av = a.stock_quantity;     bv = b.stock_quantity;    break
+      case 'avg':     av = a.avg_per_day;        bv = b.avg_per_day;       break
+      case 'days':    av = a.days_remaining ?? Infinity; bv = b.days_remaining ?? Infinity; break
+      case 'suggest': av = a.suggested_qty;      bv = b.suggested_qty;     break
+      case 'status':  av = USAGE_STATUS_ORDER[a.status]; bv = USAGE_STATUS_ORDER[b.status]; break
+      default: return 0
+    }
+    if (av < bv) return -1 * dir
+    if (av > bv) return 1 * dir
+    return 0
+  })
+})
 
 // ─── Flag helpers ──────────────────────────────────────────────────────────
 const FLAG_CONFIG = computed(() => ({
@@ -196,6 +253,13 @@ function doDiscontinue() {
     <!-- Flash -->
     <div v-if="flash" class="flash-ok">{{ flash }}</div>
 
+    <!-- Tabs -->
+    <div class="tabs" style="align-self:flex-start">
+      <button :class="['tab', activeTab==='list' ? 'active':'']" @click="activeTab='list'">{{ t('inv_tab_list') }}</button>
+      <button :class="['tab', activeTab==='analytics' ? 'active':'']" @click="activeTab='analytics'">{{ t('inv_tab_analytics') }}</button>
+    </div>
+
+    <template v-if="activeTab==='list'">
     <!-- KPI cards -->
     <div class="kpi-grid">
       <div class="kpi">
@@ -310,6 +374,89 @@ function doDiscontinue() {
           @click="goToPage(link.url)"
           v-html="link.label"
         ></button>
+      </div>
+    </div>
+    </template>
+
+    <!-- ── Analytics Tab ─────────────────────────────────────────────────── -->
+    <div v-if="activeTab==='analytics'" class="analytics-panel">
+      <!-- KPI cards -->
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi__label">{{ t('inv_usage_kpi_top') }}</div>
+          <div class="kpi__value" style="font-size:16px">{{ usage.kpis.top_name ?? '—' }}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi__label">{{ t('inv_usage_kpi_urgent') }}</div>
+          <div class="kpi__value" style="color:var(--brand-red)">{{ usage.kpis.urgent_count ?? 0 }}</div>
+          <div class="kpi__sub">{{ t('inv_usage_kpi_urgent_sub') }}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi__label">{{ t('inv_usage_kpi_overstock') }}</div>
+          <div class="kpi__value" style="color:var(--brand-orange)">{{ usage.kpis.overstock_count ?? 0 }}</div>
+          <div class="kpi__sub">{{ t('inv_usage_kpi_overstock_sub') }}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi__label">{{ t('inv_usage_kpi_total') }}</div>
+          <div class="kpi__value">{{ usage.kpis.total_units_out ?? 0 }}</div>
+        </div>
+      </div>
+
+      <!-- Period switch -->
+      <div class="row" style="align-items:center">
+        <span style="font:600 12px var(--font-sans);color:var(--fg3);margin-right:8px">{{ t('inv_usage_period_label') }}</span>
+        <div class="filter-chips">
+          <button v-for="p in [30,90,365]" :key="p"
+            :class="['chip', usagePeriod===p ? 'chip--active':'']"
+            @click="setUsagePeriod(p)"
+          >{{ t('inv_usage_period_' + p) }}</button>
+        </div>
+      </div>
+
+      <div class="grid-2-analytics">
+        <!-- Top medicines bar chart -->
+        <div class="card">
+          <div class="card__header"><h3 class="card__title">{{ t('inv_usage_chart_title') }}</h3></div>
+          <div class="card__body" style="display:flex;flex-direction:column;gap:12px">
+            <div v-if="usage.top?.length" v-for="(m, i) in usage.top" :key="m.id" class="med-row">
+              <span class="med-rank">{{ i + 1 }}</span>
+              <div class="med-info"><div class="med-name">{{ m.name }}</div></div>
+              <div class="hbar-track" style="flex:1;max-width:140px">
+                <div class="hbar-fill" :style="{ width: barPct(m.total_out, maxUsage) }" />
+              </div>
+              <div class="hbar-val hbar-val--sm">{{ m.total_out }}</div>
+            </div>
+            <p v-else class="empty-section">{{ t('inv_usage_empty') }}</p>
+          </div>
+        </div>
+
+        <!-- Reorder suggestion table -->
+        <div class="card">
+          <div class="card__header"><h3 class="card__title">{{ t('inv_usage_table_title') }}</h3></div>
+          <div class="card__body" style="padding:0">
+            <template v-if="usage.top?.length">
+              <div class="table__head" style="grid-template-columns:1.6fr 70px 90px 80px 90px 1fr">
+                <div class="th-sort" @click="setSort('name')">{{ t('inv_col_drug') }}<span v-if="sortColumn==='name'" class="th-sort__arrow">{{ sortDir==='asc' ? '▲' : '▼' }}</span></div>
+                <div class="th-sort" @click="setSort('stock')">{{ t('inv_col_stock') }}<span v-if="sortColumn==='stock'" class="th-sort__arrow">{{ sortDir==='asc' ? '▲' : '▼' }}</span></div>
+                <div class="th-sort" @click="setSort('avg')">{{ t('inv_usage_col_avg') }}<span v-if="sortColumn==='avg'" class="th-sort__arrow">{{ sortDir==='asc' ? '▲' : '▼' }}</span></div>
+                <div class="th-sort" @click="setSort('days')">{{ t('inv_usage_col_days_left') }}<span v-if="sortColumn==='days'" class="th-sort__arrow">{{ sortDir==='asc' ? '▲' : '▼' }}</span></div>
+                <div class="th-sort" @click="setSort('suggest')">{{ t('inv_usage_col_suggest') }}<span v-if="sortColumn==='suggest'" class="th-sort__arrow">{{ sortDir==='asc' ? '▲' : '▼' }}</span></div>
+                <div class="th-sort" @click="setSort('status')">{{ t('inv_usage_col_status') }}<span v-if="sortColumn==='status'" class="th-sort__arrow">{{ sortDir==='asc' ? '▲' : '▼' }}</span></div>
+              </div>
+              <div v-for="m in sortedUsageTop" :key="'row-'+m.id" class="table__row" style="grid-template-columns:1.6fr 70px 90px 80px 90px 1fr">
+                <div style="font:600 12.5px var(--font-sans);color:var(--fg1)">{{ m.name }}</div>
+                <div class="mono" style="font:600 12px var(--font-mono)">{{ m.stock_quantity }}</div>
+                <div class="mono" style="font:500 12px var(--font-mono);color:var(--fg3)">{{ m.avg_per_day }}/{{ t('inv_usage_day_short') }}</div>
+                <div class="mono" style="font:500 12px var(--font-mono);color:var(--fg3)">{{ m.days_remaining ?? '—' }}</div>
+                <div class="mono" style="font:700 12px var(--font-mono);color:var(--brand-green-dark)">{{ m.suggested_qty > 0 ? '+' + m.suggested_qty : '—' }}</div>
+                <div><Badge :tone="USAGE_STATUS_TONE[m.status]">{{ USAGE_STATUS_LABEL[m.status] }}</Badge></div>
+              </div>
+            </template>
+            <div v-else style="padding:32px;text-align:center;color:var(--fg3);font:500 13px var(--font-sans)">
+              {{ t('inv_usage_empty') }}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -674,12 +821,32 @@ function doDiscontinue() {
 .stock-track { height: 8px; background: var(--bg-muted); border-radius: 4px; overflow: hidden; }
 .stock-fill  { height: 100%; border-radius: 4px; transition: width .3s; }
 
+/* ── Analytics tab ── */
+.analytics-panel { display: flex; flex-direction: column; gap: 14px; }
+.grid-2-analytics { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+.empty-section { color: var(--fg3); font: 400 12px var(--font-sans); }
+
+.med-row  { display: flex; align-items: center; gap: 10px; }
+.med-rank { font: 700 12px var(--font-mono); color: var(--fg3); width: 18px; text-align: center; flex-shrink: 0; }
+.med-info { flex: 1; min-width: 0; }
+.med-name { font: 600 12.5px var(--font-sans); color: var(--fg1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.hbar-track { flex: 1; height: 10px; background: var(--border); border-radius: 99px; overflow: hidden; }
+.hbar-fill  { height: 100%; background: var(--brand-green); border-radius: 99px; transition: width .4s; }
+.hbar-val   { font: 700 12px var(--font-mono); color: var(--fg1); width: 40px; text-align: right; flex-shrink: 0; }
+.hbar-val--sm { width: 32px; }
+
+.th-sort { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px; }
+.th-sort:hover { color: var(--fg1); }
+.th-sort__arrow { font-size: 9px; color: var(--brand-green); }
+
 /* Pagination & datatable scroll styles kini global di app.css */
 
 @media (max-width: 900px) {
   .kpi-grid { grid-template-columns: repeat(2,1fr); }
   .form-grid-3 { grid-template-columns: 1fr 1fr; }
   .form-grid-4 { grid-template-columns: 1fr 1fr; }
+  .grid-2-analytics { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 560px) {
