@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3'
 
 defineProps({
@@ -15,6 +15,8 @@ const form = useForm({
     password: '',
     remember: false,
 })
+
+const showPassword = ref(false)
 
 const submit = () => {
     form.post(route('login'), {
@@ -129,15 +131,26 @@ const submit = () => {
                                 Lupa kata laluan?
                             </Link>
                         </div>
-                        <input
-                            id="password"
-                            v-model="form.password"
-                            type="password"
-                            :class="['lr-input', form.errors.password ? 'lr-input--err' : '']"
-                            placeholder="••••••••"
-                            autocomplete="current-password"
-                            required
-                        />
+                        <div class="lr-input-wrap">
+                            <input
+                                id="password"
+                                v-model="form.password"
+                                :type="showPassword ? 'text' : 'password'"
+                                :class="['lr-input', form.errors.password ? 'lr-input--err' : '']"
+                                placeholder="••••••••"
+                                autocomplete="current-password"
+                                required
+                            />
+                            <button
+                                type="button"
+                                class="lr-input-eye"
+                                :aria-label="showPassword ? 'Sembunyikan kata laluan' : 'Papar kata laluan'"
+                                @click="showPassword = !showPassword"
+                            >
+                                <svg v-if="showPassword" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68M6.61 6.61A13.52 13.52 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+                                <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </button>
+                        </div>
                         <span v-if="form.errors.password" class="lr-err">{{ form.errors.password }}</span>
                     </div>
 
@@ -407,6 +420,28 @@ const submit = () => {
     font: 500 11.5px var(--font-sans);
     color: var(--brand-red);
 }
+
+.lr-input-wrap { position: relative; }
+.lr-input-wrap .lr-input { padding-right: 42px; }
+.lr-input-eye {
+    position: absolute;
+    top: 50%;
+    right: 4px;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: var(--fg3);
+    cursor: pointer;
+    transition: color .15s, background .15s;
+}
+.lr-input-eye:hover { color: var(--fg1); background: var(--brand-green-light); }
 
 .lr-forgot {
     font: 500 12px var(--font-sans);
