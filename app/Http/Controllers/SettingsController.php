@@ -11,7 +11,9 @@ use App\Models\LookupCategory;
 use App\Models\SecurityPolicy;
 use App\Models\Testimonial;
 use App\Models\User;
+use App\Services\FaviconGenerator;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
@@ -176,9 +178,27 @@ class SettingsController extends Controller
         unset($data['logo']);
         $cp->update($data);
 
+        if ($request->hasFile('logo')) {
+            $this->refreshFavicons();
+        }
+
         AuditLog::record('settings.clinic.update', "Profil klinik dikemaskini: {$cp->name}");
 
         return back()->with('success', 'Profil klinik berjaya dikemaskini.');
+    }
+
+    /**
+     * Jana semula favicon di dalam public/ supaya ikon laman (termasuk yang
+     * dipaparkan Google dalam hasil carian) mengikut logo klinik terbaharu.
+     * Kegagalan hanya dilog — logo tetap berjaya disimpan.
+     */
+    protected function refreshFavicons(): void
+    {
+        try {
+            app(FaviconGenerator::class)->generate();
+        } catch (\Throwable $e) {
+            Log::warning('Gagal menjana favicon selepas logo dikemaskini: '.$e->getMessage());
+        }
     }
 
     public function updatePolicies(Request $request)
