@@ -9,9 +9,22 @@
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* Vozy U9 thermal label — roll 80 × 50 mm.
-   Artwork label-medicine.png is 945×591px = exactly 80×50mm @ 300 DPI. */
-@page { size: 80mm 50mm; margin: 0; }
+/* Vozy U9 thermal label — dua saiz roll boleh dipilih:
+     80 × 50 mm  (asal)      · artwork memenuhi seluruh label
+     100 × 70 mm (tambahan)  · artwork dikekalkan nisbahnya (100 × 62.5 mm)
+                               dan ditengahkan menegak supaya tidak terjulur.
+   Artwork label-medicine.png is 945×591px = exactly 80×50mm @ 300 DPI.
+   Saiz @page ada dalam <style id="page-size"> — ditukar oleh setLabelSize(). */
+:root {
+    --label-w: 80mm;   /* lebar roll */
+    --label-h: 50mm;   /* tinggi roll */
+    --art-h:   50mm;   /* tinggi artwork = lebar × 0.6254 */
+}
+html.size-100x70 {
+    --label-w: 100mm;
+    --label-h: 70mm;
+    --art-h:   62.5mm;
+}
 
 body {
     font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
@@ -245,6 +258,28 @@ body {
         max-width: 945px;
     }
     .label-wrap.active { display: block; }
+
+    /* Saiz besar: kotak pratonton ikut nisbah 100:70, artwork di tengah */
+    html.size-100x70 .label-wrap.active {
+        display: flex;
+        align-items: center;
+        aspect-ratio: 100 / 70;
+        background: #fff;
+    }
+    html.size-100x70 .label { width: 100%; }
+
+    /* Pemilih saiz label */
+    .size-bar {
+        display: flex; gap: 3px;
+        background: rgba(255,255,255,.18); border-radius: 8px; padding: 3px;
+    }
+    .size-btn {
+        background: transparent; color: rgba(255,255,255,.85); border: none;
+        padding: 5px 11px; border-radius: 6px;
+        font-size: 11.5px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    }
+    .size-btn:hover { background: rgba(255,255,255,.15); color: #fff; }
+    .size-btn.is-active { background: #fff; color: #1b8a4a; font-weight: 700; }
 }
 
 /* ════════════════════════════════════
@@ -264,18 +299,21 @@ body {
     }
 
     .label-wrap {
-        display: block !important;
         /* Lock to the exact roll size — the % aspect ratio rounds to
            50.03mm and spills a blank 2nd page; fixed mm prevents that. */
-        width: 80mm;
-        height: 50mm;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        width: var(--label-w);
+        height: var(--label-h);
         overflow: hidden;
         page-break-after: always;
         break-after: page;
     }
+    .label { width: 100%; }
     .label-wrap-inner {
-        width: 80mm;
-        height: 50mm;
+        width: var(--label-w);
+        height: var(--art-h);
         padding-bottom: 0 !important;
     }
     .label-wrap:last-child {
@@ -284,6 +322,20 @@ body {
     }
 }
 </style>
+
+{{-- Saiz kertas — ditulis semula oleh setLabelSize() --}}
+<style id="page-size">@page { size: 80mm 50mm; margin: 0; }</style>
+<script>
+/* Pulihkan saiz pilihan terakhir sebelum halaman dilukis (elak kelipan) */
+(function () {
+    try {
+        if (localStorage.getItem('rx-label-size') === '100x70') {
+            document.documentElement.className = 'size-100x70';
+            document.getElementById('page-size').textContent = '@page { size: 100mm 70mm; margin: 0; }';
+        }
+    } catch (e) {}
+})();
+</script>
 </head>
 <body>
 
@@ -327,6 +379,10 @@ $mealMap = [
         &nbsp;({{ $rx->items->count() }} label)
     </span>
     <div class="print-bar__actions">
+        <div class="size-bar" title="Saiz label">
+            <button class="size-btn" data-size="80x50"  onclick="setLabelSize('80x50')">80 × 50</button>
+            <button class="size-btn" data-size="100x70" onclick="setLabelSize('100x70')">100 × 70</button>
+        </div>
         <div class="nav-bar">
             <button class="nav-btn" id="btn-prev" onclick="navigate(-1)" disabled>&#8592;</button>
             <span class="nav-counter" id="nav-counter">1 / {{ $rx->items->count() }}</span>
@@ -348,7 +404,7 @@ $mealMap = [
 <div class="print-hint">
     ⚙️ <span>Tetapan cetak (Vozy U9):
     <b>Printer → Vozy U9</b> &nbsp;·&nbsp;
-    <b>Saiz kertas → 80 × 50 mm</b> &nbsp;·&nbsp;
+    <b>Saiz kertas → <span id="hint-size">80 × 50 mm</span></b> &nbsp;·&nbsp;
     <b>Jidar → Tiada (None)</b> &nbsp;·&nbsp;
     <b>Skala → 100% (Default)</b> &nbsp;·&nbsp;
     Nyahpilih "Header and footers"</span>
@@ -492,6 +548,27 @@ $mealMap = [
         if (e.key === 'ArrowRight') navigate(1);
         if (e.key === 'ArrowLeft')  navigate(-1);
     });
+
+    /* ── Saiz label ── */
+    var SIZES = {
+        '80x50':  { page: '80mm 50mm',  hint: '80 × 50 mm' },
+        '100x70': { page: '100mm 70mm', hint: '100 × 70 mm' }
+    };
+
+    window.setLabelSize = function (key) {
+        var size = SIZES[key] || SIZES['80x50'];
+        document.documentElement.className = key === '100x70' ? 'size-100x70' : '';
+        document.getElementById('page-size').textContent =
+            '@page { size: ' + size.page + '; margin: 0; }';
+        document.getElementById('hint-size').textContent = size.hint;
+        document.querySelectorAll('.size-btn').forEach(function (b) {
+            b.classList.toggle('is-active', b.dataset.size === key);
+        });
+        try { localStorage.setItem('rx-label-size', key); } catch (e) {}
+    };
+
+    /* Segerakkan butang dengan saiz yang dipulihkan dalam <head> */
+    setLabelSize(document.documentElement.classList.contains('size-100x70') ? '100x70' : '80x50');
 })();
 </script>
 </body>
