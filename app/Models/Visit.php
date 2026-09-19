@@ -75,6 +75,11 @@ class Visit extends Model
         return $this->hasMany(QuarantineLetter::class)->orderByDesc('id');
     }
 
+    public function testResults(): HasMany
+    {
+        return $this->hasMany(TestResult::class)->orderByDesc('id');
+    }
+
     public function memos(): HasMany
     {
         return $this->hasMany(Memo::class)->orderByDesc('id');

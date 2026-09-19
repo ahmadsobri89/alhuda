@@ -49,6 +49,7 @@ return [
         'referral'         => 'emr',
         'timeslip'         => 'emr',
         'quarantine'       => 'emr',
+        'testresult'       => 'emr',
         'pharmacy'         => 'pharmacy',
         'inventory'        => 'inventory',
         'services'         => 'services',

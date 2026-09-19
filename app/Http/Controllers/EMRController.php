@@ -10,6 +10,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Prescription;
 use App\Models\PrescriptionItem;
+use App\Models\ClinicProfile;
 use App\Models\QuarantineLetter;
 use App\Models\Service;
 use App\Models\Visit;
@@ -57,7 +58,7 @@ class EMRController extends Controller
 
         $selected = null;
         if ($request->filled('visit')) {
-            $v = Visit::with(['patient', 'vitals', 'diagnoses', 'medicalCertificates', 'referrals', 'timeSlips', 'quarantineLetters', 'memos', 'prescriptions.items'])->find($request->visit);
+            $v = Visit::with(['patient', 'vitals', 'diagnoses', 'medicalCertificates', 'referrals', 'timeSlips', 'quarantineLetters', 'testResults', 'memos', 'prescriptions.items'])->find($request->visit);
             if ($v) $selected = $this->formatVisit($v);
         }
 
@@ -85,7 +86,27 @@ class EMRController extends Controller
             'lookups'      => $lookups,
             'drugItems'    => $drugItems,
             'serviceItems' => $serviceItems,
+            'testDefaults' => $this->testResultDefaults(),
         ]);
+    }
+
+    /**
+     * Nilai lalai borang Keputusan Ujian — diambil dari profil klinik.
+     * Semua medan ini kekal bebas taip di borang; ini sekadar pra-isi.
+     */
+    private function testResultDefaults(): array
+    {
+        $clinic = ClinicProfile::current();
+
+        return [
+            'nationality'        => 'MALAYSIA',
+            'category_id'        => 'MYKAD',
+            'facility_requestor' => mb_strtoupper($clinic->name),
+            'state'              => mb_strtoupper((string) $clinic->state),
+            'location_requestor' => mb_strtoupper($clinic->address_full),
+            'facility_transit'   => '-',
+            'test_kits'          => ['INFLUENZA A', 'INFLUENZA B', 'RTK COVID 19'],
+        ];
     }
 
     private function formatVisit(Visit $v): array
@@ -169,6 +190,16 @@ class EMRController extends Controller
                 'reason'           => $qn->reason,
                 'issued_by'        => $qn->issued_by,
                 'issue_date'       => $qn->issue_date->format('d/m/Y'),
+            ])->values()->toArray(),
+            'test_results' => $v->testResults->map(fn ($tr) => [
+                'id'                     => $tr->id,
+                'tr_number'              => $tr->tr_number,
+                'issue_date'             => $tr->issue_date->format('d/m/Y'),
+                'specimen_received_date' => $tr->specimen_received_date->format('d/m/Y'),
+                'results'                => $tr->results ?? [],
+                'positive_summary'       => $tr->positive_summary,
+                'notes'                  => $tr->notes,
+                'issued_by'              => $tr->issued_by,
             ])->values()->toArray(),
             'memos' => $v->memos->map(fn ($memo) => [
                 'id'           => $memo->id,

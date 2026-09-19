@@ -24,6 +24,7 @@ use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\ServicesController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TestimonialController;
+use App\Http\Controllers\TestResultController;
 use App\Http\Controllers\TimeSlipController;
 use App\Http\Middleware\EnsureModuleAccess;
 use App\Models\ClinicProfile;
@@ -76,6 +77,7 @@ Route::get('/verify/mc/{token}', [MCController::class, 'verify'])->name('mc.veri
 Route::get('/verify/referral/{token}', [ReferralController::class, 'verify'])->name('referral.verify');
 Route::get('/verify/quarantine/{token}', [QuarantineController::class, 'verify'])->name('quarantine.verify');
 Route::get('/verify/memo/{token}', [MemoController::class, 'verify'])->name('memo.verify');
+Route::get('/verify/testresult/{token}', [TestResultController::class, 'verify'])->name('testresult.verify');
 
 Route::post('/locale', [LocaleController::class, 'switch'])->name('locale.switch');
 
@@ -137,6 +139,10 @@ Route::middleware(['auth', 'verified', EnsureModuleAccess::class])->group(functi
     Route::post('/emr/{visit}/quarantine', [QuarantineController::class, 'store'])->name('quarantine.store');
     Route::delete('/quarantine/{quarantine}', [QuarantineController::class, 'destroy'])->name('quarantine.destroy');
     Route::get('/quarantine/{quarantine}/print', [QuarantineController::class, 'print'])->name('quarantine.print');
+    // Test Results — Keputusan Ujian Influenza / COVID-19
+    Route::post('/emr/{visit}/test-result', [TestResultController::class, 'store'])->name('testresult.store');
+    Route::delete('/test-result/{testResult}', [TestResultController::class, 'destroy'])->name('testresult.destroy');
+    Route::get('/test-result/{testResult}/print', [TestResultController::class, 'print'])->name('testresult.print');
     // Memos
     Route::post('/emr/{visit}/memo', [MemoController::class, 'store'])->name('memo.store');
     Route::delete('/memo/{memo}', [MemoController::class, 'destroy'])->name('memo.destroy');

@@ -19,6 +19,7 @@ const props = defineProps({
   lookups:      { type: Object, default: () => ({}) },
   drugItems:    { type: Array,  default: () => [] },
   serviceItems: { type: Array,  default: () => [] },
+  testDefaults: { type: Object, default: () => ({}) },
 })
 
 const flash = computed(() => usePage().props.flash?.success)
@@ -270,6 +271,80 @@ function issueQuarantine() {
 }
 function deleteQuarantine(qnId) {
   router.delete(`/quarantine/${qnId}`, { preserveScroll: true, onSuccess: () => { showQnDelId.value = null } })
+}
+
+/* ── Test Result — Influenza / COVID-19 ───────────── */
+const showTrForm  = ref(false)
+const showTrDelId = ref(null)
+
+const TR_DEFAULT_KITS = ['INFLUENZA A', 'INFLUENZA B', 'RTK COVID 19']
+
+function emptyTrRow(kit = '') {
+  return { test_date: props.today, test_kit: kit, result: '' }
+}
+function defaultTrRows() {
+  const kits = props.testDefaults?.test_kits?.length ? props.testDefaults.test_kits : TR_DEFAULT_KITS
+  return kits.map(k => emptyTrRow(k))
+}
+
+const trForm = useForm({
+  specimen_received_date: props.today,
+  nationality:            '',
+  category_id:            '',
+  facility_requestor:     '',
+  state:                  '',
+  location_requestor:     '',
+  requestor_name:         '',
+  facility_transit:       '',
+  notes:                  '',
+  results:                defaultTrRows(),
+})
+
+// Pra-isi dari profil klinik setiap kali borang dibuka — semua medan kekal bebas taip
+function openTrForm() {
+  const d = props.testDefaults ?? {}
+  trForm.clearErrors()
+  trForm.specimen_received_date = props.today
+  trForm.nationality            = d.nationality ?? ''
+  trForm.category_id            = d.category_id ?? ''
+  trForm.facility_requestor     = d.facility_requestor ?? ''
+  trForm.state                  = d.state ?? ''
+  trForm.location_requestor     = d.location_requestor ?? ''
+  trForm.requestor_name         = (props.selected?.doctor_name || defaultDoctor.value || '').toUpperCase()
+  trForm.facility_transit       = d.facility_transit ?? ''
+  trForm.notes                  = ''
+  trForm.results                = defaultTrRows()
+  showTrForm.value = true
+}
+
+function addTrRow() {
+  trForm.results.push(emptyTrRow())
+}
+function removeTrRow(i) {
+  trForm.results.splice(i, 1)
+}
+
+const trFormValid = computed(() =>
+  !!trForm.specimen_received_date &&
+  trForm.results.length > 0 &&
+  trForm.results.every(r => r.test_date && (r.test_kit ?? '').trim() && (r.result ?? '').trim())
+)
+
+function trResultClass(result) {
+  const r = (result ?? '').toLowerCase()
+  if (r.includes('positi')) return 'tr-res tr-res--pos'
+  if (r.includes('negati')) return 'tr-res tr-res--neg'
+  return 'tr-res'
+}
+
+function issueTestResult() {
+  trForm.post(`/emr/${props.selected.id}/test-result`, {
+    preserveScroll: true,
+    onSuccess: () => { showTrForm.value = false },
+  })
+}
+function deleteTestResult(trId) {
+  router.delete(`/test-result/${trId}`, { preserveScroll: true, onSuccess: () => { showTrDelId.value = null } })
 }
 
 /* ── Memo ──────────────────────────────────────────── */
@@ -1537,6 +1612,53 @@ const soapHints = computed(() => ({
               </div>
             </div>
 
+            <!-- Test Result — Influenza / COVID-19 -->
+            <div class="card">
+              <div class="card__header">
+                <h3 class="card__title">{{ t('tr_section') }}</h3>
+                <div class="spacer"></div>
+                <Btn variant="ghost" size="sm" @click="openTrForm">
+                  {{ t('tr_issue_btn') }}
+                </Btn>
+              </div>
+
+              <!-- Test result list -->
+              <div v-if="selected.test_results?.length">
+                <div v-for="tr in selected.test_results" :key="tr.id"
+                     style="padding:10px 14px;border-top:1px solid var(--border)">
+                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                    <span style="font:700 11px var(--font-mono);color:#0e7490">{{ tr.tr_number }}</span>
+                    <span :class="tr.positive_summary ? 'tr-chip tr-chip--pos' : 'tr-chip tr-chip--neg'">
+                      {{ tr.positive_summary ? `${t('tr_positive_prefix')}: ${tr.positive_summary}` : t('tr_all_negative') }}
+                    </span>
+                    <span style="font:500 10px var(--font-sans);color:var(--fg3);margin-left:auto">{{ tr.issue_date }}</span>
+                  </div>
+                  <div style="font:500 11px var(--font-sans);color:var(--fg2);margin-bottom:4px">
+                    {{ t('tr_lbl_specimen_date') }}: {{ tr.specimen_received_date }} · {{ tr.results.length }} {{ t('tr_tests_suffix') }}
+                  </div>
+                  <div style="margin-bottom:6px">
+                    <div v-for="(row, i) in tr.results" :key="i"
+                         style="display:flex;align-items:baseline;gap:6px;font:400 11px var(--font-sans);color:var(--fg2);padding:1px 0">
+                      <span style="font-weight:600;color:var(--fg1)">{{ row.test_kit }}</span>
+                      <span :class="trResultClass(row.result)">{{ row.result }}</span>
+                      <span style="margin-left:auto;font-size:10px;color:var(--fg3)">{{ row.test_date }}</span>
+                    </div>
+                  </div>
+                  <div v-if="tr.notes" style="font:400 11px var(--font-sans);color:var(--fg2);margin-bottom:6px">{{ tr.notes }}</div>
+                  <div style="display:flex;gap:6px">
+                    <a :href="`/test-result/${tr.id}/print`" target="_blank" class="mc-print-btn" style="color:#0e7490;border-color:#67e8f9;background:#ecfeff">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                      {{ t('tr_print') }}
+                    </a>
+                    <button class="mc-del-btn" @click="showTrDelId = tr.id">{{ t('tr_delete') }}</button>
+                  </div>
+                </div>
+              </div>
+              <div v-else style="padding:16px 14px;font:500 12px var(--font-sans);color:var(--fg3)">
+                {{ t('tr_no_records') }}
+              </div>
+            </div>
+
             <!-- Medical Certificate -->
             <div class="card">
               <div class="card__header">
@@ -1792,6 +1914,99 @@ const soapHints = computed(() => ({
       </div>
     </Teleport>
 
+    <!-- ── Issue Test Result Modal ───────────────────────── -->
+    <Teleport to="body">
+      <div v-if="showTrForm" class="modal-backdrop" @click.self="showTrForm = false; trForm.clearErrors()">
+        <div class="modal modal--lg">
+          <div class="modal__header">
+            <h3 class="modal__title">{{ t('tr_issue_btn') }}</h3>
+            <button class="modal__close" @click="showTrForm = false; trForm.clearErrors()">✕</button>
+          </div>
+          <div class="modal__body">
+
+            <!-- Spesimen -->
+            <div class="modal-section-title">{{ t('tr_lbl_specimen_date') }}</div>
+            <div class="field" style="margin-bottom:12px">
+              <label class="field__label">{{ t('tr_lbl_specimen_date') }} *</label>
+              <input v-model="trForm.specimen_received_date" type="date" class="input" required />
+              <span v-if="trForm.errors.specimen_received_date" class="field__error">{{ trForm.errors.specimen_received_date }}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+              <div class="field">
+                <label class="field__label">{{ t('tr_lbl_nationality') }}</label>
+                <input v-model="trForm.nationality" type="text" class="input" :placeholder="t('tr_ph_nationality')" maxlength="255" />
+              </div>
+              <div class="field">
+                <label class="field__label">{{ t('tr_lbl_category_id') }}</label>
+                <input v-model="trForm.category_id" type="text" class="input" :placeholder="t('tr_ph_category_id')" maxlength="255" />
+              </div>
+            </div>
+
+            <!-- Pemohon -->
+            <div class="modal-section-title">{{ t('tr_lbl_facility') }}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+              <div class="field">
+                <label class="field__label">{{ t('tr_lbl_facility') }}</label>
+                <input v-model="trForm.facility_requestor" type="text" class="input" :placeholder="t('tr_ph_facility')" maxlength="255" />
+              </div>
+              <div class="field">
+                <label class="field__label">{{ t('tr_lbl_state') }}</label>
+                <input v-model="trForm.state" type="text" class="input" :placeholder="t('tr_ph_state')" maxlength="255" />
+              </div>
+            </div>
+            <div class="field" style="margin-bottom:12px">
+              <label class="field__label">{{ t('tr_lbl_location') }}</label>
+              <textarea v-model="trForm.location_requestor" class="input" rows="2" :placeholder="t('tr_ph_location')" maxlength="500" style="resize:vertical"></textarea>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+              <div class="field">
+                <label class="field__label">{{ t('tr_lbl_requestor') }}</label>
+                <input v-model="trForm.requestor_name" type="text" class="input" :placeholder="t('tr_ph_requestor')" maxlength="255" />
+              </div>
+              <div class="field">
+                <label class="field__label">{{ t('tr_lbl_transit') }}</label>
+                <input v-model="trForm.facility_transit" type="text" class="input" :placeholder="t('tr_ph_transit')" maxlength="255" />
+              </div>
+            </div>
+
+            <!-- Baris ujian -->
+            <div class="modal-section-title">{{ t('tr_lbl_rows') }}</div>
+            <div class="tr-row tr-row--head">
+              <span>{{ t('tr_lbl_test_date') }}</span>
+              <span>{{ t('tr_lbl_test_kit') }}</span>
+              <span>{{ t('tr_lbl_result') }}</span>
+              <span></span>
+            </div>
+            <div v-for="(row, i) in trForm.results" :key="i" class="tr-row">
+              <input v-model="row.test_date" type="date" class="input" />
+              <input v-model="row.test_kit" type="text" class="input" :placeholder="t('tr_ph_test_kit')" maxlength="255" />
+              <input v-model="row.result" type="text" class="input" :placeholder="t('tr_ph_result')" maxlength="255" list="tr-result-list" />
+              <button class="mc-del-btn" type="button" :disabled="trForm.results.length === 1" @click="removeTrRow(i)">✕</button>
+            </div>
+            <datalist id="tr-result-list">
+              <option value="POSITIVE"></option>
+              <option value="NEGATIVE"></option>
+              <option value="INVALID"></option>
+            </datalist>
+            <span v-if="trForm.errors.results" class="field__error">{{ trForm.errors.results }}</span>
+            <button class="tr-add-btn" type="button" @click="addTrRow">{{ t('tr_add_row') }}</button>
+
+            <div class="field" style="margin:16px 0">
+              <label class="field__label">{{ t('tr_lbl_notes') }}</label>
+              <input v-model="trForm.notes" type="text" class="input" :placeholder="t('tr_ph_notes')" maxlength="500" />
+            </div>
+
+            <div class="modal__footer">
+              <Btn variant="secondary" type="button" @click="showTrForm = false; trForm.clearErrors()">{{ t('btn_cancel') }}</Btn>
+              <Btn variant="primary" :disabled="trForm.processing || !trFormValid" @click="issueTestResult">
+                {{ trForm.processing ? t('tr_submitting') : t('tr_issue_btn') }}
+              </Btn>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- ── Issue Memo Modal ──────────────────────────────── -->
     <Teleport to="body">
       <div v-if="showMemoForm" class="modal-backdrop" @click.self="showMemoForm = false; memoForm.clearErrors()">
@@ -1970,6 +2185,27 @@ const soapHints = computed(() => ({
             <div class="modal__footer">
               <Btn variant="secondary" @click="showQnDelId = null">{{ t('btn_cancel') }}</Btn>
               <Btn variant="primary" style="background:var(--brand-red)" @click="deleteQuarantine(showQnDelId)">{{ t('qn_del_yes') }}</Btn>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- ── Test Result Delete confirm ──────────────────── -->
+    <Teleport to="body">
+      <div v-if="showTrDelId !== null" class="modal-backdrop" @click.self="showTrDelId = null">
+        <div class="modal modal--sm">
+          <div class="modal__header">
+            <h3 class="modal__title" style="color:var(--brand-red)">{{ t('tr_del_confirm') }}</h3>
+            <button class="modal__close" @click="showTrDelId = null">✕</button>
+          </div>
+          <div class="modal__body">
+            <p style="font:400 14px var(--font-sans);color:var(--fg2);margin:0 0 16px">
+              {{ t('tr_del_body', { tr_number: selected?.test_results?.find(r => r.id === showTrDelId)?.tr_number }) }}
+            </p>
+            <div class="modal__footer">
+              <Btn variant="secondary" @click="showTrDelId = null">{{ t('btn_cancel') }}</Btn>
+              <Btn variant="primary" style="background:var(--brand-red)" @click="deleteTestResult(showTrDelId)">{{ t('tr_del_yes') }}</Btn>
             </div>
           </div>
         </div>
@@ -2274,6 +2510,7 @@ const soapHints = computed(() => ({
   box-shadow: 0 20px 60px rgba(15,23,42,.18);
 }
 .modal--sm  { width: 420px; }
+.modal--lg  { width: 640px; }
 .modal__header {
   display: flex; align-items: center; gap: 12px;
   padding: 18px 20px 14px; border-bottom: 1px solid var(--border);
@@ -2325,6 +2562,42 @@ const soapHints = computed(() => ({
   color: var(--fg3); font: 500 11px var(--font-sans); cursor: pointer;
 }
 .mc-del-btn:hover { border-color: var(--brand-red); color: var(--brand-red); }
+.mc-del-btn:disabled { opacity: .4; cursor: not-allowed; }
+.mc-del-btn:disabled:hover { border-color: var(--border); color: var(--fg3); }
+
+/* Test result — Influenza / COVID-19 */
+.tr-chip {
+  display: inline-flex; align-items: center;
+  padding: 1px 7px; border-radius: 10px;
+  font: 700 9px var(--font-sans); letter-spacing: .03em;
+  text-transform: uppercase;
+  background: var(--brand-green-light); color: var(--brand-green-dark);
+  border: 1px solid var(--brand-green);
+}
+.tr-chip--pos { background: #fef2f2; color: #b91c1c; border-color: #fca5a5; }
+.tr-chip--neg { background: #f0fdf4; color: #15803d; border-color: #86efac; }
+.tr-res { font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: .03em; }
+.tr-res--pos { color: #b91c1c; }
+.tr-res--neg { color: #15803d; }
+.tr-row {
+  display: grid; grid-template-columns: 130px 1fr 130px 32px;
+  gap: 8px; align-items: center; margin-bottom: 8px;
+}
+.tr-row--head {
+  font: 600 10px var(--font-sans); color: var(--fg3);
+  text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px;
+}
+.tr-row--head span { padding: 0 2px; }
+.tr-add-btn {
+  background: none; border: 1px dashed var(--border); border-radius: 6px;
+  padding: 6px 12px; width: 100%; cursor: pointer;
+  font: 600 11px var(--font-sans); color: var(--fg2);
+}
+.tr-add-btn:hover { border-color: #0e7490; color: #0e7490; }
+@media (max-width: 640px) {
+  .tr-row { grid-template-columns: 1fr 1fr; }
+  .tr-row--head { display: none; }
+}
 
 /* Referral urgency chips */
 .ref-urgency-chip {
