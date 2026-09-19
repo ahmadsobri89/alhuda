@@ -88,35 +88,60 @@ class FinanceController extends Controller
         ])->values();
 
         // ── Trend (ikut tempoh) ──
+        // Setiap titik bawa jumlah + bilangan transaksi + tarikh penuh supaya
+        // tooltip graf boleh papar konteks penuh tanpa panggilan tambahan.
+        $today = now()->format('Y-m-d');
+
         if ($period === 'day') {
-            // 7 hari terakhir berakhir pada tarikh terpilih
-            $trend = collect(range(6, 0))->map(function ($d) use ($dateC) {
-                $dd = $dateC->copy()->subDays($d);
+            // 7 hari terakhir berakhir pada tarikh terpilih (satu query, bukan tujuh)
+            $daily = Invoice::where('status', 'paid')
+                ->whereBetween('paid_at', [$dateC->copy()->subDays(6)->startOfDay(), $dateC->copy()->endOfDay()])
+                ->selectRaw('DATE(paid_at) as d, SUM(total_amount) as total, COUNT(*) as cnt')
+                ->groupBy('d')->get()->keyBy('d');
+
+            $trend = collect(range(6, 0))->map(function ($d) use ($dateC, $daily, $today) {
+                $dd  = $dateC->copy()->subDays($d);
+                $row = $daily->get($dd->format('Y-m-d'));
                 return [
-                    'label' => $dd->isoFormat('ddd'),
-                    'sub'   => $dd->format('d/m'),
-                    'value' => (float) Invoice::where('status', 'paid')->whereDate('paid_at', $dd->format('Y-m-d'))->sum('total_amount'),
+                    'label'   => $dd->isoFormat('ddd'),
+                    'sub'     => $dd->isoFormat('D MMM'),
+                    'value'   => (float) ($row->total ?? 0),
+                    'count'   => (int) ($row->cnt ?? 0),
+                    'current' => $dd->format('Y-m-d') === $today,
                 ];
             })->values();
         } elseif ($period === 'month') {
             $daily = $scope(Invoice::query())
-                ->selectRaw('DATE(paid_at) as d, SUM(total_amount) as total')
-                ->groupBy('d')->pluck('total', 'd');
+                ->selectRaw('DATE(paid_at) as d, SUM(total_amount) as total, COUNT(*) as cnt')
+                ->groupBy('d')->get()->keyBy('d');
             $dim = Carbon::create($year, $month)->daysInMonth;
-            $trend = collect(range(1, $dim))->map(fn ($d) => [
-                'label' => (string) $d,
-                'sub'   => '',
-                'value' => (float) ($daily[sprintf('%04d-%02d-%02d', $year, $month, $d)] ?? 0),
-            ])->values();
+
+            $trend = collect(range(1, $dim))->map(function ($d) use ($year, $month, $daily, $today) {
+                $dd  = Carbon::create($year, $month, $d);
+                $row = $daily->get($dd->format('Y-m-d'));
+                return [
+                    'label'   => (string) $d,
+                    'sub'     => $dd->isoFormat('D MMM'),
+                    'value'   => (float) ($row->total ?? 0),
+                    'count'   => (int) ($row->cnt ?? 0),
+                    'current' => $dd->format('Y-m-d') === $today,
+                ];
+            })->values();
         } else {
             $monthly = $scope(Invoice::query())
-                ->selectRaw('MONTH(paid_at) as m, SUM(total_amount) as total')
-                ->groupBy('m')->pluck('total', 'm');
-            $trend = collect(range(1, 12))->map(fn ($m) => [
-                'label' => Carbon::create(null, $m, 1)->isoFormat('MMM'),
-                'sub'   => '',
-                'value' => (float) ($monthly[$m] ?? 0),
-            ])->values();
+                ->selectRaw('MONTH(paid_at) as m, SUM(total_amount) as total, COUNT(*) as cnt')
+                ->groupBy('m')->get()->keyBy('m');
+
+            $trend = collect(range(1, 12))->map(function ($m) use ($year, $monthly) {
+                $row = $monthly->get($m);
+                return [
+                    'label'   => Carbon::create(null, $m, 1)->isoFormat('MMM'),
+                    'sub'     => Carbon::create($year, $m, 1)->isoFormat('MMMM YYYY'),
+                    'value'   => (float) ($row->total ?? 0),
+                    'count'   => (int) ($row->cnt ?? 0),
+                    'current' => $year === (int) now()->year && $m === (int) now()->month,
+                ];
+            })->values();
         }
 
         // ── Transaksi dalam tempoh (carian + pagination) ──

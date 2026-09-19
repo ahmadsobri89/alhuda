@@ -94,9 +94,96 @@ function rm(v) {
   return 'RM ' + Number(v || 0).toLocaleString('ms-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-/* ── bar chart ── */
-const maxTrend = computed(() => Math.max(...props.trend.map(r => r.value), 1))
-function barH(v) { return Math.max(3, Math.round((v / maxTrend.value) * 90)) + 'px' }
+/* ── graf trend ──────────────────────────────────────────────────────────────
+   Satu siri sahaja (kutipan ikut tempoh), jadi satu warna hijau jenama; hanya
+   titik tertinggi digelapkan + dilabel terus. Nilai lain dibaca dari paksi-Y,
+   tooltip, atau paparan jadual — supaya tiada nombor bertindih atas setiap bar. */
+const trendView = ref('chart')   // 'chart' | 'table'
+const hoverIdx  = ref(null)      // indeks kolum yang dihover / difokus
+
+const points     = computed(() => props.trend ?? [])
+const trendTotal = computed(() => points.value.reduce((s, r) => s + Number(r.value || 0), 0))
+const trendTxn   = computed(() => points.value.reduce((s, r) => s + Number(r.count || 0), 0))
+
+// Purata dikira atas tempoh yang ada kutipan sahaja — hari klinik tutup tidak
+// sepatutnya menarik garis purata ke bawah dan menipu perbandingan staf.
+const activeCount = computed(() => points.value.filter(r => Number(r.value) > 0).length)
+const avgValue    = computed(() => (activeCount.value ? trendTotal.value / activeCount.value : 0))
+
+const peakIdx = computed(() => {
+  let best = -1
+  points.value.forEach((r, i) => {
+    if (Number(r.value) > 0 && (best < 0 || Number(r.value) > Number(points.value[best].value))) best = i
+  })
+  return best
+})
+const peak = computed(() => (peakIdx.value < 0 ? null : points.value[peakIdx.value]))
+
+/* Skala: bulatkan siling ke nombor kemas (1 / 2 / 2.5 / 5 × 10ⁿ) supaya tick
+   paksi-Y mudah dibaca, dan sentiasa tinggalkan sedikit ruang atas bar. */
+function niceStep(range) {
+  const mag = Math.pow(10, Math.floor(Math.log10(range)))
+  const n   = range / mag
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * mag
+}
+const scaleStep = computed(() => {
+  const m = Math.max(...points.value.map(r => Number(r.value) || 0), 0)
+  return m <= 0 ? 25 : niceStep(m / 4)
+})
+const scaleMax = computed(() => {
+  const m = Math.max(...points.value.map(r => Number(r.value) || 0), 0)
+  if (m <= 0) return 100
+  let max = Math.ceil(m / scaleStep.value) * scaleStep.value
+  if (max <= m) max += scaleStep.value   // jangan biar bar tertinggi cecah siling
+  return max
+})
+// Tick jatuh pada gandaan langkah (0 / 500 / 1000 / 1500), bukan suku siling —
+// suku boleh jadi nombor janggal seperti 1,125 yang susah dibaca sekilas.
+const ticks = computed(() => {
+  const step = scaleStep.value
+  const out = []
+  for (let v = scaleMax.value; v >= -1e-9; v -= step) out.push(Math.round(v))
+  return out
+})
+const avgPct = computed(() => pctOf(avgValue.value))
+
+function pctOf(v) { return (Math.max(0, Number(v) || 0) / scaleMax.value) * 100 }
+// Tempoh tanpa kutipan kekal tunjuk tunggul nipis di garis dasar — supaya staf
+// nampak "hari itu sifar", bukan tersilap sangka datanya hilang.
+function barStyle(v) { return { height: Number(v) > 0 ? Math.max(2, pctOf(v)) + '%' : '2px' } }
+
+/* Label paksi-X jadi jarang bila titik banyak (cth. 31 hari dalam sebulan). */
+const labelEvery = computed(() => Math.max(1, Math.ceil(points.value.length / 11)))
+function showLabel(i) {
+  return i === 0 || i === points.value.length - 1 || i % labelEvery.value === 0
+}
+
+function compact(v) {
+  const n = Number(v) || 0
+  if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M'
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k'
+  return String(Math.round(n))
+}
+
+const scopeLabel = computed(() => ({
+  day: t('fin_scope_day'), month: t('fin_scope_month'), year: t('fin_scope_year'),
+}[props.period] ?? ''))
+
+const hoverRow = computed(() => (hoverIdx.value == null ? null : points.value[hoverIdx.value]))
+// Beza terhadap purata — itu soalan pertama staf bila tengok satu hari.
+const hoverDelta = computed(() => {
+  const r = hoverRow.value
+  if (!r || !avgValue.value || !Number(r.value)) return null
+  return Math.round(((Number(r.value) - avgValue.value) / avgValue.value) * 100)
+})
+const tipStyle = computed(() => {
+  const n = points.value.length || 1
+  const pos = ((hoverIdx.value + 0.5) / n) * 100
+  return { left: Math.min(86, Math.max(14, pos)) + '%' }   // kekal dalam kad di tepi
+})
+function colLabel(r) {
+  return `${r.sub || r.label}: ${rm(r.value)}, ${r.count} ${t('fin_txn')}`
+}
 </script>
 
 <template>
@@ -178,17 +265,85 @@ function barH(v) { return Math.max(3, Math.round((v / maxTrend.value) * 90)) + '
       </div>
 
       <!-- Trend chart -->
-      <div class="card">
-        <div class="card__hd">
-          <h3 class="card__ttl">{{ t('fin_trend') }}</h3>
-          <span class="card__sub">{{ rm(trend.reduce((s,r)=>s+r.value,0)) }}</span>
-        </div>
-        <div class="chart">
-          <div v-for="(r,i) in trend" :key="i" class="col">
-            <div class="col__val">{{ r.value > 0 ? Number(r.value).toFixed(0) : '' }}</div>
-            <div class="col__wrap"><div class="col__bar" :style="{ height: barH(r.value) }" /></div>
-            <div class="col__lbl">{{ r.label }}</div>
+      <div class="card card--trend">
+        <div class="trend__hd">
+          <div>
+            <h3 class="card__ttl">{{ t('fin_trend') }}</h3>
+            <p class="trend__scope">{{ scopeLabel }}</p>
           </div>
+          <div class="vsw" role="group" :aria-label="t('fin_trend')">
+            <button :class="['vsw__btn', trendView==='chart' ? 'on':'']" :aria-pressed="trendView==='chart'"
+                    @click="trendView='chart'">{{ t('fin_view_chart') }}</button>
+            <button :class="['vsw__btn', trendView==='table' ? 'on':'']" :aria-pressed="trendView==='table'"
+                    @click="trendView='table'">{{ t('fin_view_table') }}</button>
+          </div>
+        </div>
+
+        <!-- Graf: satu warna, gridline nipis, garis purata, puncak dilabel terus -->
+        <div v-if="trendView==='chart'" class="chart" @pointerleave="hoverIdx = null">
+          <div class="chart__y">
+            <span v-for="tk in ticks" :key="tk" class="chart__yt" :style="{ bottom: pctOf(tk)+'%' }">{{ compact(tk) }}</span>
+          </div>
+
+          <div class="plot">
+            <div class="plot__grid">
+              <i v-for="tk in ticks" :key="tk" class="plot__line" :style="{ bottom: pctOf(tk)+'%' }" />
+            </div>
+
+            <div v-if="avgValue > 0" class="plot__avg" :style="{ bottom: avgPct+'%' }" />
+
+            <div class="cols">
+              <button
+                v-for="(r,i) in points" :key="i"
+                :class="['col', i===peakIdx ? 'is-peak':'', hoverIdx===i ? 'on':'']"
+                :aria-label="colLabel(r)"
+                @pointerenter="hoverIdx = i" @focus="hoverIdx = i" @blur="hoverIdx = null"
+              >
+                <span class="col__zone" />
+                <span :class="['col__bar', Number(r.value) > 0 ? '' : 'is-zero']" :style="barStyle(r.value)">
+                  <span v-if="i===peakIdx" class="col__cap">{{ compact(r.value) }}</span>
+                </span>
+              </button>
+            </div>
+
+            <div v-if="trendTotal === 0" class="chart__empty">{{ t('fin_empty') }}</div>
+
+            <div v-if="hoverRow" class="tip" :style="tipStyle">
+              <div class="tip__d">{{ hoverRow.sub || hoverRow.label }}</div>
+              <div class="tip__v">{{ rm(hoverRow.value) }}</div>
+              <div class="tip__m">
+                {{ hoverRow.count }} {{ t('fin_txn') }}<template v-if="hoverDelta !== null">
+                · <em :class="hoverDelta >= 0 ? 'up':'dn'">{{ hoverDelta >= 0 ? '▲' : '▼' }} {{ Math.abs(hoverDelta) }}% {{ t('fin_vs_avg') }}</em></template>
+              </div>
+            </div>
+          </div>
+
+          <div class="xlbl">
+            <span v-for="(r,i) in points" :key="i" :class="['xlbl__i', r.current ? 'is-now':'']">
+              <template v-if="showLabel(i)">{{ r.label }}</template>
+              <i v-if="r.current" class="xlbl__dot" />
+            </span>
+          </div>
+        </div>
+
+        <!-- Jadual: nilai tepat setiap tempoh (rujukan + pembaca skrin) -->
+        <div v-else class="ttbl">
+          <div class="ttbl__hd">
+            <span>{{ t('fin_col_period') }}</span><span>{{ t('fin_txn') }}</span><span>{{ t('fin_col_amount') }}</span>
+          </div>
+          <div class="ttbl__body">
+            <div v-for="(r,i) in points" :key="i" :class="['ttbl__row', i===peakIdx ? 'is-peak':'']">
+              <span>{{ r.sub || r.label }}<i v-if="r.current" class="tag-now">{{ t('fin_today') }}</i></span>
+              <span class="mono">{{ r.count }}</span>
+              <span class="mono ttbl__amt">{{ rm(r.value) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="trend__ft">
+          <span v-if="avgValue > 0" class="trend__key"><i class="trend__key-dash" />{{ t('fin_avg_line') }} {{ rm(avgValue) }}</span>
+          <span v-if="peak">{{ t('fin_peak') }}: <b>{{ peak.sub || peak.label }}</b> · {{ rm(peak.value) }}</span>
+          <span class="trend__ft-tot">{{ trendTxn }} {{ t('fin_txn') }} · {{ rm(trendTotal) }}</span>
         </div>
       </div>
     </div>
@@ -282,12 +437,77 @@ function barH(v) { return Math.max(3, Math.round((v / maxTrend.value) * 90)) + '
 .method__fill { height: 100%; background: var(--brand-green); border-radius: 99px; transition: width .3s; }
 .method__meta { font: 500 11px var(--font-sans); color: var(--fg3); margin-top: 4px; }
 
-.chart { display: flex; align-items: flex-end; gap: 4px; height: 130px; }
-.col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; height: 100%; }
-.col__val { font: 600 9px var(--font-mono); color: var(--fg3); }
-.col__wrap { display: flex; align-items: flex-end; height: 90px; }
-.col__bar { width: 70%; min-width: 8px; max-width: 26px; background: var(--brand-green-light); border: 1px solid #A7F3D0; border-radius: 4px 4px 0 0; transition: height .3s; }
-.col__lbl { font: 500 10px var(--font-sans); color: var(--fg3); white-space: nowrap; }
+/* ── Graf trend ──
+   Satu siri → satu hijau (#3FA46F, 3.03:1 atas putih); puncak guna step gelap
+   yang sama rampa (#0F6938) + label terus, jadi penekanan tak bergantung warna. */
+.card--trend { --tr-bar: #3FA46F; --tr-peak: #0F6938; display: flex; flex-direction: column; }
+.trend__hd { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.trend__scope { font: 500 11.5px var(--font-sans); color: var(--fg3); margin: 3px 0 0; }
+
+.vsw { display: inline-flex; background: var(--bg-muted); border: 1px solid var(--border); border-radius: 8px; padding: 2px; gap: 2px; flex-shrink: 0; }
+.vsw__btn { border: none; background: transparent; padding: 5px 11px; border-radius: 6px; font: 600 11.5px var(--font-sans); color: var(--fg3); cursor: pointer; }
+.vsw__btn.on { background: #fff; color: var(--fg1); box-shadow: var(--shadow-sm); }
+
+.chart { display: grid; grid-template-columns: 40px 1fr; column-gap: 8px; margin-top: 22px; }
+.chart__y, .plot { height: 168px; position: relative; }
+.chart__yt { position: absolute; right: 0; transform: translateY(50%); font: 500 10px var(--font-mono); color: var(--fg3); font-variant-numeric: tabular-nums; }
+
+.plot__grid { position: absolute; inset: 0; pointer-events: none; }
+.plot__line { position: absolute; left: 0; right: 0; height: 1px; background: var(--border); }
+.plot__avg { position: absolute; left: 0; right: 0; border-top: 1px dashed #94A3B8; pointer-events: none; z-index: 2; }
+
+.cols { position: absolute; inset: 0; display: flex; align-items: flex-end; gap: 2px; }
+.col { position: relative; flex: 1; height: 100%; padding: 0; border: none; background: transparent; cursor: pointer; }
+.col__zone { position: absolute; inset: 0; border-radius: 5px; transition: background .12s; }
+.col.on .col__zone { background: rgba(15,23,42,.055); }
+/* Ditambat mutlak ke garis dasar: tinggi % dalam <button> flex tak boleh
+   dipercayai (Chrome pusatkan kandungan dalam kotak anonim butang). */
+.col__bar { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 24px; background: var(--tr-bar);
+  border-radius: 4px 4px 0 0; transition: height .28s ease, background .12s; }
+.col__bar.is-zero { background: var(--border); border-radius: 2px; }
+.col.is-peak .col__bar, .col.on .col__bar:not(.is-zero) { background: var(--tr-peak); }
+.col__cap { position: absolute; bottom: calc(100% + 5px); left: 50%; transform: translateX(-50%);
+  font: 700 10px var(--font-mono); color: var(--fg2); white-space: nowrap; }
+.col:focus-visible { outline: 2px solid var(--brand-green); outline-offset: 1px; border-radius: 5px; }
+
+.xlbl { grid-column: 2; display: flex; gap: 2px; margin-top: 7px; }
+.xlbl__i { flex: 1; min-width: 0; text-align: center; font: 500 10px var(--font-sans); color: var(--fg3); white-space: nowrap; }
+.xlbl__i.is-now { color: var(--brand-green-dark); font-weight: 700; }
+.xlbl__dot { display: block; width: 4px; height: 4px; border-radius: 99px; background: var(--brand-green); margin: 3px auto 0; }
+
+.tip { position: absolute; top: -6px; transform: translateX(-50%); z-index: 4; min-width: 104px;
+  background: var(--fg1); color: #fff; border-radius: 9px; padding: 8px 11px; box-shadow: var(--shadow-md); pointer-events: none; }
+.tip__d { font: 600 10px var(--font-sans); color: #CBD5E1; }
+.tip__v { font: 700 14px var(--font-mono); margin-top: 1px; }
+.tip__m { font: 500 10px var(--font-sans); color: #CBD5E1; margin-top: 3px; }
+.tip__m em { font-style: normal; }
+.tip__m em.up { color: #6EE7A8; }
+.tip__m em.dn { color: #FCA5A5; }
+
+.chart__empty { position: absolute; inset: 0; display: grid; place-items: center;
+  font: 500 12px var(--font-sans); color: var(--fg3); pointer-events: none; }
+
+.ttbl { margin-top: 14px; }
+.ttbl__hd, .ttbl__row { display: grid; grid-template-columns: 1fr 64px 1fr; gap: 8px; align-items: center; }
+.ttbl__hd { padding: 0 2px 7px; border-bottom: 1px solid var(--border); font: 600 10px var(--font-sans);
+  color: var(--fg3); text-transform: uppercase; letter-spacing: .04em; }
+.ttbl__hd span:not(:first-child), .ttbl__row span:not(:first-child) { text-align: right; }
+.ttbl__body { max-height: 196px; overflow-y: auto; }
+.ttbl__row { padding: 7px 2px; border-bottom: 1px solid var(--border); font: 500 12px var(--font-sans); color: var(--fg2); }
+.ttbl__row:last-child { border-bottom: none; }
+.ttbl__row.is-peak { color: var(--fg1); font-weight: 700; }
+.ttbl__amt { font-weight: 700; color: var(--fg1); font-variant-numeric: tabular-nums; }
+.tag-now { font-style: normal; margin-left: 6px; padding: 1px 6px; border-radius: 99px;
+  background: var(--brand-green-light); color: var(--brand-green-dark); font: 700 9px var(--font-sans); }
+
+.trend__ft { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  margin-top: 14px; padding-top: 11px; border-top: 1px solid var(--border);
+  font: 500 11.5px var(--font-sans); color: var(--fg3); }
+.trend__ft b { color: var(--fg1); }
+.trend__key { display: inline-flex; align-items: center; gap: 6px; }
+.trend__key-dash { width: 16px; height: 0; border-top: 1px dashed #94A3B8; }
+.trend__ft-tot { margin-left: auto; font: 700 12px var(--font-mono); color: var(--brand-green-dark); }
 
 .tbl-scroll { overflow-x: auto; }
 .tbl__hd, .tbl__row { display: grid; grid-template-columns: 44px 1.2fr 1.6fr 1fr 1.1fr 1.2fr 1fr; gap: 10px; align-items: center; min-width: 640px; }
