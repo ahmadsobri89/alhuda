@@ -9,21 +9,21 @@
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* Vozy U9 thermal label — dua saiz roll boleh dipilih:
-     80 × 50 mm  (asal)      · artwork memenuhi seluruh label
-     100 × 70 mm (tambahan)  · artwork dikekalkan nisbahnya (100 × 62.5 mm)
-                               dan ditengahkan menegak supaya tidak terjulur.
-   Artwork label-medicine.png is 945×591px = exactly 80×50mm @ 300 DPI.
+/* Vozy U9 thermal label — dua saiz roll boleh dipilih, setiap satu dengan
+   artwork tersendiri (susun aturnya memang berbeza, jadi tindanan teks
+   untuk setiap saiz diukur berasingan — lihat blok .lt7-* di bawah):
+     80 × 50 mm  · label-medicine.png        945×591px  @ 300 DPI
+     100 × 70 mm · label-medicine-100x70.png 1181×827px @ 300 DPI
    Saiz @page ada dalam <style id="page-size"> — ditukar oleh setLabelSize(). */
 :root {
-    --label-w: 80mm;   /* lebar roll */
-    --label-h: 50mm;   /* tinggi roll */
-    --art-h:   50mm;   /* tinggi artwork = lebar × 0.6254 */
+    --label-w: 80mm;
+    --label-h: 50mm;
+    --art-ratio: 62.54%;   /* 591 / 945 */
 }
 html.size-100x70 {
     --label-w: 100mm;
     --label-h: 70mm;
-    --art-h:   62.5mm;
+    --art-ratio: 70.02%;   /* 827 / 1181 */
 }
 
 body {
@@ -41,7 +41,7 @@ body {
 .label-wrap-inner {
     position: relative;
     width: 100%;
-    padding-bottom: 62.54%; /* maintains 945:591 ratio */
+    padding-bottom: var(--art-ratio); /* kekalkan nisbah artwork */
     /* Make font sizes scale with the label width (cqw units below),
        so the screen preview (≈945px) and the 80mm print match exactly. */
     container-type: inline-size;
@@ -54,6 +54,11 @@ body {
     display: block;
     object-fit: fill;
 }
+
+/* Hanya artwork + tindanan bagi saiz terpilih yang dipaparkan */
+.for-100x70 { display: none; }
+html.size-100x70 .for-80x50  { display: none; }
+html.size-100x70 .for-100x70 { display: block; }
 
 /* All text overlaid on top */
 .label-text {
@@ -200,6 +205,57 @@ body {
     line-height: 1;
 }
 
+/* ══════════════════════════════════════════════════════════
+   Tindanan teks — saiz 100 × 70 mm
+   Diukur terus dari label-medicine-100x70.png (1181 × 827 px).
+   Susun aturnya berbeza daripada artwork 80×50:
+     · "Nama Ubat" dan "Kegunaan" ialah DUA baris berasingan
+     · kotak dos menjangkau kedua-dua baris Take/Makan (pusat 65.7%)
+     · "Times Daily / Kali Sehari" sudah tercetak pada artwork
+   `top` di sini ialah PUSAT baris (berpasangan dengan translateY(-50%)),
+   jadi tak perlu teka cap-height seperti blok .t-* 80×50 di atas.
+   ══════════════════════════════════════════════════════════ */
+.lt7 > div {
+    position: absolute;
+    transform: translateY(-50%);
+    line-height: 1;
+    font-weight: 700;
+}
+
+/* Tampung teks contoh yang tercetak kekal pada artwork.
+   Buang dua blok .lt7-patch ini (dan <div>nya) bila artwork
+   diberi semula dengan medan-medan ini kosong. */
+.lt7 > .lt7-patch { position: absolute; transform: none; background: #fff; }
+.lt7-patch--meal { top: 66.3%; height: 7.2%; left: 54.2%; right: 2.2%; }
+.lt7-patch--note { top: 74.5%; height: 9.6%; left: 15.0%; right: 2.2%; }
+
+/* ── Baris pesakit ── */
+.lt7-nama     { top: 35.0%; left: 14.0%; right: 2.5%; font-size: 2.55cqw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lt7-tarikh   { top: 41.0%; left: 14.0%; right: 2.5%; font-size: 2.55cqw; white-space: nowrap; }
+.lt7-ubat     { top: 47.0%; left: 21.4%; right: 2.5%; font-size: 2.55cqw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lt7-kegunaan { top: 52.9%; left: 19.5%; right: 2.5%; font-size: 2.55cqw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── Nombor dos — ditengahkan dalam kotak artwork ── */
+.lt7-dose-num { top: 65.7%; left: 11.94%; width: 6.35%; text-align: center; font-size: 3.40cqw; font-weight: 900; }
+.lt7-freq-num { top: 65.7%; left: 47.42%; width: 6.35%; text-align: center; font-size: 3.40cqw; font-weight: 900; }
+
+/* ── Unit ubat (ruang kosong antara dua kotak) ── */
+.lt7-unit-en  { top: 61.5%; left: 20.5%; width: 26%; font-size: 2.25cqw; white-space: nowrap; overflow: hidden; }
+.lt7-unit-bm  { top: 69.1%; left: 20.5%; width: 26%; font-size: 2.25cqw; white-space: nowrap; overflow: hidden; }
+
+/* ── Waktu makan — ganti "Before / Sebelum Makan" artwork ── */
+.lt7-meal     { top: 69.1%; left: 54.7%; right: 2.5%; font-size: 2.30cqw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── Nota item ── */
+.lt7 > .lt7-note {
+    top: 74.8%; left: 15.8%; right: 3%;
+    transform: none;
+    font-size: 2.20cqw;
+    line-height: 1.3;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
 /* ════════════════════════════════════
    Screen preview
    ════════════════════════════════════ */
@@ -259,15 +315,6 @@ body {
     }
     .label-wrap.active { display: block; }
 
-    /* Saiz besar: kotak pratonton ikut nisbah 100:70, artwork di tengah */
-    html.size-100x70 .label-wrap.active {
-        display: flex;
-        align-items: center;
-        aspect-ratio: 100 / 70;
-        background: #fff;
-    }
-    html.size-100x70 .label { width: 100%; }
-
     /* Pemilih saiz label */
     .size-bar {
         display: flex; gap: 3px;
@@ -301,19 +348,16 @@ body {
     .label-wrap {
         /* Lock to the exact roll size — the % aspect ratio rounds to
            50.03mm and spills a blank 2nd page; fixed mm prevents that. */
-        display: flex !important;
-        align-items: center;
-        justify-content: center;
+        display: block !important;
         width: var(--label-w);
         height: var(--label-h);
         overflow: hidden;
         page-break-after: always;
         break-after: page;
     }
-    .label { width: 100%; }
     .label-wrap-inner {
         width: var(--label-w);
-        height: var(--art-h);
+        height: var(--label-h);
         padding-bottom: 0 !important;
     }
     .label-wrap:last-child {
@@ -464,11 +508,12 @@ $mealMap = [
 <div class="label">
 <div class="label-wrap-inner">
 
-    {{-- Background image (the full label design) --}}
-    <img class="label-bg" src="{{ asset('images/label-medicine.png') }}?v={{ @filemtime(public_path('images/label-medicine.png')) ?: '1' }}" alt="" />
+    {{-- Artwork latar — satu bagi setiap saiz roll --}}
+    <img class="label-bg for-80x50" src="{{ asset('images/label-medicine.png') }}?v={{ @filemtime(public_path('images/label-medicine.png')) ?: '1' }}" alt="" />
+    <img class="label-bg for-100x70" src="{{ asset('images/label-medicine-100x70.png') }}?v={{ @filemtime(public_path('images/label-medicine-100x70.png')) ?: '1' }}" alt="" />
 
-    {{-- Dynamic text overlaid on top --}}
-    <div class="label-text">
+    {{-- ── Tindanan teks · 80 × 50 mm ── --}}
+    <div class="label-text for-80x50">
 
         {{-- Patient name --}}
         <div class="t-nama">{{ $rx->patient->name }}</div>
@@ -512,7 +557,37 @@ $mealMap = [
         @if($printNote)
         <div class="t-note">{{ $printNote }}</div>
         @endif
-    </div>{{-- .label-text --}}
+    </div>{{-- .label-text.for-80x50 --}}
+
+    {{-- ── Tindanan teks · 100 × 70 mm ──
+         Artwork ini ada baris "Nama Ubat" dan "Kegunaan" berasingan,
+         jadi nama ubat tak perlu lagi berkongsi satu baris dengan kegunaan. --}}
+    <div class="label-text lt7 for-100x70">
+
+        {{-- Tampung teks contoh artwork sebelum apa-apa teks dilukis --}}
+        <div class="lt7-patch lt7-patch--meal"></div>
+        <div class="lt7-patch lt7-patch--note"></div>
+
+        <div class="lt7-nama">{{ $rx->patient->name }}</div>
+        <div class="lt7-tarikh">{{ $rx->created_at->format('d/m/Y') }}</div>
+        <div class="lt7-ubat">{{ $item->drug_name }}</div>
+        <div class="lt7-kegunaan">{{ $item->kegunaan }}</div>
+
+        <div class="lt7-dose-num">{{ $doseNum }}</div>
+        <div class="lt7-freq-num">{{ $freqDisp }}</div>
+
+        <div class="lt7-unit-en">@if($unit){{ $unit['en'] }}@endif</div>
+        <div class="lt7-unit-bm">@if($unit){{ $unit['bm'] }}@endif</div>
+
+        {{-- Satu baris "EN / BM", padan gaya teks tercetak artwork --}}
+        @if($mealEn || $mealBm)
+        <div class="lt7-meal">{{ $mealEn === $mealBm ? $mealEn : trim("{$mealEn} / {$mealBm}", ' /') }}</div>
+        @endif
+
+        @if($printNote)
+        <div class="lt7-note">{{ $printNote }}</div>
+        @endif
+    </div>{{-- .label-text.for-100x70 --}}
 
 </div>{{-- .label-wrap-inner --}}
 </div>{{-- .label --}}
