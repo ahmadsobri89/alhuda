@@ -121,6 +121,8 @@
   "dash_appt": "+ Appointment",
   "dash_kpi_today": "Today's Patients",
   "dash_kpi_revenue": "This Month's Revenue",
+  "dash_kpi_days": "Operating Days",
+  "dash_days_left": ":n days left · :total days in month",
   "dash_kpi_pending": "Pending Invoices",
   "dash_kpi_patients": "Registered Patients",
   "dash_in_room": "in room",

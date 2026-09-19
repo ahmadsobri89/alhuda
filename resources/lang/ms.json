@@ -121,6 +121,8 @@
   "dash_appt": "+ Temujanji",
   "dash_kpi_today": "Pesakit Hari Ini",
   "dash_kpi_revenue": "Kutipan Bulan Ini",
+  "dash_kpi_days": "Hari Operasi",
+  "dash_days_left": "Baki :n hari · :total hari sebulan",
   "dash_kpi_pending": "Invois Tertunggak",
   "dash_kpi_patients": "Pesakit Berdaftar",
   "dash_in_room": "dalam bilik",

@@ -78,6 +78,13 @@ const alertTone   = { orange:'#EA580C', yellow:'#D97706', blue:'#2563EB', red:'#
 const alertBg     = { orange:'#FFF7ED', yellow:'#FFFBEB', blue:'#EFF6FF', red:'#FEF2F2' }
 const alertIcon   = { stock:'📦', rx:'💊', inv:'📄', visit:'📋' }
 
+/* ── progres bulan ── */
+const monthProgress = computed(() => {
+  const total = Number(props.kpi.days_in_month) || 0
+  if (!total) return 0
+  return Math.min(100, Math.round((Number(props.kpi.days_elapsed) / total) * 100))
+})
+
 /* ── bar chart helpers ── */
 const maxRev = computed(() => Math.max(...props.revChart.map(r => r.value), 1))
 function barH(val) { return Math.max(4, Math.round((val / maxRev.value) * 72)) + 'px' }
@@ -130,6 +137,16 @@ function barH(val) { return Math.max(4, Math.round((val / maxRev.value) * 72)) +
         <div class="kpi-card__label">{{ t('dash_kpi_revenue') }} · {{ selectedMonthLabel }}</div>
         <div class="kpi-card__val kpi-card__val--green">RM {{ Number(kpi.month_revenue).toLocaleString('ms-MY', {minimumFractionDigits:2, maximumFractionDigits:2}) }}</div>
         <div class="kpi-card__sub">{{ isCurrentPeriod ? t('dash_today_rev', { amount: Number(kpi.today_revenue).toFixed(2) }) : selectedMonthLabel }}</div>
+      </div>
+
+      <!-- Hari operasi bulan -->
+      <div class="kpi-card">
+        <div class="kpi-card__label">{{ t('dash_kpi_days') }} · {{ selectedMonthLabel }}</div>
+        <div class="kpi-card__val">
+          {{ kpi.days_elapsed }}<span class="kpi-card__unit">/{{ kpi.days_in_month }}</span>
+        </div>
+        <div class="kpi-card__sub">{{ t('dash_days_left', { n: kpi.days_remaining, total: kpi.days_in_month }) }}</div>
+        <div class="kpi-bar"><div class="kpi-bar__fill" :style="{ width: monthProgress + '%' }" /></div>
       </div>
 
       <!-- Invois tertunggak -->
@@ -365,7 +382,7 @@ function barH(val) { return Math.max(4, Math.round((val / maxRev.value) * 72)) +
 /* KPI row */
 .kpi-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 12px;
 }
 .kpi-card {
@@ -383,6 +400,15 @@ function barH(val) { return Math.max(4, Math.round((val / maxRev.value) * 72)) +
 .dot--green { background: var(--brand-green); }
 .dot--amber { background: #D97706; }
 .dot--grey  { background: #94A3B8; }
+.kpi-card__unit { font: 700 14px var(--font-mono); color: var(--fg3); }
+.kpi-bar {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border);
+  margin-top: 8px;
+  overflow: hidden;
+}
+.kpi-bar__fill { height: 100%; border-radius: 999px; background: var(--brand-green); transition: width .3s; }
 
 /* main grid */
 .main-grid {
@@ -461,6 +487,10 @@ function barH(val) { return Math.max(4, Math.round((val / maxRev.value) * 72)) +
   text-align: center;
   color: var(--fg3);
   font: 400 12.5px var(--font-sans);
+}
+
+@media (max-width: 1280px) {
+  .kpi-row { grid-template-columns: repeat(3, 1fr); }
 }
 
 @media (max-width: 1024px) {

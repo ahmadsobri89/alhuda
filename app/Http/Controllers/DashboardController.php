@@ -20,6 +20,16 @@ class DashboardController extends Controller
         $filterYear  = max(2015, min((int) now()->year, (int) request('year', now()->year)));
         $user        = Auth::user();
 
+        $isCurrentPeriod = $filterMonth === (int) now()->month && $filterYear === (int) now()->year;
+
+        /* ── Hari operasi bulan terpilih ── */
+        $periodStart   = \Carbon\Carbon::create($filterYear, $filterMonth, 1)->startOfDay();
+        $daysInMonth   = $periodStart->daysInMonth;
+        $daysElapsed   = $isCurrentPeriod
+            ? (int) now()->day
+            : ($periodStart->isFuture() ? 0 : $daysInMonth);
+        $daysRemaining = $daysInMonth - $daysElapsed;
+
         /* ── KPIs ── */
         $todayAppts = Appointment::whereDate('appointment_date', $today);
         $kpi = [
@@ -33,6 +43,9 @@ class DashboardController extends Controller
             'pending_amount' => Invoice::whereIn('status',['draft','unpaid'])->sum('total_amount'),
             'total_patients' => Patient::where('status','active')->count(),
             'open_visits'    => Visit::where('status','open')->count(),
+            'days_in_month'  => $daysInMonth,
+            'days_elapsed'   => $daysElapsed,
+            'days_remaining' => $daysRemaining,
         ];
 
         /* ── Upcoming appointments today ── */
@@ -90,8 +103,6 @@ class DashboardController extends Controller
         }
 
         /* ── Revenue chart ── */
-        $isCurrentPeriod = $filterMonth === (int) now()->month && $filterYear === (int) now()->year;
-
         if ($isCurrentPeriod) {
             $revChart = collect(range(6, 0))->map(function ($daysAgo) {
                 $d = now()->subDays($daysAgo);
@@ -109,7 +120,6 @@ class DashboardController extends Controller
                 ->groupBy('day')
                 ->pluck('total', 'day');
 
-            $daysInMonth = \Carbon\Carbon::create($filterYear, $filterMonth)->daysInMonth;
             $revChart = collect(range(1, $daysInMonth))->map(function ($day) use ($filterMonth, $filterYear, $dailyTotals) {
                 $dateStr = sprintf('%04d-%02d-%02d', $filterYear, $filterMonth, $day);
                 return [
