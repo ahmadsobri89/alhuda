@@ -67,6 +67,13 @@ function navigate(item) {
   router.visit(route(item.routeName || item.id))
 }
 
+// Sesi impersonate — penyamar asal (null jika tiada)
+const impersonator = computed(() => page.props.auth?.impersonator ?? null)
+
+function stopImpersonate() {
+  router.post(route('impersonate.stop'))
+}
+
 function logout() {
   if (window.confirm(t('layout_logout_confirm'))) {
     router.post('/logout')
@@ -115,6 +122,11 @@ function logout() {
 
     <!-- Main -->
     <div class="main">
+      <div v-if="impersonator" class="impersonate-bar">
+        <Icon name="shield" :size="15" />
+        <span>{{ t('imp_banner', { name: userName, by: impersonator.name }) }}</span>
+        <button @click="stopImpersonate">{{ t('imp_leave') }}</button>
+      </div>
       <!-- TopBar -->
       <div :class="['topbar', mobileSearchOpen ? 'topbar--search-mode' : '']">
         <template v-if="mobileSearchOpen">

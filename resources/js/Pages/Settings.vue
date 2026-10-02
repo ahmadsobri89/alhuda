@@ -24,6 +24,25 @@ const props = defineProps({
 const { t } = useLocale()
 const tab = ref('users')
 
+// ─── Impersonate (hanya pengguna dengan users.can_impersonate) ──────────────
+const canImpersonate = computed(() => !!page.props.auth?.can_impersonate && !page.props.auth?.impersonator)
+const currentUserId  = computed(() => page.props.auth?.user?.id)
+
+// Impersonator sedia ada boleh beri/tarik balik untuk pengguna LAIN sahaja
+function setImpersonator(u, grant) {
+  if (!window.confirm(t(grant ? 'imp_grant_confirm' : 'imp_revoke_confirm', { name: u.name }))) return
+  router.patch(route('settings.users.impersonator', u.id), { grant }, {
+    preserveScroll: true,
+    onSuccess: () => closeModal(),
+  })
+}
+
+function impersonate(u) {
+  if (window.confirm(t('imp_confirm', { name: u.name }))) {
+    router.post(route('impersonate.start', u.id))
+  }
+}
+
 // ─── Audit log pagination ────────────────────────────────────────────────────
 const auditPerPage = ref(props.filters?.per_page ?? 20)
 const PER_PAGE_OPTIONS = [20, 50, 100]
@@ -577,13 +596,13 @@ function lkpDoDelete() {
           <h3 class="card__title" style="flex:1">{{ t('set_users_title') }}</h3>
           <Btn variant="primary" size="sm" @click="openCreate">{{ t('set_new_user') }}</Btn>
         </div>
-        <div class="table__head" style="grid-template-columns:2fr 1fr 1.6fr 90px 90px 100px">
+        <div class="table__head" style="grid-template-columns:1.6fr 1fr 1.4fr 80px 80px 240px">
           <div>{{ t('set_col_user') }}</div><div>{{ t('set_col_role') }}</div><div>{{ t('set_col_email') }}</div><div>{{ t('set_col_mfa') }}</div><div>{{ t('set_col_status') }}</div><div></div>
         </div>
         <div
           v-for="u in users" :key="u.id"
           class="table__row"
-          style="grid-template-columns:2fr 1fr 1.6fr 90px 90px 100px"
+          style="grid-template-columns:1.6fr 1fr 1.4fr 80px 80px 240px"
         >
           <div class="row">
             <Avatar :name="u.name" />
@@ -594,11 +613,16 @@ function lkpDoDelete() {
           </div>
           <div class="row" style="flex-wrap:wrap;gap:3px">
             <Badge v-for="r in ((u.roles && u.roles.length) ? u.roles : [u.role])" :key="r" :tone="roleTone(r)">{{ roleLabels[r] ?? r }}</Badge>
+            <Badge v-if="u.can_impersonate" tone="orange">{{ t('imp_badge') }}</Badge>
           </div>
           <div class="mono" style="font:500 12px var(--font-mono);color:var(--fg3)">{{ u.email }}</div>
           <div><Badge :tone="u.mfa_enabled?'green':'orange'">{{ u.mfa_enabled ? '✓ TOTP' : 'Off' }}</Badge></div>
           <div><Badge :tone="u.status==='active'?'green':'neutral'">{{ u.status }}</Badge></div>
           <div class="row" style="gap:4px">
+            <Btn
+              v-if="canImpersonate && u.id !== currentUserId && !u.can_impersonate"
+              variant="ghost" size="sm" :title="t('imp_button_title')" @click="impersonate(u)"
+            >{{ t('imp_button') }}</Btn>
             <Btn variant="ghost" size="sm" @click="openEdit(u)">{{ t('btn_edit') }}</Btn>
             <Btn variant="ghost" size="sm" style="color:var(--brand-red)" @click="confirmDelete(u)">{{ t('btn_delete') }}</Btn>
           </div>
@@ -900,6 +924,20 @@ function lkpDoDelete() {
           <div class="row" style="gap:10px;margin-top:8px">
             <button type="button" :class="['toggle', userForm.mfa_enabled ? 'on':'']" @click="userForm.mfa_enabled = !userForm.mfa_enabled"></button>
             <span style="font:500 13px var(--font-sans);color:var(--fg2)">{{ t('set_mfa_label') }}</span>
+          </div>
+          <div
+            v-if="canImpersonate && editingUser && editingUser.id !== currentUserId"
+            class="row" style="gap:10px;margin-top:12px;padding:10px 12px;border:1px solid var(--border);border-radius:8px"
+          >
+            <div style="flex:1;font:500 13px var(--font-sans);color:var(--fg2)">
+              <div style="font-weight:600;color:var(--fg1)">{{ t('imp_access_title') }}</div>
+              <div style="font-size:12px;color:var(--fg3)">{{ editingUser.can_impersonate ? t('imp_access_on') : t('imp_access_off') }}</div>
+            </div>
+            <Btn
+              v-if="editingUser.can_impersonate" type="button" variant="ghost" size="sm" style="color:var(--brand-red)"
+              @click="setImpersonator(editingUser, false)"
+            >{{ t('imp_revoke') }}</Btn>
+            <Btn v-else type="button" variant="secondary" size="sm" @click="setImpersonator(editingUser, true)">{{ t('imp_grant') }}</Btn>
           </div>
           <div class="modal__footer">
             <Btn type="button" variant="secondary" @click="closeModal">{{ t('btn_cancel') }}</Btn>

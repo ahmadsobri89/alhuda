@@ -7,6 +7,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EMRController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\HealthTipController;
+use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\LookupController;
@@ -32,6 +33,7 @@ use App\Models\HealthTip;
 use App\Models\Testimonial;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use Lab404\Impersonate\Middleware\ProtectFromImpersonation;
 
 // Landing page (awam — sebelum log masuk)
 Route::get('/', function () {
@@ -189,9 +191,12 @@ Route::middleware(['auth', 'verified', EnsureModuleAccess::class])->group(functi
 
     // Settings — CRUD
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
-    Route::post('/settings/users', [SettingsController::class, 'storeUser'])->name('settings.users.store');
-    Route::put('/settings/users/{user}', [SettingsController::class, 'updateUser'])->name('settings.users.update');
-    Route::delete('/settings/users/{user}', [SettingsController::class, 'destroyUser'])->name('settings.users.destroy');
+    Route::middleware(ProtectFromImpersonation::class)->group(function () {
+        Route::post('/settings/users', [SettingsController::class, 'storeUser'])->name('settings.users.store');
+        Route::put('/settings/users/{user}', [SettingsController::class, 'updateUser'])->name('settings.users.update');
+        Route::delete('/settings/users/{user}', [SettingsController::class, 'destroyUser'])->name('settings.users.destroy');
+        Route::patch('/settings/users/{user}/impersonator', [SettingsController::class, 'updateImpersonator'])->name('settings.users.impersonator');
+    });
     Route::put('/settings/policies', [SettingsController::class, 'updatePolicies'])->name('settings.policies.update');
     Route::post('/settings/clinic', [SettingsController::class, 'updateClinic'])->name('settings.clinic.update');
 
@@ -217,8 +222,14 @@ Route::middleware(['auth', 'verified', EnsureModuleAccess::class])->group(functi
     Route::get('/audit-log', [AuditLogController::class, 'index'])->name('audit-log');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::patch('/profile', [ProfileController::class, 'update'])->middleware(ProtectFromImpersonation::class)->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->middleware(ProtectFromImpersonation::class)->name('profile.destroy');
+
+    // Impersonate (lab404) — POST sahaja (CSRF); kebenaran via users.can_impersonate
+    Route::post('/impersonate/leave', [ImpersonationController::class, 'stop'])->name('impersonate.stop');
+    Route::post('/impersonate/{user}', [ImpersonationController::class, 'start'])
+        ->middleware([ProtectFromImpersonation::class, 'throttle:10,1'])
+        ->name('impersonate.start');
 });
 
 require __DIR__.'/auth.php';

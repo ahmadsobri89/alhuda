@@ -6,9 +6,11 @@ use App\Models\Appointment;
 use App\Models\ClinicProfile;
 use App\Models\Invoice;
 use App\Models\Prescription;
+use App\Models\User;
 use App\Models\Visit;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use Lab404\Impersonate\Services\ImpersonateManager;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -37,31 +39,36 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'auth' => [
-                'user'    => $request->user(),
+                'user' => $request->user(),
                 'modules' => $request->user()?->accessibleModules() ?? [],
+                'can_impersonate' => (bool) $request->user()?->canImpersonate(),
+                'impersonator' => fn () => ($id = app(ImpersonateManager::class)->getImpersonatorId())
+                    ? User::find($id, ['id', 'name'])
+                    : null,
             ],
             'flash' => [
-                'success'        => fn () => $request->session()->get('success'),
-                'error'          => fn () => $request->session()->get('error'),
+                'success' => fn () => $request->session()->get('success'),
+                'error' => fn () => $request->session()->get('error'),
                 'quickPatientId' => fn () => $request->session()->get('quickPatientId'),
             ],
             'notifications' => [
                 'unreadCount' => fn () => $request->user()?->unreadNotifications()->count() ?? 0,
             ],
             'pendingCounts' => [
-                'queue'    => fn () => Appointment::whereDate('appointment_date', now()->toDateString())
+                'queue' => fn () => Appointment::whereDate('appointment_date', now()->toDateString())
                     ->whereIn('status', ['confirmed', 'waiting', 'in_room'])
                     ->count(),
-                'emr'      => fn () => Visit::where('status', 'open')->count(),
+                'emr' => fn () => Visit::where('status', 'open')->count(),
                 'pharmacy' => fn () => Prescription::whereIn('status', ['pending', 'verifying'])->count(),
-                'billing'  => fn () => Invoice::whereIn('status', ['draft', 'unpaid'])->count(),
+                'billing' => fn () => Invoice::whereIn('status', ['draft', 'unpaid'])->count(),
             ],
-            'locale'       => app()->getLocale(),
+            'locale' => app()->getLocale(),
             'translations' => fn () => $this->loadTranslations(app()->getLocale()),
-            'clinic'       => function () {
+            'clinic' => function () {
                 $cp = ClinicProfile::current();
+
                 return [
-                    'name'     => $cp->name,
+                    'name' => $cp->name,
                     'logo_url' => $cp->logo_url,
                 ];
             },
@@ -71,7 +78,10 @@ class HandleInertiaRequests extends Middleware
     private function loadTranslations(string $locale): array
     {
         $path = resource_path("lang/{$locale}.json");
-        if (!file_exists($path)) return [];
+        if (! file_exists($path)) {
+            return [];
+        }
+
         return json_decode(file_get_contents($path), true) ?? [];
     }
 }

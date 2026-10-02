@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
+use Lab404\Impersonate\Services\ImpersonateManager;
 
 class AuditLog extends Model
 {
@@ -16,8 +17,8 @@ class AuditLog extends Model
     ];
 
     protected $casts = [
-        'meta'       => 'array',
-        'success'    => 'boolean',
+        'meta' => 'array',
+        'success' => 'boolean',
         'created_at' => 'datetime',
     ];
 
@@ -29,14 +30,17 @@ class AuditLog extends Model
     public static function record(string $action, ?string $resource = null, bool $success = true, array $meta = []): void
     {
         $user = Auth::user();
+        if ($impersonatorId = app(ImpersonateManager::class)->getImpersonatorId()) {
+            $meta['impersonator_id'] = $impersonatorId;
+        }
         static::create([
-            'user_id'    => $user?->id,
-            'user_name'  => $user?->name ?? 'System',
-            'action'     => $action,
-            'resource'   => $resource,
+            'user_id' => $user?->id,
+            'user_name' => $user?->name ?? 'System',
+            'action' => $action,
+            'resource' => $resource,
             'ip_address' => Request::ip(),
-            'success'    => $success,
-            'meta'       => $meta ?: null,
+            'success' => $success,
+            'meta' => $meta ?: null,
         ]);
     }
 }

@@ -21,7 +21,7 @@ class SettingsController extends Controller
 {
     public function index(Request $request)
     {
-        $users = User::orderBy('name')->get(['id', 'name', 'email', 'role', 'roles', 'mmc_number', 'mfa_enabled', 'status']);
+        $users = User::orderBy('name')->get(['id', 'name', 'email', 'role', 'roles', 'mmc_number', 'mfa_enabled', 'status', 'can_impersonate']);
 
         $policies = SecurityPolicy::orderBy('id')->get(['id', 'key', 'label', 'enabled']);
 
@@ -36,13 +36,13 @@ class SettingsController extends Controller
             ->onEachSide(0)
             ->withQueryString()
             ->through(fn ($r) => [
-                'id'  => $r->id,
-                'ts'  => $r->created_at->format('d/m H:i:s'),
-                'user'=> $r->user_name,
+                'id' => $r->id,
+                'ts' => $r->created_at->format('d/m H:i:s'),
+                'user' => $r->user_name,
                 'act' => $r->action,
                 'res' => $r->resource,
-                'ip'  => $r->ip_address,
-                'ok'  => $r->success,
+                'ip' => $r->ip_address,
+                'ok' => $r->success,
             ]);
 
         $cp = ClinicProfile::current();
@@ -51,22 +51,22 @@ class SettingsController extends Controller
             ->with(['values' => fn ($q) => $q->orderBy('sort_order')])
             ->get()
             ->map(fn ($cat) => [
-                'id'             => $cat->id,
-                'group'          => $cat->group,
-                'slug'           => $cat->slug,
-                'name_ms'        => $cat->name_ms,
-                'name_en'        => $cat->name_en,
+                'id' => $cat->id,
+                'group' => $cat->group,
+                'slug' => $cat->slug,
+                'name_ms' => $cat->name_ms,
+                'name_en' => $cat->name_en,
                 'description_ms' => $cat->description_ms,
                 'description_en' => $cat->description_en,
-                'sort_order'     => $cat->sort_order,
-                'values'         => $cat->values->map(fn ($v) => [
-                    'id'         => $v->id,
-                    'code'       => $v->code,
-                    'label_ms'   => $v->label_ms,
-                    'label_en'   => $v->label_en,
+                'sort_order' => $cat->sort_order,
+                'values' => $cat->values->map(fn ($v) => [
+                    'id' => $v->id,
+                    'code' => $v->code,
+                    'label_ms' => $v->label_ms,
+                    'label_en' => $v->label_en,
                     'sort_order' => $v->sort_order,
-                    'is_active'  => $v->is_active,
-                    'is_system'  => $v->is_system,
+                    'is_active' => $v->is_active,
+                    'is_system' => $v->is_system,
                 ]),
             ]);
 
@@ -81,30 +81,30 @@ class SettingsController extends Controller
         $testimonials = Testimonial::ordered()->get();
 
         return Inertia::render('Settings', [
-            'currentRoute'     => 'settings',
-            'users'            => $users,
-            'policies'         => $policies,
-            'auditLogs'        => $auditLogs,
+            'currentRoute' => 'settings',
+            'users' => $users,
+            'policies' => $policies,
+            'auditLogs' => $auditLogs,
             'lookupCategories' => $lookupCategories,
-            'filters'          => ['per_page' => $perPage],
-            'tips'             => $tips,
-            'testimonials'     => $testimonials,
-            'clinic'           => [
-                'name'         => $cp->name,
-                'tagline'      => $cp->tagline,
-                'reg_number'   => $cp->reg_number,
+            'filters' => ['per_page' => $perPage],
+            'tips' => $tips,
+            'testimonials' => $testimonials,
+            'clinic' => [
+                'name' => $cp->name,
+                'tagline' => $cp->tagline,
+                'reg_number' => $cp->reg_number,
                 'ckaps_number' => $cp->ckaps_number,
-                'address'    => $cp->address,
-                'postcode'   => $cp->postcode,
-                'city'       => $cp->city,
-                'state'      => $cp->state,
-                'phone'      => $cp->phone,
-                'fax'        => $cp->fax,
-                'email'      => $cp->email,
-                'website'    => $cp->website,
-                'logo_url'   => $cp->logo_url,
-                'latitude'   => $cp->latitude,
-                'longitude'  => $cp->longitude,
+                'address' => $cp->address,
+                'postcode' => $cp->postcode,
+                'city' => $cp->city,
+                'state' => $cp->state,
+                'phone' => $cp->phone,
+                'fax' => $cp->fax,
+                'email' => $cp->email,
+                'website' => $cp->website,
+                'logo_url' => $cp->logo_url,
+                'latitude' => $cp->latitude,
+                'longitude' => $cp->longitude,
                 'google_maps_url' => $cp->google_maps_url,
             ],
         ]);
@@ -145,24 +145,44 @@ class SettingsController extends Controller
         return back()->with('success', "Pengguna {$name} berjaya dipadam.");
     }
 
+    /** Beri / tarik balik kebenaran impersonate untuk pengguna LAIN. */
+    public function updateImpersonator(Request $request, User $user)
+    {
+        $actor = $request->user();
+        abort_unless($actor->canManageImpersonatorOf($user), 403, 'Anda tidak boleh mengubah kebenaran impersonate pengguna ini.');
+
+        $grant = $request->validate(['grant' => ['required', 'boolean']])['grant'];
+        if ($grant && $user->status !== 'active') {
+            return back()->with('error', "Pengguna {$user->name} tidak aktif.");
+        }
+
+        $user->forceFill(['can_impersonate' => $grant])->save();
+
+        AuditLog::record($grant ? 'impersonate.grant' : 'impersonate.revoke', "User #{$user->id} · {$user->name}");
+
+        return back()->with('success', $grant
+            ? "{$user->name} kini boleh impersonate."
+            : "Kebenaran impersonate {$user->name} ditarik balik.");
+    }
+
     public function updateClinic(Request $request)
     {
         $data = $request->validate([
-            'name'       => ['required', 'string', 'max:255'],
-            'tagline'    => ['nullable', 'string', 'max:255'],
-            'reg_number'   => ['nullable', 'string', 'max:100'],
+            'name' => ['required', 'string', 'max:255'],
+            'tagline' => ['nullable', 'string', 'max:255'],
+            'reg_number' => ['nullable', 'string', 'max:100'],
             'ckaps_number' => ['nullable', 'string', 'max:100'],
-            'address'    => ['required', 'string', 'max:500'],
-            'postcode'   => ['required', 'string', 'max:10'],
-            'city'       => ['required', 'string', 'max:100'],
-            'state'      => ['required', 'string', 'max:100'],
-            'phone'      => ['required', 'string', 'max:30'],
-            'fax'        => ['nullable', 'string', 'max:30'],
-            'email'      => ['nullable', 'email', 'max:255'],
-            'website'    => ['nullable', 'string', 'max:255'],
-            'logo'       => ['nullable', 'image', 'max:2048'],
-            'latitude'   => ['nullable', 'numeric', 'between:-90,90'],
-            'longitude'  => ['nullable', 'numeric', 'between:-180,180'],
+            'address' => ['required', 'string', 'max:500'],
+            'postcode' => ['required', 'string', 'max:10'],
+            'city' => ['required', 'string', 'max:100'],
+            'state' => ['required', 'string', 'max:100'],
+            'phone' => ['required', 'string', 'max:30'],
+            'fax' => ['nullable', 'string', 'max:30'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'website' => ['nullable', 'string', 'max:255'],
+            'logo' => ['nullable', 'image', 'max:2048'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'google_maps_url' => ['nullable', 'string', 'max:2000'],
         ]);
 
@@ -204,8 +224,8 @@ class SettingsController extends Controller
     public function updatePolicies(Request $request)
     {
         $policies = $request->validate([
-            'policies'         => ['required', 'array'],
-            'policies.*.id'    => ['required', 'integer', 'exists:security_policies,id'],
+            'policies' => ['required', 'array'],
+            'policies.*.id' => ['required', 'integer', 'exists:security_policies,id'],
             'policies.*.enabled' => ['required', 'boolean'],
         ])['policies'];
 

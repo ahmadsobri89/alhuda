@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Lab404\Impersonate\Models\Impersonate;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
@@ -15,7 +16,7 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
-    use LogsActivity;
+    use Impersonate, LogsActivity;
 
     protected $fillable = [
         'name', 'email', 'password', 'role', 'roles', 'mmc_number', 'mfa_enabled', 'status', 'google_id',
@@ -46,6 +47,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'mfa_enabled' => 'boolean',
             'roles' => 'array',
+            'can_impersonate' => 'boolean',
         ];
     }
 
@@ -92,6 +94,28 @@ class User extends Authenticatable
             array_keys(config('access.modules', [])),
             fn ($m) => $this->canAccessModule($m)
         ));
+    }
+
+    // ── Impersonate (lab404/laravel-impersonate) ────────────────────────
+    // `can_impersonate` sengaja TIADA dalam $fillable. Diberi kali pertama
+    // melalui `php artisan user:impersonator {id}`; selepas itu impersonator
+    // sedia ada boleh beri/tarik balik untuk pengguna LAIN di Settings.
+    // Tiada siapa (termasuk super admin) boleh ubah flag diri sendiri di UI.
+
+    public function canImpersonate(): bool
+    {
+        return (bool) $this->can_impersonate && $this->status === 'active';
+    }
+
+    /** Pengguna yang juga ada kebenaran impersonate tidak boleh disasarkan. */
+    public function canBeImpersonated(): bool
+    {
+        return ! $this->can_impersonate;
+    }
+
+    public function canManageImpersonatorOf(User $target): bool
+    {
+        return $this->canImpersonate() && ! $this->is($target);
     }
 
     public function getActivitylogOptions(): LogOptions

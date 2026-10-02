@@ -946,5 +946,18 @@
   "reg_registering": "Registering...",
   "reg_register_btn": "Register Patient",
   "nav_audit_log": "Audit Log",
-  "page_title_audit-log": "Audit Log"
+  "page_title_audit-log": "Audit Log",
+  "imp_banner": "You are impersonating :name (as :by). Your actions are logged.",
+  "imp_leave": "Back to my account",
+  "imp_button": "Impersonate",
+  "imp_button_title": "Log in as this user",
+  "imp_confirm": "Log in as :name? All actions will be recorded in the audit log.",
+  "imp_badge": "Impersonator",
+  "imp_access_title": "Impersonate access",
+  "imp_access_on": "This user can log in as other users.",
+  "imp_access_off": "This user cannot impersonate.",
+  "imp_grant": "Grant access",
+  "imp_revoke": "Revoke",
+  "imp_grant_confirm": "Grant :name impersonate access? They will be able to log in as other users and grant this access to others.",
+  "imp_revoke_confirm": "Revoke impersonate access for :name?"
 }

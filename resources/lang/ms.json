@@ -946,5 +946,18 @@
   "reg_registering": "Mendaftar...",
   "reg_register_btn": "Daftar Pesakit",
   "nav_audit_log": "Log Audit",
-  "page_title_audit-log": "Log Audit"
+  "page_title_audit-log": "Log Audit",
+  "imp_banner": "Anda sedang menyamar sebagai :name (oleh :by). Tindakan anda direkod.",
+  "imp_leave": "Kembali ke akaun saya",
+  "imp_button": "Impersonate",
+  "imp_button_title": "Log masuk sebagai pengguna ini",
+  "imp_confirm": "Log masuk sebagai :name? Semua tindakan akan direkod dalam log audit.",
+  "imp_badge": "Impersonator",
+  "imp_access_title": "Akses Impersonate",
+  "imp_access_on": "Pengguna ini boleh log masuk sebagai pengguna lain.",
+  "imp_access_off": "Pengguna ini tidak boleh impersonate.",
+  "imp_grant": "Beri akses",
+  "imp_revoke": "Tarik balik",
+  "imp_grant_confirm": "Beri :name kebenaran impersonate? Dia akan boleh log masuk sebagai pengguna lain dan memberi akses ini kepada orang lain.",
+  "imp_revoke_confirm": "Tarik balik kebenaran impersonate :name?"
 }
