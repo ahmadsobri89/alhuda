@@ -4,6 +4,7 @@ use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DrosstechController;
 use App\Http\Controllers\EMRController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\HealthTipController;
@@ -230,6 +231,13 @@ Route::middleware(['auth', 'verified', EnsureModuleAccess::class])->group(functi
     Route::post('/impersonate/{user}', [ImpersonationController::class, 'start'])
         ->middleware([ProtectFromImpersonation::class, 'throttle:10,1'])
         ->name('impersonate.start');
+});
+
+// Drosstech (OVRS) compound enquiry — standalone, di luar flow klinik.
+// Akses melalui URL /drosstech sahaja (tiada link dalam navigasi klinik).
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/drosstech', [DrosstechController::class, 'page'])->name('drosstech');
+    Route::get('/drosstech/enquiry', [DrosstechController::class, 'enquiry'])->name('drosstech.enquiry');
 });
 
 require __DIR__.'/auth.php';
