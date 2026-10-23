@@ -42,7 +42,9 @@ async function search() {
         )
         result.value = data
         if (!data?.success) {
-            error.value = data?.message || 'Enquiry gagal.'
+            error.value = [data?.message || 'Enquiry gagal.', data?.hint, data?.error]
+                .filter(Boolean)
+                .join(' — ')
         }
     } catch (e) {
         error.value = e?.response?.data?.message || e?.message || 'Ralat rangkaian.'

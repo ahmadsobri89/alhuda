@@ -44,6 +44,10 @@ class DrosstechController extends Controller
     private const COMPOUND_REF = 'XX';
     private const PROXY = null; // cth: 'http://user:pass@proxy-host:port'
 
+    // CA bundle khusus (Sectigo Root R46 + intermediate DV R36) supaya verify SSL
+    // tidak bergantung pada ca-certificates server production yang mungkin lapuk.
+    private const CA_BUNDLE = 'certs/drosstech-ca.pem';
+
     public function page(): InertiaResponse
     {
         return Inertia::render('Drosstech', [
@@ -90,10 +94,13 @@ class DrosstechController extends Controller
             ], $res->successful() ? 200 : 502);
         } catch (\Throwable $e) {
             Log::warning('Drosstech enquiry exception', ['error' => $e->getMessage()]);
+            $hint = $this->hint($e);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Exception semasa call Drosstech',
+                'error' => $e->getMessage(),
+                'hint' => $hint,
                 'data' => null,
             ], 502);
         }
@@ -131,10 +138,13 @@ class DrosstechController extends Controller
             return ['success' => true, 'access_token' => $data['access_token']];
         } catch (\Throwable $e) {
             Log::warning('Drosstech token exception', ['error' => $e->getMessage()]);
+            $hint = $this->hint($e);
 
             return [
                 'success' => false,
                 'message' => 'Exception semasa call Drosstech token',
+                'error' => $e->getMessage(),
+                'hint' => $hint,
                 'data' => null,
             ];
         }
@@ -146,14 +156,32 @@ class DrosstechController extends Controller
             'User-Agent' => self::GENERIC_UA,
             'Accept' => 'application/json',
         ])
+            ->connectTimeout(10)
             ->timeout(20)
-            ->withoutRedirecting();
+            ->withoutRedirecting()
+            ->withOptions([
+                'verify' => is_file($ca = resource_path(self::CA_BUNDLE)) ? $ca : true,
+                // Paksa IPv4 — server yang ada IPv6 separuh-jalan selalu hang/timeout.
+                'curl' => [CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4],
+            ]);
 
         if (self::PROXY) {
             $client = $client->withOptions(['proxy' => self::PROXY]);
         }
 
         return $client;
+    }
+
+    private function hint(\Throwable $e): string
+    {
+        $msg = $e->getMessage();
+
+        return match (true) {
+            str_contains($msg, 'cURL error 60'), str_contains($msg, 'cURL error 77'), str_contains($msg, 'SSL') => 'Masalah sijil SSL di server. Semak resources/certs/drosstech-ca.pem wujud & ca-certificates server dikemas kini.',
+            str_contains($msg, 'cURL error 6') => 'DNS server gagal resolve ovrs.com.my.',
+            str_contains($msg, 'cURL error 28'), str_contains($msg, 'cURL error 7') => 'Server tidak dapat sambung ke ovrs.com.my:8888. Kemungkinan outbound firewall menyekat port 8888 atau IP server belum di-whitelist oleh Drosstech.',
+            default => 'Semak log Laravel untuk butiran.',
+        };
     }
 
     private function url(string $path): string
